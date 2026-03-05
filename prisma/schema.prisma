@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum AppointmentStatus {
+  NEW
+  CONFIRMED
+  CANCELLED
+}
+
+enum EmailLogStatus {
+  LOGGED
+  SENT
+  FAILED
+}
+
+model Appointment {
+  id                  Int               @id @default(autoincrement())
+  locationSlug        String
+  serviceType         String
+  preferredDate       DateTime
+  preferredTimeWindow String
+  name                String
+  email               String
+  phone               String
+  notes               String?
+  status              AppointmentStatus @default(NEW)
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  emailLogs           EmailLog[]
+
+  @@index([locationSlug])
+  @@index([preferredDate])
+}
+
+model ContactSubmission {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model WeddingRegistration {
+  id               Int      @id @default(autoincrement())
+  groomName        String
+  brideName        String
+  phone            String
+  email            String
+  weddingDate      DateTime
+  numberGroomsmen  Int
+  locationSlug     String?
+  notes            String?
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([weddingDate])
+  @@index([locationSlug])
+  @@index([createdAt])
+}
+
+model EmailLog {
+  id            Int            @id @default(autoincrement())
+  appointmentId Int
+  toEmail       String
+  subject       String
+  body          String
+  status        EmailLogStatus @default(LOGGED)
+  createdAt     DateTime       @default(now())
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([appointmentId])
+}

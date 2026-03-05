@@ -1,0 +1,11 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Brand placeholder image">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#403529"/>
+      <stop offset="100%" stop-color="#6297b1"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#g)"/>
+  <rect x="100" y="120" width="1000" height="560" rx="20" fill="rgba(255,255,255,0.12)"/>
+  <text x="600" y="410" font-family="Georgia, serif" font-size="72" text-anchor="middle" fill="#f1ede7">Designer Brand</text>
+</svg>

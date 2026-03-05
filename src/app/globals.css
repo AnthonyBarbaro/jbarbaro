@@ -1,26 +1,81 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-ink: #0b0f14;
+  --color-ivory: #faf7f2;
+  --color-stone: #e7ded3;
+  --color-gold: #c7a46a;
+  --color-deep-teal: #0f5b5b;
+  --color-smoke: #6b7280;
+
+  --wave-a: linear-gradient(90deg, rgba(199, 164, 106, 0.35), rgba(15, 91, 91, 0.35));
+  --wave-b: linear-gradient(90deg, rgba(15, 91, 91, 0.3), rgba(11, 15, 20, 0.25));
+  --wave-c: linear-gradient(90deg, rgba(231, 222, 211, 1), rgba(250, 247, 242, 1));
+
+  --shadow-luxe: 0 18px 40px -26px rgba(11, 15, 20, 0.42);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-heading: var(--font-playfair);
+
+  --color-ink: var(--color-ink);
+  --color-ivory: var(--color-ivory);
+  --color-stone: var(--color-stone);
+  --color-gold: var(--color-gold);
+  --color-deep-teal: var(--color-deep-teal);
+  --color-smoke: var(--color-smoke);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: color-mix(in srgb, var(--color-ink) 12%, transparent);
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--color-ivory);
+  color: var(--color-ink);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: inherit;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-gold) 38%, white);
+  color: var(--color-ink);
+}
+
+.luxe-shell {
+  background-image:
+    radial-gradient(circle at 20% -10%, rgba(199, 164, 106, 0.12), transparent 38%),
+    radial-gradient(circle at 90% 0%, rgba(15, 91, 91, 0.08), transparent 30%);
+}
+
+.wave-a {
+  background-image: var(--wave-a);
+}
+
+.wave-b {
+  background-image: var(--wave-b);
+}
+
+.wave-c {
+  background-image: var(--wave-c);
+}
+
+.luxe-shadow {
+  box-shadow: var(--shadow-luxe);
 }

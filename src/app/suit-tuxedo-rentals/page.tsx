@@ -9,7 +9,7 @@ import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { buildMetadata } from "@/lib/seo";
 
-const tuxedoHeroImage = "https://www.barbaroformalwear.com/wp-content/uploads/2024/02/h3lg.jpg";
+const tuxedoHeroImage = "/images/remote/www.barbaroformalwear.com/wp-content/uploads/2024/02/h3lg.jpg";
 
 const catalogs = [
   {

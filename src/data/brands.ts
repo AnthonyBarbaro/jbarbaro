@@ -2,7 +2,7 @@ import type { Brand } from "@/types/site";
 
 const placeholderImage = "/images/brands/brand-placeholder.svg";
 const placeholderLogo = "/images/brands/logo-placeholder.svg";
-const mediaBase = "https://www.jasonbarbaro.com/assets/media";
+const mediaBase = "/images/remote/www.jasonbarbaro.com/assets/media";
 
 const brandMedia: Record<string, { image: string; logo: string }> = {
   "7-downie-st": {

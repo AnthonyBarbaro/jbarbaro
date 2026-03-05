@@ -19,6 +19,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "scontent-lax3-1.cdninstagram.com",
       },
+      {
+        protocol: "https",
+        hostname: "www.macombnowmagazine.com",
+      },
     ],
   },
   async redirects() {

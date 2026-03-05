@@ -40,8 +40,7 @@ const pillars = [
   },
 ];
 
-const founderImage =
-  "https://scontent-lax3-1.cdninstagram.com/v/t51.2885-19/23594617_1788587218101009_5877377593107283968_n.jpg";
+const founderImage = "/images/remote/www.macombnowmagazine.com/wp-content/uploads/2017/09/fashion_bombaro.jpg";
 const founderInstagram = "https://www.instagram.com/j.barbaroclothiers/";
 
 export default function AboutPage() {
@@ -111,7 +110,7 @@ export default function AboutPage() {
                   alt="Jason Barbaro, founder of J. Barbaro Clothiers"
                   fill
                   sizes="(max-width: 768px) 100vw, 340px"
-                  className="object-cover"
+                  className="object-cover object-[72%_center]"
                 />
               </div>
               <CardContent className="sm:p-8">

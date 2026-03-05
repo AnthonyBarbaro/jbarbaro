@@ -16,6 +16,7 @@ export type NavItem = {
 export const primaryNavigation: NavItem[] = [
   {
     label: "About",
+    href: "/about",
     children: [
       { label: "Our History", href: "/about/our-history" },
       { label: "Services", href: "/services" },

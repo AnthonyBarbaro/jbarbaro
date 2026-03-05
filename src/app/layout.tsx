@@ -38,7 +38,7 @@ const organizationJsonLd = {
     "https://www.pinterest.com/jasonbarbaro/",
     "https://www.instagram.com/j.barbaroclothiers/",
   ],
-  logo: "https://www.jasonbarbaro.com/assets/media/2020/05/logo_trans.png",
+  logo: "/images/remote/www.jasonbarbaro.com/assets/media/2020/05/logo_trans.png",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

@@ -20,7 +20,7 @@ import { primaryNavigation } from "@/data/navigation";
 import { socialLinks } from "@/data/social";
 import { cn } from "@/lib/utils";
 
-const logoUrl = "https://www.jasonbarbaro.com/assets/media/2020/05/logo_trans.png";
+const logoUrl = "/images/remote/www.jasonbarbaro.com/assets/media/2020/05/logo_trans.png";
 
 function iconForSocial(label: string) {
   const commonClasses = "h-3.5 w-3.5";
@@ -131,15 +131,18 @@ export function SiteHeader() {
               <li key={item.label} className="group relative">
                 {item.children ? (
                   <>
-                    <button
-                      type="button"
+                    <Link
+                      href={item.href || item.children[0]?.href || "/"}
+                      target={item.external ? "_blank" : undefined}
+                      rel={item.external ? "noopener noreferrer" : undefined}
                       className={cn(
                         "inline-flex items-center gap-1 text-ink transition-colors hover:text-deep-teal",
-                        item.children.some((child) => pathname === child.href) && "text-deep-teal",
+                        (pathname === item.href || item.children.some((child) => pathname === child.href)) && "text-deep-teal",
                       )}
                     >
                       {item.label}
-                    </button>
+                      {item.external ? <MoveUpRight className="h-3.5 w-3.5" /> : null}
+                    </Link>
                     <div className="invisible absolute top-full left-1/2 mt-4 w-[300px] -translate-x-1/2 rounded-2xl border border-ink/10 bg-ivory p-3 opacity-0 shadow-xl transition-all duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
                       <ul className="space-y-1.5">
                         {item.children.map((child) => (
@@ -218,6 +221,17 @@ export function SiteHeader() {
                     <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold tracking-[0.08em] text-ink uppercase">
                       {item.label}
                     </summary>
+                    {item.href ? (
+                      <div className="px-2">
+                        <Link
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold tracking-[0.08em] text-deep-teal uppercase hover:bg-ivory"
+                        >
+                          View {item.label}
+                        </Link>
+                      </div>
+                    ) : null}
                     <ul className="space-y-1 border-t border-ink/10 p-2">
                       {item.children.map((child) => (
                         <li key={child.href}>

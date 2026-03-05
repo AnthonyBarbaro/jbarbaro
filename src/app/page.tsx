@@ -107,6 +107,14 @@ export default function HomePage() {
               >
                 Shop Online
               </ButtonLink>
+              <ButtonLink
+                href="/about"
+                variant="secondary"
+                size="lg"
+                className="w-full border-ivory/80 text-ivory hover:border-gold hover:text-gold sm:w-auto"
+              >
+                About Jason Barbaro
+              </ButtonLink>
             </div>
 
             <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-ivory/84">

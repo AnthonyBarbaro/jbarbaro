@@ -1,7 +1,7 @@
 import type { Appointment } from "@prisma/client";
 import { format } from "date-fns";
 
-import { locationMap } from "@/data/locations";
+import { getLocationMap } from "@/lib/cms";
 import { SITE_NAME } from "@/lib/constants";
 
 const STORE_TIME_ZONE = "America/Detroit";
@@ -59,7 +59,8 @@ function escapeIcsText(value: string) {
     .replace(/;/g, "\\;");
 }
 
-export function buildAppointmentCalendarArtifacts(appointment: Appointment) {
+export async function buildAppointmentCalendarArtifacts(appointment: Appointment) {
+  const locationMap = await getLocationMap();
   const location = locationMap[appointment.locationSlug];
   const dateKey = format(appointment.preferredDate, "yyyy-MM-dd");
   const [startLabelRaw = "", endLabelRaw = ""] = appointment.preferredTimeWindow

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { locationMap } from "@/data/locations";
+import { getLocationMap } from "@/lib/cms";
 import { sendWeddingRegistrationEmails } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 import { weddingRateLimiter } from "@/lib/rate-limit";
@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
     if (parsed.data.website && parsed.data.website.trim() !== "") {
       return NextResponse.json({ message: "Registration received." }, { status: 200 });
     }
+
+    const locationMap = await getLocationMap();
 
     if (parsed.data.locationSlug && !locationMap[parsed.data.locationSlug]) {
       return NextResponse.json({ message: "Invalid location selected." }, { status: 400 });

@@ -7,15 +7,17 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import type { Testimonial } from "@/types/site";
-
-import { aggregateRating } from "@/data/testimonials";
 import { formatDate } from "@/lib/utils";
 
 type TestimonialsCarouselProps = {
+  aggregateRating: {
+    ratingValue: number;
+    reviewCount: number;
+  };
   testimonials: Testimonial[];
 };
 
-export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps) {
+export function TestimonialsCarousel({ aggregateRating, testimonials }: TestimonialsCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {

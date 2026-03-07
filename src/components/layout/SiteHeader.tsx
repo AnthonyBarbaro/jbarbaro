@@ -16,11 +16,8 @@ import {
 import { useState } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
-import { primaryNavigation } from "@/data/navigation";
-import { socialLinks } from "@/data/social";
+import type { NavigationContent, SiteSettingsContent } from "@/lib/cms-defaults";
 import { cn } from "@/lib/utils";
-
-const logoUrl = "/images/remote/www.jasonbarbaro.com/assets/media/2020/05/logo_trans.png";
 
 function iconForSocial(label: string) {
   const commonClasses = "h-3.5 w-3.5";
@@ -41,16 +38,23 @@ function iconForSocial(label: string) {
   }
 }
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  navigation: NavigationContent;
+  siteSettings: SiteSettingsContent;
+};
+
+export function SiteHeader({ navigation, siteSettings }: SiteHeaderProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const mobileShortcut = navigation.headerCtas[0];
+  const mobileLinks = navigation.primaryNavigation;
 
   return (
     <header className="sticky top-0 z-[90] border-b border-ink/10 bg-ivory/95 lg:backdrop-blur-xl">
       <div className="hidden bg-ink text-ivory lg:block">
         <div className="mx-auto flex h-10 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            {socialLinks.map((social) => (
+            {siteSettings.socialLinks.map((social) => (
               <Link
                 key={social.href}
                 href={social.href}
@@ -64,21 +68,23 @@ export function SiteHeader() {
             ))}
           </div>
           <div className="flex items-center gap-4 text-[11px] font-medium tracking-[0.18em] uppercase">
-            <Link href="/shop-coming-soon" className="text-gold hover:text-ivory">
-              Shop Online
-            </Link>
-            <span aria-hidden className="text-ivory/40">
-              |
-            </span>
-            <Link href="/schedule-appointment" className="hover:text-gold">
-              Schedule Appointment
-            </Link>
-            <span aria-hidden className="text-ivory/40">
-              |
-            </span>
-            <Link href="/cart" className="hover:text-gold">
-              View Cart
-            </Link>
+            {navigation.headerTopLinks.map((link, index) => (
+              <div key={`${link.href}-${index}`} className="flex items-center gap-4">
+                {index > 0 ? (
+                  <span aria-hidden className="text-ivory/40">
+                    |
+                  </span>
+                ) : null}
+                <Link
+                  href={link.href}
+                  target={link.external ? "_blank" : undefined}
+                  rel={link.external ? "noopener noreferrer" : undefined}
+                  className={index === 0 ? "text-gold hover:text-ivory" : "hover:text-gold"}
+                >
+                  {link.label}
+                </Link>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -94,10 +100,10 @@ export function SiteHeader() {
           <Menu className="h-5 w-5" />
         </button>
 
-        <Link href="/" className="mx-auto lg:mx-0" aria-label="J. Barbaro Clothiers Home">
+        <Link href="/" className="mx-auto lg:mx-0" aria-label={`${siteSettings.siteName} Home`}>
           <Image
-            src={logoUrl}
-            alt="J. Barbaro Clothiers logo"
+            src={siteSettings.logoUrl}
+            alt={`${siteSettings.siteName} logo`}
             width={222}
             height={68}
             priority
@@ -106,28 +112,38 @@ export function SiteHeader() {
         </Link>
 
         <div className="lg:hidden">
-          <Link
-            href="/shop-coming-soon"
-            className="inline-flex min-h-9 items-center justify-center rounded-full border border-gold/75 bg-gold px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.12em] text-ink uppercase transition-colors hover:bg-ink hover:text-ivory"
-          >
-            Shop
-          </Link>
+          {mobileShortcut ? (
+            <Link
+              href={mobileShortcut.href}
+              target={mobileShortcut.external ? "_blank" : undefined}
+              rel={mobileShortcut.external ? "noopener noreferrer" : undefined}
+              className="inline-flex min-h-9 items-center justify-center rounded-full border border-gold/75 bg-gold px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.12em] text-ink uppercase transition-colors hover:bg-ink hover:text-ivory"
+            >
+              {mobileShortcut.label}
+            </Link>
+          ) : null}
         </div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <ButtonLink href="/shop-coming-soon" size="sm" variant="teal">
-            Shop Online
-          </ButtonLink>
-          <ButtonLink href="/schedule-appointment" size="sm">
-            Book Appointment
-          </ButtonLink>
+          {navigation.headerCtas.map((cta, index) => (
+            <ButtonLink
+              key={`${cta.href}-${index}`}
+              href={cta.href}
+              target={cta.external ? "_blank" : undefined}
+              rel={cta.external ? "noopener noreferrer" : undefined}
+              size="sm"
+              variant={index === 0 ? "teal" : "primary"}
+            >
+              {cta.label}
+            </ButtonLink>
+          ))}
         </div>
       </div>
 
       <nav className="hidden border-t border-ink/10 bg-ivory lg:block" aria-label="Primary">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <ul className="flex items-center justify-center gap-6 py-4 text-[11px] font-semibold tracking-[0.15em] uppercase">
-            {primaryNavigation.map((item) => (
+            {navigation.primaryNavigation.map((item) => (
               <li key={item.label} className="group relative">
                 {item.children ? (
                   <>
@@ -214,7 +230,7 @@ export function SiteHeader() {
 
         <nav className="mt-6" aria-label="Mobile">
           <ul className="space-y-2">
-            {primaryNavigation.map((item) => (
+            {mobileLinks.map((item) => (
               <li key={item.label} className="rounded-2xl border border-ink/10 bg-stone/50">
                 {item.children ? (
                   <details>
@@ -267,12 +283,19 @@ export function SiteHeader() {
         </nav>
 
         <div className="mt-6 space-y-2">
-          <ButtonLink href="/shop-coming-soon" variant="teal" className="w-full" onClick={() => setIsOpen(false)}>
-            Shop Online
-          </ButtonLink>
-          <ButtonLink href="/schedule-appointment" className="w-full" onClick={() => setIsOpen(false)}>
-            Book Appointment
-          </ButtonLink>
+          {navigation.headerCtas.map((cta, index) => (
+            <ButtonLink
+              key={`${cta.href}-${index}`}
+              href={cta.href}
+              target={cta.external ? "_blank" : undefined}
+              rel={cta.external ? "noopener noreferrer" : undefined}
+              variant={index === 0 ? "teal" : "primary"}
+              className="w-full"
+              onClick={() => setIsOpen(false)}
+            >
+              {cta.label}
+            </ButtonLink>
+          ))}
         </div>
       </div>
     </header>

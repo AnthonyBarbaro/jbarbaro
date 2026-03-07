@@ -2,7 +2,7 @@ import { AppointmentStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { locationMap } from "@/data/locations";
+import { getLocationMap } from "@/lib/cms";
 import { sendAppointmentConfirmationEmail } from "@/lib/email";
 import { getHolidayName, isClosedHoliday } from "@/lib/holidays";
 import { getAvailableTimeSlots } from "@/lib/hours";
@@ -71,6 +71,7 @@ async function getLiveAvailability(
   locationSlug: string,
   isoDate: string,
 ): Promise<LiveAvailabilityError | LiveAvailabilitySuccess> {
+  const locationMap = await getLocationMap();
   const location = locationMap[locationSlug];
 
   if (!location) {
@@ -147,6 +148,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = parsed.data;
+    const locationMap = await getLocationMap();
     const location = locationMap[payload.locationSlug];
 
     if (!location) {

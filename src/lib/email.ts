@@ -4,7 +4,7 @@ import type { Appointment, ContactSubmission, EmailLogStatus, WeddingRegistratio
 import { format } from "date-fns";
 import nodemailer from "nodemailer";
 
-import { locationMap } from "@/data/locations";
+import { getLocationMap } from "@/lib/cms";
 import { buildAppointmentCalendarArtifacts } from "@/lib/calendar";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import { prisma } from "@/lib/prisma";
@@ -293,10 +293,11 @@ async function sendAndTrackAppointmentEmail(
   return status;
 }
 
-function buildAppointmentCustomerEmail(appointment: Appointment) {
+async function buildAppointmentCustomerEmail(appointment: Appointment) {
+  const locationMap = await getLocationMap();
   const location = locationMap[appointment.locationSlug];
   const dateLabel = format(appointment.preferredDate, "EEEE, MMMM d, yyyy");
-  const calendar = buildAppointmentCalendarArtifacts(appointment);
+  const calendar = await buildAppointmentCalendarArtifacts(appointment);
   const locationName = location?.name || appointment.locationSlug;
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(calendar.address)}`;
 
@@ -363,7 +364,8 @@ function buildAppointmentCustomerEmail(appointment: Appointment) {
   };
 }
 
-function buildAppointmentInternalEmail(appointment: Appointment) {
+async function buildAppointmentInternalEmail(appointment: Appointment) {
+  const locationMap = await getLocationMap();
   const location = locationMap[appointment.locationSlug];
   const dateLabel = format(appointment.preferredDate, "EEEE, MMMM d, yyyy");
   const locationName = location?.name || appointment.locationSlug;
@@ -379,7 +381,7 @@ function buildAppointmentInternalEmail(appointment: Appointment) {
     `Time: ${appointment.preferredTimeWindow}`,
     `Notes: ${appointment.notes || "-"}`,
     "",
-    `Admin: ${SITE_URL}/admin/appointments`,
+    `Admin: ${SITE_URL}/cms/appointments`,
   ].join("\n");
 
   const html = buildBrandedEmail({
@@ -419,7 +421,7 @@ function buildAppointmentInternalEmail(appointment: Appointment) {
 }
 
 export async function sendAppointmentConfirmationEmail(appointment: Appointment): Promise<DeliveryResult> {
-  const customerEmail = buildAppointmentCustomerEmail(appointment);
+  const customerEmail = await buildAppointmentCustomerEmail(appointment);
   const customerStatus = await sendAndTrackAppointmentEmail(appointment.id, {
     to: appointment.email,
     subject: customerEmail.subject,
@@ -440,7 +442,7 @@ export async function sendAppointmentConfirmationEmail(appointment: Appointment)
   ]);
 
   if (internalRecipients.length > 0) {
-    const internalEmail = buildAppointmentInternalEmail(appointment);
+    const internalEmail = await buildAppointmentInternalEmail(appointment);
 
     await sendAndTrackAppointmentEmail(appointment.id, {
       to: internalRecipients.join(", "),
@@ -543,7 +545,8 @@ function buildContactInternalEmail(submission: ContactSubmission) {
   return { subject, text, html };
 }
 
-function buildWeddingCustomerEmail(registration: WeddingRegistration) {
+async function buildWeddingCustomerEmail(registration: WeddingRegistration) {
+  const locationMap = await getLocationMap();
   const dateLabel = format(registration.weddingDate, "EEEE, MMMM d, yyyy");
   const locationName = registration.locationSlug ? locationMap[registration.locationSlug]?.name || registration.locationSlug : "No location selected";
 
@@ -587,7 +590,8 @@ function buildWeddingCustomerEmail(registration: WeddingRegistration) {
   return { subject, text, html };
 }
 
-function buildWeddingInternalEmail(registration: WeddingRegistration) {
+async function buildWeddingInternalEmail(registration: WeddingRegistration) {
+  const locationMap = await getLocationMap();
   const dateLabel = format(registration.weddingDate, "EEEE, MMMM d, yyyy");
   const locationName = registration.locationSlug ? locationMap[registration.locationSlug]?.name || registration.locationSlug : "No location selected";
 
@@ -691,7 +695,7 @@ export async function sendWeddingRegistrationEmails(
     "SMTP_REPLY_TO",
   ]);
 
-  const internalEmail = buildWeddingInternalEmail(registration);
+  const internalEmail = await buildWeddingInternalEmail(registration);
   const internalStatus =
     internalRecipients.length > 0
       ? await deliverEmail({
@@ -707,7 +711,7 @@ export async function sendWeddingRegistrationEmails(
         })
       : "LOGGED";
 
-  const customerEmail = buildWeddingCustomerEmail(registration);
+  const customerEmail = await buildWeddingCustomerEmail(registration);
   const customerStatus = await deliverEmail({
     to: registration.email,
     subject: customerEmail.subject,

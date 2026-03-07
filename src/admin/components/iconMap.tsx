@@ -1,0 +1,65 @@
+"use client";
+
+import type { LucideIcon } from "lucide-react";
+import {
+  BookOpenText,
+  BriefcaseBusiness,
+  CalendarDays,
+  CircleDot,
+  FileCog,
+  FileText,
+  Gem,
+  Home,
+  Images,
+  LayoutDashboard,
+  LayoutList,
+  MapPinned,
+  MessageSquareQuote,
+  Palette,
+  Phone,
+  Ruler,
+  ScrollText,
+  Shield,
+  Shirt,
+  Sparkles,
+  Star,
+  Store,
+  UserCircle2,
+  Users,
+} from "lucide-react";
+
+const iconMap: Record<string, LucideIcon> = {
+  account: UserCircle2,
+  "about-page": FileText,
+  appointments: CalendarDays,
+  "appointment-requests": CalendarDays,
+  brands: Gem,
+  categories: LayoutList,
+  dashboard: LayoutDashboard,
+  "blog-index": BookOpenText,
+  "contact-page": Phone,
+  "designers-page": Sparkles,
+  "for-men-page": Users,
+  "home-page": Home,
+  locations: MapPinned,
+  "locations-page-content": Store,
+  media: Images,
+  navigation: LayoutList,
+  posts: ScrollText,
+  "our-history-page": FileText,
+  "rentals-page": Shirt,
+  "reviews-page": Star,
+  "schedule-page": CalendarDays,
+  "services-content": BriefcaseBusiness,
+  "site-settings": FileCog,
+  "style-guide-index": FileText,
+  swatches: Palette,
+  "tailored-page": Ruler,
+  testimonials: MessageSquareQuote,
+  users: Shield,
+  "wedding-page": Sparkles,
+};
+
+export function resolveNavIcon(icon: string): LucideIcon {
+  return iconMap[icon] || CircleDot;
+}

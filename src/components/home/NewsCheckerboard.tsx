@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/Badge";
-import type { ContentPost } from "@/lib/content";
+import type { ContentPost } from "@/types/content";
 import { formatDate } from "@/lib/utils";
 
 type NewsCheckerboardProps = {

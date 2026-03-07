@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
-import type { ContentPost } from "@/lib/content";
+import type { ContentPost } from "@/types/content";
 import { formatDate } from "@/lib/utils";
 
 type PostCardProps = {

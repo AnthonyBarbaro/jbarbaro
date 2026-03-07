@@ -1,9 +1,7 @@
-import { brands } from "@/data/brands";
-import { locations } from "@/data/locations";
-import { menCategories } from "@/data/men-categories";
+import { getBrands, getCategories, getLocations } from "@/lib/cms";
 import { getCollection } from "@/lib/content";
 
-export function getSitemapRoutes() {
+export async function getSitemapRoutes() {
   const staticRoutes = [
     "",
     "/about",
@@ -29,12 +27,20 @@ export function getSitemapRoutes() {
     "/sale-coming-soon",
   ];
 
+  const [brands, locations, categories, blogPosts, styleGuidePosts] = await Promise.all([
+    getBrands(),
+    getLocations(),
+    getCategories(),
+    getCollection("blog"),
+    getCollection("style-guide"),
+  ]);
+
   const dynamicRoutes = [
-    ...menCategories.map((category) => `/for-men/${category.slug}`),
+    ...categories.map((category) => `/for-men/${category.slug}`),
     ...locations.map((location) => `/location/${location.slug}`),
     ...brands.map((brand) => `/collection-brand/${brand.slug}`),
-    ...getCollection("blog").map((post) => `/blog/${post.slug}`),
-    ...getCollection("style-guide").map((post) => `/style-guide/${post.slug}`),
+    ...blogPosts.map((post) => `/blog/${post.slug}`),
+    ...styleGuidePosts.map((post) => `/style-guide/${post.slug}`),
   ];
 
   return [...staticRoutes, ...dynamicRoutes];

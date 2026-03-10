@@ -2,9 +2,10 @@
   "name": "jbarbaro",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.28.2",
   "scripts": {
     "dev": "tinacms dev --noTelemetry -c \"next dev\"",
-    "build": "tinacms build --noTelemetry && next build",
+    "build": "tinacms build --skip-cloud-checks --skip-search-index --no-client-build-cache && next build",
     "start": "next start",
     "lint": "eslint src scripts tina next.config.ts eslint.config.mjs",
     "format": "prettier --write .",

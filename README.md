@@ -30,7 +30,7 @@ cp .env.example .env
 pnpm dev
 ```
 
-This starts both Next.js and TinaCMS local mode. Open `/admin` to edit site content locally.
+This starts Next.js plus Tina's local development server. Open `/admin` to edit content while developing locally.
 
 4. Production build check:
 
@@ -44,6 +44,9 @@ See `.env.example`:
 
 - `NEXT_PUBLIC_SITE_URL` (default: `http://localhost:3000`)
 - Optional `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+- `NEXT_PUBLIC_TINA_CLIENT_ID`, `TINA_TOKEN`
+- Optional `NEXT_PUBLIC_TINA_BRANCH` (defaults to `main`)
+- Optional `TINA_SEARCH_TOKEN`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`
 - `SMTP_FROM` and optional `SMTP_REPLY_TO`
 - Optional notification recipients:
@@ -91,7 +94,7 @@ See `.env.example`:
 ## Tina Notes
 
 - Local editor route: `/admin`
-- Tina is configured in local mode for this repo, so editing is intended for local development workflows.
+- Local development uses `tinacms dev`; production builds target TinaCloud via `NEXT_PUBLIC_TINA_CLIENT_ID` and `TINA_TOKEN`.
 - The marketing site reads directly from the local MDX/JSON files in `content/`.
 
 ## Important Routes
@@ -109,7 +112,7 @@ See `.env.example`:
 
 ## Scripts
 
-- `pnpm dev` - start Next.js + TinaCMS local mode
-- `pnpm build` - generate Tina admin locally, then run production build
+- `pnpm dev` - start Next.js + TinaCMS local development mode
+- `pnpm build` - generate the TinaCloud admin bundle, then run the Next.js production build
 - `pnpm lint` - lint check
 - `pnpm format` - format code

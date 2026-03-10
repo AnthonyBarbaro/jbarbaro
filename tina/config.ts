@@ -1,6 +1,14 @@
 import { defineConfig } from "tinacms";
 
-const branch = process.env.GITHUB_BRANCH || process.env.VERCEL_GIT_COMMIT_REF || process.env.HEAD || "main";
+const branch =
+  process.env.NEXT_PUBLIC_TINA_BRANCH ||
+  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF ||
+  process.env.VERCEL_GIT_COMMIT_REF ||
+  process.env.GITHUB_BRANCH ||
+  process.env.HEAD ||
+  "main";
+const clientId = process.env.NEXT_PUBLIC_TINA_CLIENT_ID;
+const token = process.env.TINA_TOKEN;
 
 const singletonActions = {
   create: false,
@@ -71,9 +79,8 @@ const objectListUi = (fallback: string, ...keys: string[]) => ({
 
 export default defineConfig({
   branch,
-  client: {
-    skip: true,
-  },
+  clientId,
+  token,
   build: {
     publicFolder: "public",
     outputFolder: "admin",

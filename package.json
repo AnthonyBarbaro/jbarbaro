@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "tinacms dev --noTelemetry -c \"next dev\"",
-    "build": "tinacms build --local --skip-cloud-checks --skip-indexing --skip-search-index --noTelemetry && next build",
+    "build": "tinacms build --noTelemetry && next build",
     "start": "next start",
     "lint": "eslint src scripts tina next.config.ts eslint.config.mjs",
     "format": "prettier --write .",

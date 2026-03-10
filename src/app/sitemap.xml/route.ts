@@ -2,7 +2,7 @@ import { SITE_URL } from "@/lib/constants";
 import { getSitemapRoutes } from "@/lib/sitemap-routes";
 
 export async function GET() {
-  const routes = await getSitemapRoutes();
+  const routes = getSitemapRoutes();
 
   const entries = routes
     .map((path) => {

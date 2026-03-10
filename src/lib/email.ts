@@ -1,15 +1,18 @@
 import "server-only";
 
-import type { Appointment, ContactSubmission, EmailLogStatus, WeddingRegistration } from "@prisma/client";
 import { format } from "date-fns";
 import nodemailer from "nodemailer";
 
-import { getLocationMap } from "@/lib/cms";
+import { locationMap } from "@/data/locations";
 import { buildAppointmentCalendarArtifacts } from "@/lib/calendar";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
-import { prisma } from "@/lib/prisma";
+import type {
+  AppointmentSubmissionPayload,
+  ContactSubmissionPayload,
+  WeddingRegistrationPayload,
+} from "@/types/submissions";
 
-type DeliveryResult = EmailLogStatus;
+export type DeliveryResult = "LOGGED" | "SENT" | "FAILED";
 
 export type SubmissionEmailResult = {
   customer: DeliveryResult;
@@ -267,37 +270,10 @@ async function deliverEmail({ to, subject, text, html, replyTo, headers, attachm
   }
 }
 
-async function sendAndTrackAppointmentEmail(
-  appointmentId: number,
-  payload: SendEmailOptions,
-): Promise<DeliveryResult> {
-  const record = await prisma.emailLog.create({
-    data: {
-      appointmentId,
-      toEmail: payload.to,
-      subject: payload.subject,
-      body: payload.text,
-      status: "LOGGED",
-    },
-  });
-
-  const status = await deliverEmail(payload);
-
-  if (status === "SENT" || status === "FAILED") {
-    await prisma.emailLog.update({
-      where: { id: record.id },
-      data: { status },
-    });
-  }
-
-  return status;
-}
-
-async function buildAppointmentCustomerEmail(appointment: Appointment) {
-  const locationMap = await getLocationMap();
+function buildAppointmentCustomerEmail(appointment: AppointmentSubmissionPayload) {
   const location = locationMap[appointment.locationSlug];
   const dateLabel = format(appointment.preferredDate, "EEEE, MMMM d, yyyy");
-  const calendar = await buildAppointmentCalendarArtifacts(appointment);
+  const calendar = buildAppointmentCalendarArtifacts(appointment);
   const locationName = location?.name || appointment.locationSlug;
   const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(calendar.address)}`;
 
@@ -306,6 +282,7 @@ async function buildAppointmentCustomerEmail(appointment: Appointment) {
     "",
     "Your appointment request has been received.",
     "",
+    `Reference: ${appointment.reference}`,
     `Location: ${locationName}`,
     `Address: ${calendar.address}`,
     `Service: ${appointment.serviceType}`,
@@ -317,21 +294,21 @@ async function buildAppointmentCustomerEmail(appointment: Appointment) {
     `Outlook Calendar: ${calendar.outlookCalendarUrl}`,
     "",
     `Directions: ${mapsLink}`,
-    `Manage appointment: ${SITE_URL}/schedule-appointment`,
+    `Appointment page: ${SITE_URL}/schedule-appointment`,
     "",
     `${SITE_NAME}`,
   ].join("\n");
 
   const html = buildBrandedEmail({
     preheader: `Appointment confirmation for ${dateLabel}`,
-    badge: "Appointment Confirmed",
-    title: `Your Appointment Request Is In`,
+    badge: "Appointment Request",
+    title: "Your Appointment Request Is In",
     subtitle: `${SITE_NAME} will follow up if any additional details are needed.`,
     sections: [
       {
         title: "Appointment Details",
         fields: [
-          { label: "Reference", value: `#${appointment.id}` },
+          { label: "Reference", value: appointment.reference },
           { label: "Location", value: locationName },
           { label: "Service", value: appointment.serviceType },
           { label: "Date", value: dateLabel },
@@ -356,7 +333,7 @@ async function buildAppointmentCustomerEmail(appointment: Appointment) {
     html,
     attachments: [
       {
-        filename: `jbarbaro-appointment-${appointment.id}.ics`,
+        filename: `jbarbaro-appointment-${appointment.reference}.ics`,
         content: calendar.icsContent,
         contentType: "text/calendar; charset=utf-8; method=PUBLISH",
       },
@@ -364,14 +341,13 @@ async function buildAppointmentCustomerEmail(appointment: Appointment) {
   };
 }
 
-async function buildAppointmentInternalEmail(appointment: Appointment) {
-  const locationMap = await getLocationMap();
+function buildAppointmentInternalEmail(appointment: AppointmentSubmissionPayload) {
   const location = locationMap[appointment.locationSlug];
   const dateLabel = format(appointment.preferredDate, "EEEE, MMMM d, yyyy");
   const locationName = location?.name || appointment.locationSlug;
 
   const text = [
-    `New appointment request #${appointment.id}`,
+    `New appointment request ${appointment.reference}`,
     `Name: ${appointment.name}`,
     `Email: ${appointment.email}`,
     `Phone: ${appointment.phone}`,
@@ -381,18 +357,19 @@ async function buildAppointmentInternalEmail(appointment: Appointment) {
     `Time: ${appointment.preferredTimeWindow}`,
     `Notes: ${appointment.notes || "-"}`,
     "",
-    `Admin: ${SITE_URL}/cms/appointments`,
+    `Schedule page: ${SITE_URL}/schedule-appointment`,
   ].join("\n");
 
   const html = buildBrandedEmail({
     preheader: `New appointment request from ${appointment.name}`,
     badge: "Appointment Intake",
-    title: `New Appointment Request #${appointment.id}`,
+    title: `New Appointment Request ${appointment.reference}`,
     subtitle: "A customer submitted a new booking request.",
     sections: [
       {
         title: "Customer",
         fields: [
+          { label: "Reference", value: appointment.reference },
           { label: "Name", value: appointment.name },
           { label: "Email", value: appointment.email },
           { label: "Phone", value: appointment.phone },
@@ -410,19 +387,43 @@ async function buildAppointmentInternalEmail(appointment: Appointment) {
     ],
     messageTitle: "Customer Notes",
     message: appointment.notes || "No additional notes were provided.",
-    footerNote: `${SITE_NAME} admin alert`,
+    footerNote: `${SITE_NAME} appointment alert`,
   });
 
   return {
-    subject: `New Appointment Request #${appointment.id} - ${SITE_NAME}`,
+    subject: `New Appointment Request ${appointment.reference} - ${SITE_NAME}`,
     text,
     html,
   };
 }
 
-export async function sendAppointmentConfirmationEmail(appointment: Appointment): Promise<DeliveryResult> {
-  const customerEmail = await buildAppointmentCustomerEmail(appointment);
-  const customerStatus = await sendAndTrackAppointmentEmail(appointment.id, {
+export async function sendAppointmentEmails(
+  appointment: AppointmentSubmissionPayload,
+): Promise<SubmissionEmailResult> {
+  const internalRecipients = getNotificationRecipients([
+    "APPOINTMENT_NOTIFICATION_TO",
+    "CONTACT_NOTIFICATION_TO",
+    "SMTP_REPLY_TO",
+  ]);
+
+  const internalEmail = buildAppointmentInternalEmail(appointment);
+  const internalStatus =
+    internalRecipients.length > 0
+      ? await deliverEmail({
+          to: internalRecipients.join(", "),
+          subject: internalEmail.subject,
+          text: internalEmail.text,
+          html: internalEmail.html,
+          replyTo: appointment.email,
+          headers: {
+            "X-Form-Type": "appointment-internal",
+            "X-Form-Reference": appointment.reference,
+          },
+        })
+      : "LOGGED";
+
+  const customerEmail = buildAppointmentCustomerEmail(appointment);
+  const customerStatus = await deliverEmail({
     to: appointment.email,
     subject: customerEmail.subject,
     text: customerEmail.text,
@@ -430,52 +431,33 @@ export async function sendAppointmentConfirmationEmail(appointment: Appointment)
     replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
     headers: {
       "X-Form-Type": "appointment-customer",
-      "X-Form-Reference": String(appointment.id),
+      "X-Form-Reference": appointment.reference,
     },
     attachments: customerEmail.attachments,
   });
 
-  const internalRecipients = getNotificationRecipients([
-    "APPOINTMENT_NOTIFICATION_TO",
-    "CONTACT_NOTIFICATION_TO",
-    "SMTP_REPLY_TO",
-  ]);
-
-  if (internalRecipients.length > 0) {
-    const internalEmail = await buildAppointmentInternalEmail(appointment);
-
-    await sendAndTrackAppointmentEmail(appointment.id, {
-      to: internalRecipients.join(", "),
-      subject: internalEmail.subject,
-      text: internalEmail.text,
-      html: internalEmail.html,
-      replyTo: appointment.email,
-      headers: {
-        "X-Form-Type": "appointment-internal",
-        "X-Form-Reference": String(appointment.id),
-      },
-    });
-  }
-
-  return customerStatus;
+  return {
+    customer: customerStatus,
+    internal: internalStatus,
+  };
 }
 
-function buildContactCustomerEmail(submission: ContactSubmission) {
+function buildContactCustomerEmail(submission: ContactSubmissionPayload) {
   const subject = `We Received Your Message - ${SITE_NAME}`;
 
   const text = [
     `Hi ${submission.name},`,
     "",
     "Thanks for contacting J. Barbaro Clothiers.",
-    `We have received your message and our team will follow up soon.`,
+    "We have received your message and our team will follow up soon.",
     "",
-    `Reference: #${submission.id}`,
+    `Reference: ${submission.reference}`,
     "",
     `${SITE_NAME}`,
   ].join("\n");
 
   const html = buildBrandedEmail({
-    preheader: `Contact request #${submission.id} received`,
+    preheader: `Contact request ${submission.reference} received`,
     badge: "Contact Confirmation",
     title: "Your Message Has Been Received",
     subtitle: "A member of our team will respond as soon as possible.",
@@ -483,7 +465,7 @@ function buildContactCustomerEmail(submission: ContactSubmission) {
       {
         title: "Request Summary",
         fields: [
-          { label: "Reference", value: `#${submission.id}` },
+          { label: "Reference", value: submission.reference },
           { label: "Name", value: submission.name },
           { label: "Email", value: submission.email },
           { label: "Phone", value: submission.phone || "-" },
@@ -498,11 +480,11 @@ function buildContactCustomerEmail(submission: ContactSubmission) {
   return { subject, text, html };
 }
 
-function buildContactInternalEmail(submission: ContactSubmission) {
-  const subject = `New Contact Submission #${submission.id} - ${SITE_NAME}`;
+function buildContactInternalEmail(submission: ContactSubmissionPayload) {
+  const subject = `New Contact Submission ${submission.reference} - ${SITE_NAME}`;
 
   const text = [
-    `New contact submission #${submission.id}`,
+    `New contact submission ${submission.reference}`,
     `Name: ${submission.name}`,
     `Email: ${submission.email}`,
     `Phone: ${submission.phone || "-"}`,
@@ -518,12 +500,13 @@ function buildContactInternalEmail(submission: ContactSubmission) {
   const html = buildBrandedEmail({
     preheader: `New contact message from ${submission.name}`,
     badge: "Contact Form",
-    title: `New Contact Submission #${submission.id}`,
+    title: `New Contact Submission ${submission.reference}`,
     subtitle: "A new contact form message was submitted from the website.",
     sections: [
       {
         title: "Customer",
         fields: [
+          { label: "Reference", value: submission.reference },
           { label: "Name", value: submission.name },
           { label: "Email", value: submission.email },
           { label: "Phone", value: submission.phone || "-" },
@@ -545,8 +528,7 @@ function buildContactInternalEmail(submission: ContactSubmission) {
   return { subject, text, html };
 }
 
-async function buildWeddingCustomerEmail(registration: WeddingRegistration) {
-  const locationMap = await getLocationMap();
+function buildWeddingCustomerEmail(registration: WeddingRegistrationPayload) {
   const dateLabel = format(registration.weddingDate, "EEEE, MMMM d, yyyy");
   const locationName = registration.locationSlug ? locationMap[registration.locationSlug]?.name || registration.locationSlug : "No location selected";
 
@@ -557,7 +539,7 @@ async function buildWeddingCustomerEmail(registration: WeddingRegistration) {
     "Thanks for registering your wedding consultation.",
     "Our team will contact you shortly to confirm next steps.",
     "",
-    `Reference: #${registration.id}`,
+    `Reference: ${registration.reference}`,
     `Wedding Date: ${dateLabel}`,
     `Location Preference: ${locationName}`,
     "",
@@ -565,7 +547,7 @@ async function buildWeddingCustomerEmail(registration: WeddingRegistration) {
   ].join("\n");
 
   const html = buildBrandedEmail({
-    preheader: `Wedding registration #${registration.id} received`,
+    preheader: `Wedding registration ${registration.reference} received`,
     badge: "Wedding Intake",
     title: "Your Wedding Registration Is In",
     subtitle: "We will follow up to start planning your suit and tuxedo strategy.",
@@ -573,7 +555,7 @@ async function buildWeddingCustomerEmail(registration: WeddingRegistration) {
       {
         title: "Registration Details",
         fields: [
-          { label: "Reference", value: `#${registration.id}` },
+          { label: "Reference", value: registration.reference },
           { label: "Groom", value: registration.groomName },
           { label: "Partner", value: registration.brideName },
           { label: "Wedding Date", value: dateLabel },
@@ -590,14 +572,13 @@ async function buildWeddingCustomerEmail(registration: WeddingRegistration) {
   return { subject, text, html };
 }
 
-async function buildWeddingInternalEmail(registration: WeddingRegistration) {
-  const locationMap = await getLocationMap();
+function buildWeddingInternalEmail(registration: WeddingRegistrationPayload) {
   const dateLabel = format(registration.weddingDate, "EEEE, MMMM d, yyyy");
   const locationName = registration.locationSlug ? locationMap[registration.locationSlug]?.name || registration.locationSlug : "No location selected";
 
-  const subject = `New Wedding Registration #${registration.id} - ${SITE_NAME}`;
+  const subject = `New Wedding Registration ${registration.reference} - ${SITE_NAME}`;
   const text = [
-    `New wedding registration #${registration.id}`,
+    `New wedding registration ${registration.reference}`,
     `Groom: ${registration.groomName}`,
     `Partner: ${registration.brideName}`,
     `Email: ${registration.email}`,
@@ -613,12 +594,13 @@ async function buildWeddingInternalEmail(registration: WeddingRegistration) {
   const html = buildBrandedEmail({
     preheader: `New wedding registration from ${registration.groomName}`,
     badge: "Wedding Form",
-    title: `New Wedding Registration #${registration.id}`,
+    title: `New Wedding Registration ${registration.reference}`,
     subtitle: "A customer submitted a wedding intake form.",
     sections: [
       {
         title: "Couple",
         fields: [
+          { label: "Reference", value: registration.reference },
           { label: "Groom", value: registration.groomName },
           { label: "Partner", value: registration.brideName },
           { label: "Email", value: registration.email },
@@ -643,7 +625,9 @@ async function buildWeddingInternalEmail(registration: WeddingRegistration) {
   return { subject, text, html };
 }
 
-export async function sendContactSubmissionEmails(submission: ContactSubmission): Promise<SubmissionEmailResult> {
+export async function sendContactSubmissionEmails(
+  submission: ContactSubmissionPayload,
+): Promise<SubmissionEmailResult> {
   const internalRecipients = getNotificationRecipients([
     "CONTACT_NOTIFICATION_TO",
     "APPOINTMENT_NOTIFICATION_TO",
@@ -661,7 +645,7 @@ export async function sendContactSubmissionEmails(submission: ContactSubmission)
           replyTo: submission.email,
           headers: {
             "X-Form-Type": "contact-internal",
-            "X-Form-Reference": String(submission.id),
+            "X-Form-Reference": submission.reference,
           },
         })
       : "LOGGED";
@@ -675,7 +659,7 @@ export async function sendContactSubmissionEmails(submission: ContactSubmission)
     replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
     headers: {
       "X-Form-Type": "contact-customer",
-      "X-Form-Reference": String(submission.id),
+      "X-Form-Reference": submission.reference,
     },
   });
 
@@ -686,7 +670,7 @@ export async function sendContactSubmissionEmails(submission: ContactSubmission)
 }
 
 export async function sendWeddingRegistrationEmails(
-  registration: WeddingRegistration,
+  registration: WeddingRegistrationPayload,
 ): Promise<SubmissionEmailResult> {
   const internalRecipients = getNotificationRecipients([
     "WEDDING_NOTIFICATION_TO",
@@ -695,7 +679,7 @@ export async function sendWeddingRegistrationEmails(
     "SMTP_REPLY_TO",
   ]);
 
-  const internalEmail = await buildWeddingInternalEmail(registration);
+  const internalEmail = buildWeddingInternalEmail(registration);
   const internalStatus =
     internalRecipients.length > 0
       ? await deliverEmail({
@@ -706,12 +690,12 @@ export async function sendWeddingRegistrationEmails(
           replyTo: registration.email,
           headers: {
             "X-Form-Type": "wedding-internal",
-            "X-Form-Reference": String(registration.id),
+            "X-Form-Reference": registration.reference,
           },
         })
       : "LOGGED";
 
-  const customerEmail = await buildWeddingCustomerEmail(registration);
+  const customerEmail = buildWeddingCustomerEmail(registration);
   const customerStatus = await deliverEmail({
     to: registration.email,
     subject: customerEmail.subject,
@@ -720,7 +704,7 @@ export async function sendWeddingRegistrationEmails(
     replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
     headers: {
       "X-Form-Type": "wedding-customer",
-      "X-Form-Reference": String(registration.id),
+      "X-Form-Reference": registration.reference,
     },
   });
 

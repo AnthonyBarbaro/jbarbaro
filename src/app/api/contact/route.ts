@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { sendContactSubmissionEmails } from "@/lib/email";
-import { prisma } from "@/lib/prisma";
 import { contactRateLimiter } from "@/lib/rate-limit";
+import { createSubmissionReference } from "@/lib/submission-reference";
+import type { ContactSubmissionPayload } from "@/types/submissions";
 
 const contactSchema = z.object({
   name: z.string().min(2),
@@ -48,22 +49,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const submission = await prisma.contactSubmission.create({
-      data: {
-        name: parsed.data.name,
-        email: parsed.data.email,
-        phone: parsed.data.phone || null,
-        message: parsed.data.message,
-        ipAddress: ip,
-        userAgent: request.headers.get("user-agent"),
-      },
-    });
+    const submission: ContactSubmissionPayload = {
+      reference: createSubmissionReference("CTC"),
+      submittedAt: new Date(),
+      name: parsed.data.name,
+      email: parsed.data.email,
+      phone: parsed.data.phone || null,
+      message: parsed.data.message,
+      ipAddress: ip,
+      userAgent: request.headers.get("user-agent"),
+    };
 
     const delivery = await sendContactSubmissionEmails(submission);
     const deliveryMessage =
       delivery.customer === "SENT"
-        ? ` Message sent. A confirmation email has been sent. Reference #${submission.id}.`
-        : ` Message sent. Reference #${submission.id}.`;
+        ? ` Message sent. A confirmation email has been sent. Reference ${submission.reference}.`
+        : ` Message sent. Reference ${submission.reference}.`;
 
     return NextResponse.json({ message: deliveryMessage.trim() });
   } catch (error) {

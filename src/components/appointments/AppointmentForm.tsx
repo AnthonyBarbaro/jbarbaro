@@ -188,23 +188,23 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
 
       const payload = (await response.json()) as {
         message?: string;
-        appointmentId?: number;
+        reference?: string;
         availableSlots?: string[];
       };
 
       if (!response.ok) {
-        if (response.status === 409 && Array.isArray(payload.availableSlots)) {
+        if (Array.isArray(payload.availableSlots)) {
           setTimeSlots(payload.availableSlots);
           setPreferredTimeWindow("");
           setSlotStatus("ready");
-          setSlotMessage("That time was just booked by another client. Please choose a different slot.");
+          setSlotMessage("Please choose another available appointment time.");
         }
         throw new Error(payload.message || "Unable to submit appointment request.");
       }
 
       setSubmission({
         status: "success",
-        message: payload.message || `Appointment request submitted. Reference #${payload.appointmentId}.`,
+        message: payload.message || `Appointment request submitted. Reference ${payload.reference}.`,
       });
       setPreferredTimeWindow("");
       setNotes("");
@@ -469,7 +469,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
               </li>
               <li className="flex items-start gap-2">
                 <CalendarClock className="mt-1 h-4 w-4 text-deep-teal" />
-                Live times reflect real availability to avoid overlap.
+                Available times reflect current showroom hours and holiday closures.
               </li>
               <li className="flex items-start gap-2">
                 <Clock3 className="mt-1 h-4 w-4 text-deep-teal" />

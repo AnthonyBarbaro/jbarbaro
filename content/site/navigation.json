@@ -1,0 +1,220 @@
+{
+  "primaryNavigation": [
+    {
+      "label": "About",
+      "href": "/about",
+      "children": [
+        {
+          "label": "Our History",
+          "href": "/about/our-history"
+        },
+        {
+          "label": "Services",
+          "href": "/services"
+        },
+        {
+          "label": "Reviews",
+          "href": "/reviews"
+        }
+      ]
+    },
+    {
+      "label": "For Men",
+      "children": [
+        {
+          "label": "Accessories",
+          "href": "/for-men/accessories"
+        },
+        {
+          "label": "Casual Shirts",
+          "href": "/for-men/casual-shirts"
+        },
+        {
+          "label": "Denim",
+          "href": "/for-men/denim"
+        },
+        {
+          "label": "Dress Shirts",
+          "href": "/for-men/dress-shirts"
+        },
+        {
+          "label": "Footwear",
+          "href": "/for-men/footwear"
+        },
+        {
+          "label": "Formalwear",
+          "href": "/for-men/formalwear"
+        },
+        {
+          "label": "Neckwear",
+          "href": "/for-men/neckwear"
+        },
+        {
+          "label": "Outerwear",
+          "href": "/for-men/outerwear"
+        },
+        {
+          "label": "Suits & Sports Coats",
+          "href": "/for-men/suits-sports-coats"
+        },
+        {
+          "label": "Sweaters",
+          "href": "/for-men/sweaters"
+        },
+        {
+          "label": "Trousers",
+          "href": "/for-men/trousers"
+        }
+      ]
+    },
+    {
+      "label": "Designers",
+      "children": [
+        {
+          "label": "Featured Designers",
+          "href": "/designers/featured-designers"
+        },
+        {
+          "label": "All Designer Brands",
+          "href": "/designers/all-designer-brands"
+        }
+      ]
+    },
+    {
+      "label": "Tailored",
+      "href": "/tailored-clothing"
+    },
+    {
+      "label": "Tuxedos",
+      "children": [
+        {
+          "label": "Suit & Tuxedo Rentals",
+          "href": "/suit-tuxedo-rentals"
+        },
+        {
+          "label": "Register Your Wedding",
+          "href": "/register-your-wedding"
+        }
+      ]
+    },
+    {
+      "label": "Locations",
+      "href": "/locations"
+    },
+    {
+      "label": "Contact",
+      "href": "/contact-us"
+    },
+    {
+      "label": "What's New",
+      "children": [
+        {
+          "label": "Blog",
+          "href": "/blog"
+        },
+        {
+          "label": "Style Guide",
+          "href": "/style-guide"
+        }
+      ]
+    },
+    {
+      "label": "Shop",
+      "href": "/shop-coming-soon"
+    },
+    {
+      "label": "Sale",
+      "href": "/sale-coming-soon"
+    }
+  ],
+  "headerTopLinks": [
+    {
+      "label": "Shop Online",
+      "href": "/shop-coming-soon"
+    },
+    {
+      "label": "Schedule Appointment",
+      "href": "/schedule-appointment"
+    },
+    {
+      "label": "View Cart",
+      "href": "/cart"
+    }
+  ],
+  "headerCtas": [
+    {
+      "label": "Shop Online",
+      "href": "/shop-coming-soon"
+    },
+    {
+      "label": "Book Appointment",
+      "href": "/schedule-appointment"
+    }
+  ],
+  "footerShoppingLinks": [
+    {
+      "label": "Shop Online",
+      "href": "/shop-coming-soon"
+    },
+    {
+      "label": "Schedule Appointment",
+      "href": "/schedule-appointment"
+    },
+    {
+      "label": "Tuxedo Rentals",
+      "href": "/suit-tuxedo-rentals"
+    },
+    {
+      "label": "Register Wedding",
+      "href": "/register-your-wedding"
+    },
+    {
+      "label": "Sale Coming Soon",
+      "href": "/sale-coming-soon"
+    },
+    {
+      "label": "Cart",
+      "href": "/cart"
+    }
+  ],
+  "footerUtilityLinks": [
+    {
+      "label": "Home",
+      "href": "/"
+    },
+    {
+      "label": "Our History",
+      "href": "/about/our-history"
+    },
+    {
+      "label": "Locations",
+      "href": "/locations"
+    },
+    {
+      "label": "Contact Us",
+      "href": "/contact-us"
+    },
+    {
+      "label": "Sitemap",
+      "href": "/sitemap"
+    },
+    {
+      "label": "XML",
+      "href": "/sitemap.xml"
+    },
+    {
+      "label": "RSS",
+      "href": "/rss.xml"
+    },
+    {
+      "label": "Terms",
+      "href": "/terms-of-use"
+    },
+    {
+      "label": "Privacy",
+      "href": "/privacy-policy"
+    }
+  ],
+  "footerNewsletterTitle": "Stay in the Loop",
+  "footerNewsletterCopy": "New arrivals, seasonal edits, and private appointment windows. Newsletter signup backend is coming soon."
+}

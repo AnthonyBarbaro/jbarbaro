@@ -1,8 +1,8 @@
-import type { Appointment } from "@prisma/client";
 import { format } from "date-fns";
 
-import { getLocationMap } from "@/lib/cms";
+import { locationMap } from "@/data/locations";
 import { SITE_NAME } from "@/lib/constants";
+import type { AppointmentSubmissionPayload } from "@/types/submissions";
 
 const STORE_TIME_ZONE = "America/Detroit";
 const SLOT_DURATION_MINUTES = 30;
@@ -59,8 +59,7 @@ function escapeIcsText(value: string) {
     .replace(/;/g, "\\;");
 }
 
-export async function buildAppointmentCalendarArtifacts(appointment: Appointment) {
-  const locationMap = await getLocationMap();
+export function buildAppointmentCalendarArtifacts(appointment: AppointmentSubmissionPayload) {
   const location = locationMap[appointment.locationSlug];
   const dateKey = format(appointment.preferredDate, "yyyy-MM-dd");
   const [startLabelRaw = "", endLabelRaw = ""] = appointment.preferredTimeWindow
@@ -103,7 +102,7 @@ export async function buildAppointmentCalendarArtifacts(appointment: Appointment
     `&body=${encodeURIComponent(description)}` +
     `&location=${encodeURIComponent(address)}`;
 
-  const uid = `appointment-${appointment.id}@jbarbaro.com`;
+  const uid = `appointment-${appointment.reference}@jbarbaro.com`;
   const nowStamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
   const icsContent = [
     "BEGIN:VCALENDAR",

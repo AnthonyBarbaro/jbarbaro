@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { ArrowRight, Facebook, Instagram, Linkedin, PinIcon, Star, XIcon } from "lucide-react";
 
+import {
+  footerNewsletterCopy,
+  footerNewsletterTitle,
+  footerShoppingLinks,
+  footerUtilityLinks,
+} from "@/data/navigation";
+import { aggregateRating } from "@/data/testimonials";
+import { locations } from "@/data/locations";
+import { socialLinks } from "@/data/social";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
-import type { NavigationContent, SiteSettingsContent } from "@/lib/cms-defaults";
 import { formatPhone } from "@/lib/utils";
-import type { Location } from "@/types/site";
-
-type SiteFooterProps = {
-  navigation: NavigationContent;
-  siteSettings: SiteSettingsContent;
-  locations: Location[];
-};
 
 function socialIcon(label: string) {
   const classes = "h-4 w-4";
@@ -32,7 +33,7 @@ function socialIcon(label: string) {
   }
 }
 
-export function SiteFooter({ navigation, siteSettings, locations }: SiteFooterProps) {
+export function SiteFooter() {
   return (
     <footer className="mt-12 bg-ink text-ivory">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-4 lg:px-8">
@@ -55,7 +56,7 @@ export function SiteFooter({ navigation, siteSettings, locations }: SiteFooterPr
           <h2 className="font-heading text-2xl sm:text-3xl">People Love Us</h2>
           <div className="mt-5 rounded-2xl border border-ivory/20 bg-ivory/8 p-5">
             <div className="flex items-end gap-2">
-              <p className="text-4xl font-semibold">{siteSettings.ratingValue}</p>
+              <p className="text-4xl font-semibold">{aggregateRating.ratingValue}</p>
               <p className="pb-1 text-sm text-ivory/75">/ 5.0</p>
             </div>
             <div className="mt-2 flex items-center gap-1 text-gold">
@@ -63,7 +64,7 @@ export function SiteFooter({ navigation, siteSettings, locations }: SiteFooterPr
                 <Star key={index} className="h-4 w-4 fill-current" />
               ))}
             </div>
-            <p className="mt-2 text-sm text-ivory/75">Based on {siteSettings.reviewCount} verified reviews.</p>
+            <p className="mt-2 text-sm text-ivory/75">Based on {aggregateRating.reviewCount} verified reviews.</p>
             <Link href="/reviews" className="mt-4 inline-flex items-center gap-2 text-xs tracking-[0.14em] text-gold uppercase hover:text-ivory">
               Read Reviews <ArrowRight className="h-3.5 w-3.5" />
             </Link>
@@ -73,15 +74,10 @@ export function SiteFooter({ navigation, siteSettings, locations }: SiteFooterPr
         <section>
           <h2 className="font-heading text-2xl sm:text-3xl">Shopping</h2>
           <ul className="mt-5 space-y-2 text-sm text-ivory/80">
-            {navigation.footerShoppingLinks.map((link, index) => (
-              <li key={`${link.href}-${index}`}>
-                <Link
-                  href={link.href}
-                  target={link.external ? "_blank" : undefined}
-                  rel={link.external ? "noopener noreferrer" : undefined}
-                  className={index === 0 ? "text-gold hover:text-ivory" : "hover:text-gold"}
-                >
-                  {link.label}
+            {footerShoppingLinks.map((item, index) => (
+              <li key={item.href}>
+                <Link href={item.href} className={index === 0 ? "text-gold hover:text-ivory" : "hover:text-gold"}>
+                  {item.label}
                 </Link>
               </li>
             ))}
@@ -89,10 +85,8 @@ export function SiteFooter({ navigation, siteSettings, locations }: SiteFooterPr
         </section>
 
         <section>
-          <h2 className="font-heading text-2xl sm:text-3xl">{navigation.footerNewsletterTitle}</h2>
-          <p className="mt-4 text-sm leading-6 text-ivory/78">
-            {navigation.footerNewsletterCopy}
-          </p>
+          <h2 className="font-heading text-2xl sm:text-3xl">{footerNewsletterTitle}</h2>
+          <p className="mt-4 text-sm leading-6 text-ivory/78">{footerNewsletterCopy}</p>
           <form className="mt-4 space-y-3">
             <label htmlFor="newsletter-email" className="sr-only">
               Email address
@@ -108,7 +102,7 @@ export function SiteFooter({ navigation, siteSettings, locations }: SiteFooterPr
             </Button>
           </form>
           <div className="mt-4 flex flex-wrap gap-2">
-            {siteSettings.socialLinks.map((social) => (
+            {socialLinks.map((social) => (
               <Link
                 key={social.href}
                 href={social.href}
@@ -128,15 +122,9 @@ export function SiteFooter({ navigation, siteSettings, locations }: SiteFooterPr
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-3 px-4 text-center sm:justify-between sm:px-6 lg:px-8">
           <p>© {new Date().getFullYear()} J. Barbaro Clothiers. All rights reserved.</p>
           <div className="flex flex-wrap items-center justify-center gap-3">
-            {navigation.footerUtilityLinks.map((link, index) => (
-              <Link
-                key={`${link.href}-${index}`}
-                href={link.href}
-                target={link.external ? "_blank" : undefined}
-                rel={link.external ? "noopener noreferrer" : undefined}
-                className="hover:text-gold"
-              >
-                {link.label}
+            {footerUtilityLinks.map((item) => (
+              <Link key={item.href} href={item.href} className="hover:text-gold">
+                {item.label}
               </Link>
             ))}
           </div>

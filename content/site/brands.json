@@ -1,0 +1,228 @@
+{
+  "items": [
+    {
+      "slug": "7-downie-st",
+      "name": "7 Downie St.",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/7downiest-012120-008-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_7_downie-200x200.png",
+      "featured": true,
+      "description": "Contemporary tailoring and statement sportswear from Canada."
+    },
+    {
+      "slug": "7-for-all-mankind",
+      "name": "7 For All Mankind",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/7forallmankind-012120-023-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_7_for_all_mankind-200x200.png",
+      "featured": true,
+      "description": "Premium denim with modern fits and sophisticated washes."
+    },
+    {
+      "slug": "ag-jeans",
+      "name": "AG Jeans",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/ag-012120-038-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_ag_jeans-200x200.png",
+      "featured": true,
+      "description": "Luxury denim brand known for clean styling and comfort."
+    },
+    {
+      "slug": "alberto",
+      "name": "Alberto",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/alberto-012120-049-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_alberto-200x200.png",
+      "featured": true,
+      "description": "Performance trousers engineered for movement and polish."
+    },
+    {
+      "slug": "brax",
+      "name": "Brax",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/04/brax-012220-070-2-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_brax-200x200.png",
+      "featured": true,
+      "description": "German quality casualwear with premium everyday fabrics."
+    },
+    {
+      "slug": "canali",
+      "name": "Canali",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/canali-072319-080-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_canali-200x200.png",
+      "featured": true,
+      "description": "Italian luxury tailoring with timeless elegance and craftsmanship."
+    },
+    {
+      "slug": "ermenegildo-zegna",
+      "name": "Ermenegildo Zegna",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/zenga-012220-324-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_zenga-200x200.png",
+      "featured": true,
+      "description": "Heritage menswear brand delivering refined fabrics and suiting."
+    },
+    {
+      "slug": "eton",
+      "name": "Eton",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_eton-200x200.png",
+      "featured": true,
+      "description": "Luxury shirts crafted in Sweden for a precise fit."
+    },
+    {
+      "slug": "fradi",
+      "name": "Fradi",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/fradi-131031-003-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/fradi.png",
+      "featured": false,
+      "description": "Italian outerwear and jackets with modern tailoring cues."
+    },
+    {
+      "slug": "gimos",
+      "name": "Gimos",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/gimos-050819-138-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_gimos-200x200.png",
+      "featured": false,
+      "description": "Made-in-Italy leatherwear and seasonal luxury layers."
+    },
+    {
+      "slug": "giorgio-armani",
+      "name": "Giorgio Armani",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/armani-041319-057-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_armani-200x200.png",
+      "featured": true,
+      "description": "Iconic Italian fashion house known for modern elegance."
+    },
+    {
+      "slug": "hagen",
+      "name": "Hagen",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/hagen-012420-150-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_hagen-200x200.png",
+      "featured": false,
+      "description": "Modern essentials designed with understated confidence."
+    },
+    {
+      "slug": "holebrook-usa",
+      "name": "Holebrook USA",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/holebrook_usa-131026-021-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/holebrook.png",
+      "featured": false,
+      "description": "Scandinavian-inspired knitwear and premium layering pieces."
+    },
+    {
+      "slug": "jack-victor",
+      "name": "Jack Victor",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/jackvictor-052819-161-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_jack_victor-200x200.png",
+      "featured": true,
+      "description": "North American tailoring rooted in fine construction."
+    },
+    {
+      "slug": "joes-jean",
+      "name": "Joe's Jeans",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/joesjeans-012420-175-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_joes_jeans-200x200.png",
+      "featured": false,
+      "description": "Premium denim and lifestyle staples with modern cuts."
+    },
+    {
+      "slug": "l-b-m",
+      "name": "L.B.M.",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/lbm-012420-190-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_lbm-200x200.png",
+      "featured": true,
+      "description": "Italian soft tailoring balancing tradition and innovation."
+    },
+    {
+      "slug": "luigi-bianchi",
+      "name": "Luigi Bianchi",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/luigi_bianchi-012420-221-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_luigi-bianchi-200x200.png",
+      "featured": true,
+      "description": "Expertly crafted suiting from an Italian tailoring lineage."
+    },
+    {
+      "slug": "michael-kors",
+      "name": "Michael Kors",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/michael_kors-012420-227-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_michael_kores-200x200.png",
+      "featured": false,
+      "description": "Contemporary designer menswear with polished versatility."
+    },
+    {
+      "slug": "monfrere",
+      "name": "Monfrere",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/monfrere-131041-005-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/monfrere.png",
+      "featured": false,
+      "description": "Luxury street-inflected denim and modern essentials."
+    },
+    {
+      "slug": "paige",
+      "name": "Paige",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/paige-131049-005-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/paige.png",
+      "featured": false,
+      "description": "California-crafted denim and refined casual staples."
+    },
+    {
+      "slug": "pal-zileri",
+      "name": "Pal Zileri",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/pal_zileri-012420-236-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_pal_zileri-200x200.png",
+      "featured": true,
+      "description": "Italian sartorial style built for contemporary wardrobes."
+    },
+    {
+      "slug": "ravazzolo",
+      "name": "Ravazzolo",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/ravazzolo-131004-003-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/ravazzolo.png",
+      "featured": false,
+      "description": "Handmade Italian tailoring with artisanal details."
+    },
+    {
+      "slug": "robert-graham",
+      "name": "Robert Graham",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/robert_graham-062619-252-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_robert_graham-200x200.png",
+      "featured": true,
+      "description": "Bold pattern-driven shirts and statement luxury pieces."
+    },
+    {
+      "slug": "stenstroms",
+      "name": "Stenstroms",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/04/stenstroms-012420-2645555-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_stenstroms-200x200.png",
+      "featured": false,
+      "description": "Premium Swedish shirting and knitwear craftsmanship."
+    },
+    {
+      "slug": "swims",
+      "name": "SWIMS",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims.png",
+      "featured": false,
+      "description": "Weather-ready footwear and accessories with modern utility."
+    },
+    {
+      "slug": "tateossian",
+      "name": "Tateossian",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_tateossian-200x200.png",
+      "featured": false,
+      "description": "Luxury cufflinks and accessories with architectural flair."
+    },
+    {
+      "slug": "ted-baker",
+      "name": "Ted Baker",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tedbaker-012320-304-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_ted_baker-200x200.png",
+      "featured": false,
+      "description": "British contemporary menswear blending wit and tailoring."
+    },
+    {
+      "slug": "zanella",
+      "name": "Zanella",
+      "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/zanella-012220-099-500x500.jpg",
+      "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_zanella-200x200.png",
+      "featured": true,
+      "description": "Luxury Italian trousers engineered for fit and comfort."
+    }
+  ]
+}

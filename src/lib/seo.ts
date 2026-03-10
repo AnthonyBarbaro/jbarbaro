@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { siteSettings } from "@/data/site-settings";
 import { DEFAULT_OG_IMAGE, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/constants";
 
 type SeoOptions = {
@@ -54,7 +55,7 @@ export function buildMetadata({
       title,
       description,
       url: canonicalUrl,
-      siteName: SITE_NAME,
+      siteName: siteSettings.siteName || SITE_NAME,
       type,
       images: [
         {
@@ -75,20 +76,23 @@ export function buildMetadata({
 }
 
 export function getDefaultSiteMetadata(): Metadata {
+  const siteName = siteSettings.siteName || SITE_NAME;
+  const siteDescription = siteSettings.siteDescription || SITE_DESCRIPTION;
+
   return {
     metadataBase: new URL(SITE_URL),
     title: {
-      default: `${SITE_NAME} | Luxury Menswear`,
-      template: `%s | ${SITE_NAME}`,
+      default: `${siteName} | Luxury Menswear`,
+      template: `%s | ${siteName}`,
     },
-    description: SITE_DESCRIPTION,
+    description: siteDescription,
     alternates: {
       canonical: SITE_URL,
     },
     openGraph: {
-      siteName: SITE_NAME,
-      title: `${SITE_NAME} | Luxury Menswear`,
-      description: SITE_DESCRIPTION,
+      siteName,
+      title: `${siteName} | Luxury Menswear`,
+      description: siteDescription,
       url: SITE_URL,
       type: "website",
       images: [
@@ -96,14 +100,14 @@ export function getDefaultSiteMetadata(): Metadata {
           url: absoluteUrl(DEFAULT_OG_IMAGE),
           width: 1200,
           height: 630,
-          alt: SITE_NAME,
+          alt: siteName,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${SITE_NAME} | Luxury Menswear`,
-      description: SITE_DESCRIPTION,
+      title: `${siteName} | Luxury Menswear`,
+      description: siteDescription,
       images: [absoluteUrl(DEFAULT_OG_IMAGE)],
     },
   };

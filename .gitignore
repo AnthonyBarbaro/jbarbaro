@@ -16,6 +16,11 @@
 # next.js
 /.next/
 /out/
+/public/admin/
+
+# TinaCMS
+/.tina/
+/tina/__generated__/
 
 # production
 /build
@@ -23,10 +28,6 @@
 # misc
 .DS_Store
 *.pem
-*.db
-*.db-journal
-*.db-shm
-*.db-wal
 
 # debug
 npm-debug.log*

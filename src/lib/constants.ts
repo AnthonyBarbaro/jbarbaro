@@ -6,5 +6,3 @@ export const DEFAULT_OG_IMAGE = "/images/og-default.svg";
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "http://localhost:3000";
-
-export const ADMIN_COOKIE_NAME = "jbc_admin";

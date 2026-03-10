@@ -1,14 +1,14 @@
 # J. Barbaro Clothiers (Next.js Rebuild)
 
-Modern, SEO-first rebuild of the J. Barbaro Clothiers website using Next.js App Router, TypeScript, Tailwind CSS, and Prisma + SQLite.
+Modern, SEO-first rebuild of the J. Barbaro Clothiers website using Next.js App Router, TypeScript, Tailwind CSS, TinaCMS, and file-based content.
 
 ## Stack
 
 - Next.js 16 (App Router)
 - TypeScript
 - Tailwind CSS v4
-- Prisma + SQLite
-- MDX content (local files)
+- TinaCMS
+- MDX + JSON content (local files)
 
 ## Quick Start
 
@@ -24,25 +24,15 @@ pnpm install
 cp .env.example .env
 ```
 
-3. Push database schema:
-
-```bash
-pnpm db:push
-```
-
-4. (Optional) Seed sample data:
-
-```bash
-pnpm db:seed
-```
-
-5. Start development server:
+3. Start development server:
 
 ```bash
 pnpm dev
 ```
 
-6. Production build check:
+This starts both Next.js and TinaCMS local mode. Open `/admin` to edit site content locally.
+
+4. Production build check:
 
 ```bash
 pnpm build
@@ -52,9 +42,8 @@ pnpm build
 
 See `.env.example`:
 
-- `DATABASE_URL` (default: `file:./dev.db`)
 - `NEXT_PUBLIC_SITE_URL` (default: `http://localhost:3000`)
-- `ADMIN_PASSWORD` (required for `/admin/appointments`)
+- Optional `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`
 - `SMTP_FROM` and optional `SMTP_REPLY_TO`
 - Optional notification recipients:
@@ -68,16 +57,14 @@ See `.env.example`:
 - Legacy URL redirect compatibility in `next.config.ts`
 - Dynamic brand/category/location routes with static generation
 - Appointment booking flow with holiday-aware 30-minute slot logic
-- Real-time appointment availability (prevents double-booking on the same location/date/time)
 - Appointment confirmation email with Google/Outlook calendar links + `.ics` invite
 - Internal email notifications for appointment/contact/wedding submissions
 - Contact and wedding submissions send customer confirmation emails
+- Form submissions are email-only and are not stored in a database
 - Tuxedo rentals marketing funnel:
   - `/suit-tuxedo-rentals` catalog page
   - `/register-your-wedding` intake form
-  - backend storage via Prisma (`WeddingRegistration`)
 - Contact form with honeypot + IP rate limiting
-- Admin appointment dashboard with middleware password protection
 - SEO foundation:
   - Canonicals, Open Graph, Twitter metadata
   - JSON-LD (Organization, Breadcrumb, Article, LocalBusiness)
@@ -90,8 +77,22 @@ See `.env.example`:
 
 - Blog posts: `content/blog/*.mdx`
 - Style guide posts: `content/style-guide/*.mdx`
-- Core editable data: `src/data/*.ts`
-  - brands, categories, locations, nav, testimonials, home content
+- Tina-managed site content:
+  - `content/site/site-settings.json`
+  - `content/site/navigation.json`
+  - `content/site/brands.json`
+  - `content/site/categories.json`
+  - `content/site/locations.json`
+  - `content/site/testimonials.json`
+  - `content/site/tailored.json`
+  - `content/site/page-content.json`
+- Tina config: `tina/config.ts`
+
+## Tina Notes
+
+- Local editor route: `/admin`
+- Tina is configured in local mode for this repo, so editing is intended for local development workflows.
+- The marketing site reads directly from the local MDX/JSON files in `content/`.
 
 ## Important Routes
 
@@ -104,14 +105,11 @@ See `.env.example`:
 - Designers: `/designers/*`, `/collection-brand/[brandSlug]`
 - Men categories: `/for-men/*`
 - Blog + style guide: `/blog/*`, `/style-guide/*`
-- Admin appointments: `/admin/appointments`
+- Admin content editor: `/admin`
 
 ## Scripts
 
-- `pnpm dev` - start local dev server
-- `pnpm build` - production build
+- `pnpm dev` - start Next.js + TinaCMS local mode
+- `pnpm build` - generate Tina admin locally, then run production build
 - `pnpm lint` - lint check
 - `pnpm format` - format code
-- `pnpm db:push` - sync SQLite schema
-- `pnpm db:seed` - seed sample record(s)
-- `pnpm prisma:generate` - regenerate Prisma client

@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import { withPayload } from "@payloadcms/next/withPayload";
 
 const nextConfig: NextConfig = {
   images: {
@@ -88,10 +87,43 @@ const nextConfig: NextConfig = {
         destination: "/location/great-lakes-crossing-outlet",
         permanent: true,
       },
+      {
+        source: "/admin",
+        destination: "/admin/index.html",
+        permanent: false,
+      },
+      {
+        source: "/admin/",
+        destination: "/admin/index.html",
+        permanent: false,
+      },
+      {
+        source: "/admin/login",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
+        source: "/admin/appointments",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
+        source: "/cms",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
+        source: "/cms/",
+        destination: "/admin",
+        permanent: false,
+      },
+      {
+        source: "/cms/:path*",
+        destination: "/admin/:path*",
+        permanent: false,
+      },
     ];
   },
 };
 
-export default withPayload(nextConfig, {
-  devBundleServerPackages: false,
-});
+export default nextConfig;

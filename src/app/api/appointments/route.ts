@@ -1,15 +1,13 @@
-import { AppointmentStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getLocationMap } from "@/lib/cms";
-import { sendAppointmentConfirmationEmail } from "@/lib/email";
+import { locationMap } from "@/data/locations";
+import { sendAppointmentEmails } from "@/lib/email";
 import { getHolidayName, isClosedHoliday } from "@/lib/holidays";
 import { getAvailableTimeSlots } from "@/lib/hours";
-import { prisma } from "@/lib/prisma";
+import { createSubmissionReference } from "@/lib/submission-reference";
 import type { Location } from "@/types/site";
-
-const ACTIVE_APPOINTMENT_STATUSES = [AppointmentStatus.NEW, AppointmentStatus.CONFIRMED] as const;
+import type { AppointmentSubmissionPayload } from "@/types/submissions";
 
 const appointmentSchema = z.object({
   locationSlug: z.string().min(1),
@@ -35,43 +33,13 @@ type LiveAvailabilitySuccess = {
   location: Location;
   selectedDate: Date;
   availableSlots: string[];
-  bookedSlots: string[];
   message?: string;
 };
-
-function getDateRange(isoDate: string) {
-  const start = new Date(`${isoDate}T00:00:00`);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  return { start, end };
-}
-
-async function getBookedSlots(locationSlug: string, isoDate: string) {
-  const { start, end } = getDateRange(isoDate);
-  const appointments = await prisma.appointment.findMany({
-    where: {
-      locationSlug,
-      preferredDate: {
-        gte: start,
-        lt: end,
-      },
-      status: {
-        in: [...ACTIVE_APPOINTMENT_STATUSES],
-      },
-    },
-    select: {
-      preferredTimeWindow: true,
-    },
-  });
-
-  return new Set(appointments.map((appointment) => appointment.preferredTimeWindow));
-}
 
 async function getLiveAvailability(
   locationSlug: string,
   isoDate: string,
 ): Promise<LiveAvailabilityError | LiveAvailabilitySuccess> {
-  const locationMap = await getLocationMap();
   const location = locationMap[locationSlug];
 
   if (!location) {
@@ -92,25 +60,17 @@ async function getLiveAvailability(
       location,
       selectedDate,
       availableSlots: [],
-      bookedSlots: [],
       message: holidayName
         ? `This location is closed for ${holidayName}.`
         : "This location is closed on the selected date.",
     } as LiveAvailabilitySuccess;
   }
 
-  const bookedSlots = await getBookedSlots(locationSlug, isoDate);
-  const availableSlots = allSlots.filter((slot) => !bookedSlots.has(slot));
-
   return {
     location,
     selectedDate,
-    availableSlots,
-    bookedSlots: [...bookedSlots],
-    message:
-      availableSlots.length === 0
-        ? "All appointment times are booked for this date. Please choose another day."
-        : undefined,
+    availableSlots: allSlots,
+    message: allSlots.length === 0 ? "No appointment times are available for this date. Please choose another day." : undefined,
   } as LiveAvailabilitySuccess;
 }
 
@@ -133,7 +93,6 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     availableSlots: availability.availableSlots,
-    bookedSlots: availability.bookedSlots,
     message: availability.message,
   });
 }
@@ -148,7 +107,6 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = parsed.data;
-    const locationMap = await getLocationMap();
     const location = locationMap[payload.locationSlug];
 
     if (!location) {
@@ -180,65 +138,35 @@ export async function POST(request: NextRequest) {
     if (!liveAvailability.availableSlots.includes(payload.preferredTimeWindow)) {
       return NextResponse.json(
         {
-          message: "That time was just booked. Please choose another available slot.",
+          message: "That appointment time is not available for the selected date. Please choose another available slot.",
           availableSlots: liveAvailability.availableSlots,
         },
-        { status: 409 },
+        { status: 400 },
       );
     }
 
-    const { start, end } = getDateRange(payload.preferredDate);
-    const alreadyBooked = await prisma.appointment.findFirst({
-      where: {
-        locationSlug: payload.locationSlug,
-        preferredDate: {
-          gte: start,
-          lt: end,
-        },
-        preferredTimeWindow: payload.preferredTimeWindow,
-        status: {
-          in: [...ACTIVE_APPOINTMENT_STATUSES],
-        },
-      },
-      select: {
-        id: true,
-      },
-    });
+    const appointment: AppointmentSubmissionPayload = {
+      reference: createSubmissionReference("APT"),
+      submittedAt: new Date(),
+      locationSlug: payload.locationSlug,
+      serviceType: payload.serviceType,
+      preferredDate,
+      preferredTimeWindow: payload.preferredTimeWindow,
+      name: payload.name,
+      email: payload.email,
+      phone: payload.phone,
+      notes: payload.notes || null,
+    };
 
-    if (alreadyBooked) {
-      return NextResponse.json(
-        {
-          message: "That appointment slot is no longer available. Please pick a different time.",
-          availableSlots: liveAvailability.availableSlots.filter(
-            (slot) => slot !== payload.preferredTimeWindow,
-          ),
-        },
-        { status: 409 },
-      );
-    }
-
-    const appointment = await prisma.appointment.create({
-      data: {
-        locationSlug: payload.locationSlug,
-        serviceType: payload.serviceType,
-        preferredDate,
-        preferredTimeWindow: payload.preferredTimeWindow,
-        name: payload.name,
-        email: payload.email,
-        phone: payload.phone,
-        notes: payload.notes || null,
-      },
-    });
-
-    const emailStatus = await sendAppointmentConfirmationEmail(appointment);
+    const delivery = await sendAppointmentEmails(appointment);
     const emailMessage =
-      emailStatus === "SENT"
+      delivery.customer === "SENT"
         ? "A confirmation email with calendar options has been sent."
-        : "We received your request and will email your confirmation shortly.";
+        : "We received your request and will follow up by email shortly.";
 
     return NextResponse.json({
-      appointmentId: appointment.id,
-      message: `${emailMessage} Reference #${appointment.id}.`,
+      reference: appointment.reference,
+      message: `${emailMessage} Reference ${appointment.reference}.`,
     });
   } catch (error) {
     console.error(error);

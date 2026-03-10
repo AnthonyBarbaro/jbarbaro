@@ -16,7 +16,9 @@ import {
 import { useState } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
-import type { NavigationContent, SiteSettingsContent } from "@/lib/cms-defaults";
+import { headerCtas, headerTopLinks, primaryNavigation } from "@/data/navigation";
+import { siteSettings } from "@/data/site-settings";
+import { socialLinks } from "@/data/social";
 import { cn } from "@/lib/utils";
 
 function iconForSocial(label: string) {
@@ -38,23 +40,17 @@ function iconForSocial(label: string) {
   }
 }
 
-type SiteHeaderProps = {
-  navigation: NavigationContent;
-  siteSettings: SiteSettingsContent;
-};
-
-export function SiteHeader({ navigation, siteSettings }: SiteHeaderProps) {
+export function SiteHeader() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const mobileShortcut = navigation.headerCtas[0];
-  const mobileLinks = navigation.primaryNavigation;
+  const primaryMobileCta = headerCtas[0];
 
   return (
     <header className="sticky top-0 z-[90] border-b border-ink/10 bg-ivory/95 lg:backdrop-blur-xl">
       <div className="hidden bg-ink text-ivory lg:block">
         <div className="mx-auto flex h-10 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
-            {siteSettings.socialLinks.map((social) => (
+            {socialLinks.map((social) => (
               <Link
                 key={social.href}
                 href={social.href}
@@ -68,20 +64,15 @@ export function SiteHeader({ navigation, siteSettings }: SiteHeaderProps) {
             ))}
           </div>
           <div className="flex items-center gap-4 text-[11px] font-medium tracking-[0.18em] uppercase">
-            {navigation.headerTopLinks.map((link, index) => (
-              <div key={`${link.href}-${index}`} className="flex items-center gap-4">
+            {headerTopLinks.map((item, index) => (
+              <div key={item.href} className="flex items-center gap-4">
                 {index > 0 ? (
                   <span aria-hidden className="text-ivory/40">
                     |
                   </span>
                 ) : null}
-                <Link
-                  href={link.href}
-                  target={link.external ? "_blank" : undefined}
-                  rel={link.external ? "noopener noreferrer" : undefined}
-                  className={index === 0 ? "text-gold hover:text-ivory" : "hover:text-gold"}
-                >
-                  {link.label}
+                <Link href={item.href} className={index === 0 ? "text-gold hover:text-ivory" : "hover:text-gold"}>
+                  {item.label}
                 </Link>
               </div>
             ))}
@@ -100,7 +91,7 @@ export function SiteHeader({ navigation, siteSettings }: SiteHeaderProps) {
           <Menu className="h-5 w-5" />
         </button>
 
-        <Link href="/" className="mx-auto lg:mx-0" aria-label={`${siteSettings.siteName} Home`}>
+        <Link href="/" className="mx-auto lg:mx-0" aria-label="J. Barbaro Clothiers Home">
           <Image
             src={siteSettings.logoUrl}
             alt={`${siteSettings.siteName} logo`}
@@ -112,29 +103,20 @@ export function SiteHeader({ navigation, siteSettings }: SiteHeaderProps) {
         </Link>
 
         <div className="lg:hidden">
-          {mobileShortcut ? (
+          {primaryMobileCta ? (
             <Link
-              href={mobileShortcut.href}
-              target={mobileShortcut.external ? "_blank" : undefined}
-              rel={mobileShortcut.external ? "noopener noreferrer" : undefined}
+              href={primaryMobileCta.href}
               className="inline-flex min-h-9 items-center justify-center rounded-full border border-gold/75 bg-gold px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.12em] text-ink uppercase transition-colors hover:bg-ink hover:text-ivory"
             >
-              {mobileShortcut.label}
+              {primaryMobileCta.label}
             </Link>
           ) : null}
         </div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          {navigation.headerCtas.map((cta, index) => (
-            <ButtonLink
-              key={`${cta.href}-${index}`}
-              href={cta.href}
-              target={cta.external ? "_blank" : undefined}
-              rel={cta.external ? "noopener noreferrer" : undefined}
-              size="sm"
-              variant={index === 0 ? "teal" : "primary"}
-            >
-              {cta.label}
+          {headerCtas.map((item, index) => (
+            <ButtonLink key={item.href} href={item.href} size="sm" variant={index === 0 ? "teal" : "primary"}>
+              {item.label}
             </ButtonLink>
           ))}
         </div>
@@ -143,7 +125,7 @@ export function SiteHeader({ navigation, siteSettings }: SiteHeaderProps) {
       <nav className="hidden border-t border-ink/10 bg-ivory lg:block" aria-label="Primary">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <ul className="flex items-center justify-center gap-6 py-4 text-[11px] font-semibold tracking-[0.15em] uppercase">
-            {navigation.primaryNavigation.map((item) => (
+            {primaryNavigation.map((item) => (
               <li key={item.label} className="group relative">
                 {item.children ? (
                   <>
@@ -230,7 +212,7 @@ export function SiteHeader({ navigation, siteSettings }: SiteHeaderProps) {
 
         <nav className="mt-6" aria-label="Mobile">
           <ul className="space-y-2">
-            {mobileLinks.map((item) => (
+            {primaryNavigation.map((item) => (
               <li key={item.label} className="rounded-2xl border border-ink/10 bg-stone/50">
                 {item.children ? (
                   <details>
@@ -283,17 +265,15 @@ export function SiteHeader({ navigation, siteSettings }: SiteHeaderProps) {
         </nav>
 
         <div className="mt-6 space-y-2">
-          {navigation.headerCtas.map((cta, index) => (
+          {headerCtas.map((item, index) => (
             <ButtonLink
-              key={`${cta.href}-${index}`}
-              href={cta.href}
-              target={cta.external ? "_blank" : undefined}
-              rel={cta.external ? "noopener noreferrer" : undefined}
+              key={item.href}
+              href={item.href}
               variant={index === 0 ? "teal" : "primary"}
               className="w-full"
               onClick={() => setIsOpen(false)}
             >
-              {cta.label}
+              {item.label}
             </ButtonLink>
           ))}
         </div>

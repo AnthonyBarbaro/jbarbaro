@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getLocationMap } from "@/lib/cms";
+import { locationMap } from "@/data/locations";
 import { sendWeddingRegistrationEmails } from "@/lib/email";
-import { prisma } from "@/lib/prisma";
 import { weddingRateLimiter } from "@/lib/rate-limit";
+import { createSubmissionReference } from "@/lib/submission-reference";
+import type { WeddingRegistrationPayload } from "@/types/submissions";
 
 const weddingRegistrationSchema = z.object({
   groomName: z.string().min(2),
@@ -41,8 +42,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Registration received." }, { status: 200 });
     }
 
-    const locationMap = await getLocationMap();
-
     if (parsed.data.locationSlug && !locationMap[parsed.data.locationSlug]) {
       return NextResponse.json({ message: "Invalid location selected." }, { status: 400 });
     }
@@ -65,26 +64,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const registration = await prisma.weddingRegistration.create({
-      data: {
-        groomName: parsed.data.groomName,
-        brideName: parsed.data.brideName,
-        phone: parsed.data.phone,
-        email: parsed.data.email,
-        weddingDate,
-        numberGroomsmen: parsed.data.numberGroomsmen,
-        locationSlug: parsed.data.locationSlug || null,
-        notes: parsed.data.notes || null,
-        ipAddress: ip,
-        userAgent: request.headers.get("user-agent"),
-      },
-    });
+    const registration: WeddingRegistrationPayload = {
+      reference: createSubmissionReference("WDG"),
+      submittedAt: new Date(),
+      groomName: parsed.data.groomName,
+      brideName: parsed.data.brideName,
+      phone: parsed.data.phone,
+      email: parsed.data.email,
+      weddingDate,
+      numberGroomsmen: parsed.data.numberGroomsmen,
+      locationSlug: parsed.data.locationSlug || null,
+      notes: parsed.data.notes || null,
+      ipAddress: ip,
+      userAgent: request.headers.get("user-agent"),
+    };
 
     const delivery = await sendWeddingRegistrationEmails(registration);
     const deliveryMessage =
       delivery.customer === "SENT"
-        ? `Wedding registration submitted. Reference #${registration.id}. A confirmation email has been sent.`
-        : `Wedding registration submitted. Reference #${registration.id}.`;
+        ? `Wedding registration submitted. Reference ${registration.reference}. A confirmation email has been sent.`
+        : `Wedding registration submitted. Reference ${registration.reference}.`;
 
     return NextResponse.json({
       message: deliveryMessage,

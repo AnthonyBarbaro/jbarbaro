@@ -25,3 +25,10 @@ export function formatDate(date: Date | string) {
     year: "numeric",
   }).format(parsed);
 }
+
+export function formatMoney(amount: string | number, currencyCode: string) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: currencyCode,
+  }).format(typeof amount === "number" ? amount : Number(amount));
+}

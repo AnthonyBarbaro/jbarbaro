@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
+import { FloatingCartBar } from "@/components/shop/FloatingCartBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { siteSettings } from "@/data/site-settings";
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <main id="main-content" className="min-h-[60vh]">
           {children}
         </main>
+        <FloatingCartBar />
         <SiteFooter />
       </body>
     </html>

@@ -44,6 +44,9 @@ See `.env.example`:
 
 - `NEXT_PUBLIC_SITE_URL` (default: `http://localhost:3000`)
 - Optional `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`
+- `SHOPIFY_STORE_DOMAIN`
+- `SHOPIFY_STOREFRONT_ACCESS_TOKEN`
+- Optional `SHOPIFY_STOREFRONT_API_VERSION` (default: `2026-01`)
 - `NEXT_PUBLIC_TINA_CLIENT_ID`, `TINA_TOKEN`
 - Optional `NEXT_PUBLIC_TINA_BRANCH` (defaults to `main`)
 - Optional `TINA_SEARCH_TOKEN`
@@ -57,6 +60,11 @@ See `.env.example`:
 ## Key Features
 
 - Full multi-page marketing site with modern luxury design language
+- Shopify-ready headless commerce scaffold:
+  - Server-side Storefront API client
+  - Secure cart session cookie
+  - Cart API routes at `/api/shopify/cart`
+  - Checkout handoff route at `/api/shopify/cart/checkout`
 - Legacy URL redirect compatibility in `next.config.ts`
 - Dynamic brand/category/location routes with static generation
 - Appointment booking flow with holiday-aware 30-minute slot logic
@@ -100,6 +108,8 @@ See `.env.example`:
 ## Important Routes
 
 - Home: `/`
+- Shopify cart API: `/api/shopify/cart`
+- Shopify checkout handoff: `/api/shopify/cart/checkout`
 - Appointment booking: `/schedule-appointment`
 - Tuxedo rentals: `/suit-tuxedo-rentals`
 - Wedding registration: `/register-your-wedding`
@@ -116,3 +126,15 @@ See `.env.example`:
 - `pnpm build` - generate the TinaCloud admin bundle, then run the Next.js production build
 - `pnpm lint` - lint check
 - `pnpm format` - format code
+
+## Shopify Rollout Notes
+
+The current implementation prepares the site for a headless Shopify setup rather than a hosted template storefront.
+
+- Add the Storefront API credentials in `.env`
+- Keep the front-end in this Next.js app
+- Use the built-in cart routes for session management and checkout handoff
+- Next implementation milestone:
+  - product and collection queries from Shopify
+  - add-to-cart actions on product/category pages
+  - real cart UI and quantity controls

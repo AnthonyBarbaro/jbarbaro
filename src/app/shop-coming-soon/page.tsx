@@ -1,5 +1,6 @@
 import { Sparkles, Store } from "lucide-react";
 
+import { ShopifyReadinessPanel } from "@/components/shop/ShopifyReadinessPanel";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -11,7 +12,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Shop Coming Soon",
   description:
-    "Our online shop is launching soon. In the meantime, schedule a styling appointment or browse in-store collections.",
+    "Our online shop is launching soon with Shopify powering a custom storefront, cart, and checkout handoff.",
   path: "/shop-coming-soon",
 });
 
@@ -19,8 +20,8 @@ export default function ShopComingSoonPage() {
   return (
     <>
       <PageHero
-        title="Online Shop Launching Soon"
-        description="Our digital storefront is being crafted for a luxury shopping experience. Until then, we offer concierge-level in-store styling."
+        title="Online Shop in Active Build"
+        description="We&apos;re preparing a headless Shopify storefront so the online experience can match the same tailored service found in-store."
       />
 
       <WaveSection topWave="A" background="ivory">
@@ -28,12 +29,12 @@ export default function ShopComingSoonPage() {
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardContent>
-                <Badge variant="gold">What&apos;s Coming</Badge>
-                <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">Premium Digital Shopping</h2>
+                <Badge variant="teal">Shopify Rollout</Badge>
+                <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">Custom Storefront, Not a Template Shop</h2>
                 <ul className="mt-4 list-disc space-y-2 pl-5 text-sm leading-7 text-smoke">
-                  <li>Curated designer collection pages</li>
-                  <li>Lookbook-driven product storytelling</li>
-                  <li>Seamless checkout and gifting flows</li>
+                  <li>Shopify-powered product and inventory backend</li>
+                  <li>Custom cart page and branded front-end flow on this site</li>
+                  <li>Secure checkout handoff to Shopify when customers are ready to purchase</li>
                 </ul>
               </CardContent>
             </Card>
@@ -44,6 +45,9 @@ export default function ShopComingSoonPage() {
                   Visit a store or book an appointment to receive guided recommendations before ecommerce launch.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
+                  <ButtonLink href="/shop" variant="teal" className="w-full sm:w-auto">
+                    Preview Live Shopify Catalog
+                  </ButtonLink>
                   <ButtonLink href="/schedule-appointment" className="w-full sm:w-auto">
                     Book an Appointment
                   </ButtonLink>
@@ -53,6 +57,10 @@ export default function ShopComingSoonPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="mt-8">
+            <ShopifyReadinessPanel />
           </div>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -69,8 +77,8 @@ export default function ShopComingSoonPage() {
               <CardContent className="flex items-start gap-3">
                 <Sparkles className="h-6 w-6 text-deep-teal" />
                 <div>
-                  <h3 className="font-heading text-2xl text-ink sm:text-3xl">Personalized Styling</h3>
-                  <p className="mt-2 text-sm text-smoke">We pre-select styles based on your measurements, goals, and calendar.</p>
+                  <h3 className="font-heading text-2xl text-ink sm:text-3xl">Luxury Commerce, Tailored</h3>
+                  <p className="mt-2 text-sm text-smoke">The plan is curated online product storytelling without giving up a premium fit-and-style experience.</p>
                 </div>
               </CardContent>
             </Card>

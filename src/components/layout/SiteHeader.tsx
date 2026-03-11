@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
+import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
 import { ButtonLink } from "@/components/ui/Button";
 import { headerCtas, headerTopLinks, primaryNavigation } from "@/data/navigation";
 import { siteSettings } from "@/data/site-settings";
@@ -113,7 +114,11 @@ export function SiteHeader() {
           ) : null}
         </div>
 
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="hidden min-w-0 flex-1 px-6 lg:flex">
+          <HeaderProductSearch />
+        </div>
+
+        <div className="hidden shrink-0 items-center gap-2 lg:flex">
           {headerCtas.map((item, index) => (
             <ButtonLink key={item.href} href={item.href} size="sm" variant={index === 0 ? "teal" : "primary"}>
               {item.label}
@@ -209,6 +214,8 @@ export function SiteHeader() {
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        <HeaderProductSearch className="mt-6" onNavigate={() => setIsOpen(false)} />
 
         <nav className="mt-6" aria-label="Mobile">
           <ul className="space-y-2">

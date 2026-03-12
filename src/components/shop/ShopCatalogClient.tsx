@@ -22,6 +22,8 @@ type AvailabilityOption = "all" | "in-stock" | "sold-out";
 type PriceOption = "all" | "under-100" | "100-250" | "250-500" | "500-plus";
 type GridColumns = 1 | 2;
 
+const DEFAULT_AVAILABILITY: AvailabilityOption = "in-stock";
+
 function getProductPrice(product: ShopifyProduct) {
   return Number(product.priceRange.minVariantPrice.amount);
 }
@@ -105,10 +107,10 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
   const initialQuery = searchParams.get("q")?.trim() || "";
   const [isPending, startTransition] = useTransition();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
-  const [gridColumns, setGridColumns] = useState<GridColumns>(2);
+  const [gridColumns, setGridColumns] = useState<GridColumns>(1);
   const [query, setQuery] = useState(initialQuery);
   const [sort, setSort] = useState<SortOption>("featured");
-  const [availability, setAvailability] = useState<AvailabilityOption>("all");
+  const [availability, setAvailability] = useState<AvailabilityOption>(DEFAULT_AVAILABILITY);
   const [priceFilter, setPriceFilter] = useState<PriceOption>("all");
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
@@ -193,7 +195,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
     startTransition(() => {
       setQuery("");
       setSort("featured");
-      setAvailability("all");
+      setAvailability(DEFAULT_AVAILABILITY);
       setPriceFilter("all");
       setSelectedCollections([]);
       setSelectedTypes([]);
@@ -205,7 +207,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
 
   const hasActiveFilters =
     query.trim().length > 0 ||
-    availability !== "all" ||
+    availability !== DEFAULT_AVAILABILITY ||
     priceFilter !== "all" ||
     selectedCollections.length > 0 ||
     selectedTypes.length > 0 ||
@@ -230,7 +232,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
     selectedVendors.length +
     selectedSizes.length +
     selectedColors.length +
-    (availability !== "all" ? 1 : 0) +
+    (availability !== DEFAULT_AVAILABILITY ? 1 : 0) +
     (priceFilter !== "all" ? 1 : 0) +
     (sort !== "featured" ? 1 : 0);
 
@@ -598,7 +600,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
         {includeSearchStatus ? (
           <Badge variant="teal">
             <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-            Search-enabled
+            Live search
           </Badge>
         ) : null}
         {isFiltering ? <Badge variant="neutral">Refreshing results</Badge> : null}
@@ -630,7 +632,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
             {color}
           </Badge>
         ))}
-        {availability !== "all" ? <Badge variant="neutral">{availability === "in-stock" ? "In stock" : "Sold out"}</Badge> : null}
+        {availability !== DEFAULT_AVAILABILITY ? <Badge variant="neutral">{availability === "in-stock" ? "In stock" : "Sold out"}</Badge> : null}
         {priceFilter !== "all" ? (
           <Badge variant="neutral">
             {priceFilter === "under-100"
@@ -650,8 +652,8 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
     return (
       <div className="inline-flex rounded-full border border-ink/10 bg-ivory p-1">
         {([
-          { label: "1 per row", value: 1 as GridColumns },
-          { label: "2 per row", value: 2 as GridColumns },
+          { label: "List view", shortLabel: "List", value: 1 as GridColumns },
+          { label: "Two-column grid", shortLabel: "Grid", value: 2 as GridColumns },
         ]).map((option) => {
           const isActive = gridColumns === option.value;
 
@@ -667,7 +669,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
               aria-pressed={isActive}
               aria-label={option.label}
             >
-              {option.value}-up
+              {option.shortLabel}
             </button>
           );
         })}
@@ -682,7 +684,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
 
         <div>
           <div className="xl:hidden">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
               <button
                 type="button"
                 onClick={() => setIsMobileFiltersOpen((current) => !current)}
@@ -694,10 +696,11 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
                 Filters
                 {activeFilterCount > 0 ? <span className="ml-2 rounded-full bg-deep-teal px-2 py-0.5 text-[10px] text-ivory">{activeFilterCount}</span> : null}
               </button>
-              <div className="flex flex-wrap items-center gap-3 sm:flex-1 sm:justify-between">
-                <div className="min-w-0 flex-1 rounded-full border border-ink/10 bg-ivory px-4 py-3 text-sm text-ink">
-                  <span className="font-semibold">{filteredProducts.length}</span> result{filteredProducts.length === 1 ? "" : "s"}
-                </div>
+              <div className="flex items-center justify-between gap-3 sm:flex-1">
+                <p className="min-w-0 flex-1 text-sm text-smoke">
+                  {filteredProducts.length} result{filteredProducts.length === 1 ? "" : "s"}
+                  {activeFilterCount > 0 ? ` • ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"}` : ""}
+                </p>
                 {renderViewToggle()}
               </div>
             </div>
@@ -747,24 +750,13 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
                     Search, sort, compare, and move directly into product detail or bag without the catalog feeling heavy.
                   </p>
                 </div>
-                <div className="grid gap-3">
-                  <div
-                    className={cn(
-                      "rounded-[1.6rem] border px-5 py-4 transition-all duration-300",
-                      isFiltering ? "border-deep-teal/20 bg-deep-teal/6 text-deep-teal" : "border-ink/10 bg-ivory/80 text-ink",
-                    )}
-                  >
-                    <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">Showing</p>
-                    <p className="mt-2 text-3xl font-semibold text-ink">{filteredProducts.length}</p>
-                    <p className="mt-1 text-sm text-smoke">
-                      of {products.length} products
-                      {activeFilterCount > 0 ? ` with ${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center justify-between rounded-[1.6rem] border border-ink/10 bg-ivory/70 px-4 py-3">
-                    {renderViewToggle()}
-                    {isFiltering ? <span className="text-[11px] font-semibold tracking-[0.14em] text-deep-teal uppercase">Updating</span> : null}
-                  </div>
+                <div className="flex items-center justify-between gap-4 lg:justify-end">
+                  <p className={cn("text-sm text-smoke", isFiltering && "text-deep-teal")}>
+                    {filteredProducts.length} of {products.length} products
+                    {activeFilterCount > 0 ? ` • ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"}` : ""}
+                    {isFiltering ? " • Updating" : ""}
+                  </p>
+                  {renderViewToggle()}
                 </div>
               </div>
 
@@ -780,8 +772,8 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
             <div
               aria-busy={isFiltering}
               className={cn(
-                "mt-8 grid gap-4 transition-[opacity,transform,filter] duration-300 ease-out sm:gap-5",
-                gridColumns === 1 ? "grid-cols-1" : "grid-cols-2",
+                "mt-6 grid transition-[opacity,transform,filter] duration-300 ease-out",
+                gridColumns === 1 ? "grid-cols-1 gap-2.5 sm:gap-3" : "grid-cols-2 gap-3 sm:gap-4",
                 isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
               )}
             >

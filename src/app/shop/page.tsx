@@ -18,7 +18,7 @@ export default async function ShopPage() {
       <PageHero
         eyebrow="J. Barbaro Online Shop"
         title="Shop the Floor"
-        description="A cleaner headless storefront built for apparel browsing: refined filters, alternate product imagery on hover, quick add, and a direct path into your bag."
+        description="A cleaner apparel storefront built for browsing: refined filters, alternate product imagery on hover, quick add, and a direct path into your bag."
         ctaHref="/cart"
         ctaLabel="Open Bag"
         secondaryHref="/schedule-appointment"

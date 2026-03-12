@@ -16,8 +16,7 @@ import {
 import { useState } from "react";
 
 import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
-import { ButtonLink } from "@/components/ui/Button";
-import { headerCtas, headerTopLinks, primaryNavigation } from "@/data/navigation";
+import { headerTopLinks, primaryNavigation } from "@/data/navigation";
 import { siteSettings } from "@/data/site-settings";
 import { socialLinks } from "@/data/social";
 import { cn } from "@/lib/utils";
@@ -44,7 +43,6 @@ function iconForSocial(label: string) {
 export function SiteHeader() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const primaryMobileCta = headerCtas[0];
 
   return (
     <header className="sticky top-0 z-[90] border-b border-ink/10 bg-ivory/95 lg:backdrop-blur-xl">
@@ -81,7 +79,7 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:h-20 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:h-20 sm:px-6 lg:px-8">
         <button
           type="button"
           onClick={() => setIsOpen(true)}
@@ -103,27 +101,12 @@ export function SiteHeader() {
           />
         </Link>
 
-        <div className="lg:hidden">
-          {primaryMobileCta ? (
-            <Link
-              href={primaryMobileCta.href}
-              className="inline-flex min-h-9 items-center justify-center rounded-full border border-gold/75 bg-gold px-3 py-1.5 text-[0.65rem] font-semibold tracking-[0.12em] text-ink uppercase transition-colors hover:bg-ink hover:text-ivory"
-            >
-              {primaryMobileCta.label}
-            </Link>
-          ) : null}
-        </div>
+        <div aria-hidden className="h-9 w-9 shrink-0 sm:h-10 sm:w-10 lg:hidden" />
 
-        <div className="hidden min-w-0 flex-1 px-6 lg:flex">
-          <HeaderProductSearch />
-        </div>
-
-        <div className="hidden shrink-0 items-center gap-2 lg:flex">
-          {headerCtas.map((item, index) => (
-            <ButtonLink key={item.href} href={item.href} size="sm" variant={index === 0 ? "teal" : "primary"}>
-              {item.label}
-            </ButtonLink>
-          ))}
+        <div className="hidden min-w-0 flex-1 justify-end pl-6 lg:flex">
+          <div className="w-full max-w-md">
+            <HeaderProductSearch />
+          </div>
         </div>
       </div>
 
@@ -270,20 +253,6 @@ export function SiteHeader() {
             ))}
           </ul>
         </nav>
-
-        <div className="mt-6 space-y-2">
-          {headerCtas.map((item, index) => (
-            <ButtonLink
-              key={item.href}
-              href={item.href}
-              variant={index === 0 ? "teal" : "primary"}
-              className="w-full"
-              onClick={() => setIsOpen(false)}
-            >
-              {item.label}
-            </ButtonLink>
-          ))}
-        </div>
       </div>
     </header>
   );

@@ -19,18 +19,18 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
   return (
     <div className="border-b border-ink/10 bg-stone/55">
       <Container className="py-3">
-        <nav aria-label="Breadcrumb" className="overflow-x-auto text-sm">
-          <ol className="flex min-w-max items-center gap-2 text-smoke">
+        <nav aria-label="Breadcrumb" className="min-w-0 text-sm">
+          <ol className="flex min-w-0 items-center gap-2 overflow-hidden text-smoke">
             {items.map((item, index) => {
               const isLast = index === items.length - 1;
               return (
-                <li key={item.href} className="flex items-center gap-2">
+                <li key={item.href} className={isLast ? "flex min-w-0 items-center gap-2" : "flex shrink-0 items-center gap-2"}>
                   {isLast ? (
-                    <span aria-current="page" className="font-semibold text-ink">
+                    <span aria-current="page" className="block truncate font-semibold text-ink">
                       {item.name}
                     </span>
                   ) : (
-                    <Link href={item.href} className="transition-colors hover:text-deep-teal">
+                    <Link href={item.href} className="truncate transition-colors hover:text-deep-teal">
                       {item.name}
                     </Link>
                   )}

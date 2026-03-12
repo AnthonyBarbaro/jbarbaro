@@ -1,10 +1,11 @@
 "use client";
 
 import { Check, LoaderCircle, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { notifyShopifyCartChanged } from "@/lib/shopify/cart-events";
+import { cn } from "@/lib/utils";
 
 type AddToCartButtonProps = {
   merchandiseId: string;
@@ -27,8 +28,23 @@ export function AddToCartButton({
   const [hasAdded, setHasAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!hasAdded) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setHasAdded(false);
+    }, 950);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [hasAdded]);
+
   async function handleAddToCart() {
     setIsPending(true);
+    setHasAdded(false);
     setError(null);
 
     try {
@@ -70,10 +86,21 @@ export function AddToCartButton({
             <span className="text-[10px] tracking-[0.08em]">Out</span>
           ) : isPending ? (
             <LoaderCircle className="h-4 w-4 animate-spin" />
-          ) : hasAdded ? (
-            <Check className="h-4 w-4" />
           ) : (
-            <Plus className="h-4 w-4" />
+            <span className="relative inline-flex h-4 w-4 items-center justify-center">
+              <Plus
+                className={cn(
+                  "absolute h-4 w-4 transition-all duration-250",
+                  hasAdded ? "scale-75 opacity-0" : "scale-100 opacity-100",
+                )}
+              />
+              <Check
+                className={cn(
+                  "absolute h-4 w-4 transition-all duration-300",
+                  hasAdded ? "scale-100 opacity-100" : "scale-75 opacity-0",
+                )}
+              />
+            </span>
           )
         ) : !availableForSale ? (
           "Sold Out"

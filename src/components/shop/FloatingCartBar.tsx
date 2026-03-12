@@ -31,7 +31,7 @@ export function FloatingCartBar() {
   useEffect(() => {
     const storedValue = window.localStorage.getItem(FLOATING_CART_DISMISSED_KEY);
 
-    setIsDismissed(storedValue === "true");
+    setIsDismissed(storedValue !== "false");
     setHasLoadedPreference(true);
   }, []);
 
@@ -81,7 +81,7 @@ export function FloatingCartBar() {
 
   function restoreBar() {
     setIsDismissed(false);
-    window.localStorage.removeItem(FLOATING_CART_DISMISSED_KEY);
+    window.localStorage.setItem(FLOATING_CART_DISMISSED_KEY, "false");
   }
 
   async function goToCheckout() {
@@ -108,15 +108,18 @@ export function FloatingCartBar() {
 
   if (isDismissed) {
     return (
-      <div className="fixed right-3 bottom-[max(0.9rem,env(safe-area-inset-bottom))] z-[120] sm:right-4">
+      <div className="fixed inset-x-0 bottom-[max(0.85rem,env(safe-area-inset-bottom))] z-[120] flex justify-end px-4 sm:inset-auto sm:right-4 sm:bottom-[max(0.9rem,env(safe-area-inset-bottom))] sm:px-0">
         <button
           type="button"
           onClick={restoreBar}
-          className="relative inline-flex h-14 w-14 items-center justify-center rounded-full border border-ink/15 bg-ivory/96 text-ink shadow-[0_24px_55px_-30px_rgba(14,23,38,0.45)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-gold hover:text-gold"
+          className="relative inline-flex h-12 items-center gap-2 rounded-full border border-ink/12 bg-ink px-4 text-ivory shadow-[0_24px_55px_-30px_rgba(14,23,38,0.45)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-gold sm:h-14 sm:bg-ivory/96 sm:px-0 sm:text-ink sm:hover:text-gold"
           aria-label="Show shopping bag"
         >
-          <ShoppingBag className="h-5 w-5" />
-          <span className="absolute -top-1 -right-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-deep-teal px-1 text-[10px] font-semibold text-ivory">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-ivory/12 sm:bg-deep-teal sm:text-ivory">
+            <ShoppingBag className="h-4 w-4" />
+          </span>
+          <span className="text-[11px] font-semibold tracking-[0.14em] uppercase sm:hidden">Bag</span>
+          <span className="absolute -top-1 -right-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-deep-teal px-1 text-[10px] font-semibold text-ivory sm:-right-1">
             {cart.totalQuantity}
           </span>
         </button>
@@ -126,10 +129,10 @@ export function FloatingCartBar() {
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[120] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4">
-      <div className="pointer-events-auto mx-auto max-w-5xl rounded-[1.75rem] border border-ink/12 bg-ivory/96 shadow-[0_-16px_60px_-30px_rgba(14,23,38,0.45)] backdrop-blur-xl">
-        <div className="flex flex-col gap-4 px-4 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="pointer-events-auto mx-auto max-w-5xl rounded-[1.5rem] border border-ink/12 bg-ivory/96 shadow-[0_-16px_60px_-30px_rgba(14,23,38,0.45)] backdrop-blur-xl sm:rounded-[1.75rem]">
+        <div className="flex flex-col gap-3 px-4 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-deep-teal text-ivory">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-deep-teal text-ivory sm:h-11 sm:w-11">
               <ShoppingBag className="h-5 w-5" />
             </div>
             <div>
@@ -144,7 +147,7 @@ export function FloatingCartBar() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 lg:justify-end">
+          <div className="grid grid-cols-[auto_1fr_1fr] gap-2 lg:flex lg:flex-wrap lg:justify-end">
             <button
               type="button"
               onClick={dismissBar}
@@ -155,11 +158,11 @@ export function FloatingCartBar() {
             </button>
             <Link
               href="/cart"
-              className="inline-flex min-h-11 items-center justify-center rounded-full border border-ink/20 px-5 py-2.5 text-xs font-semibold tracking-[0.16em] text-ink uppercase transition-all duration-300 hover:border-gold hover:text-gold"
+              className="inline-flex min-h-11 items-center justify-center rounded-full border border-ink/20 px-4 py-2.5 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-all duration-300 hover:border-gold hover:text-gold sm:px-5 sm:text-xs sm:tracking-[0.16em]"
             >
               View Bag
             </Link>
-            <Button className="min-w-[180px]" disabled={isCheckingOut} onClick={() => void goToCheckout()}>
+            <Button className="min-w-0" disabled={isCheckingOut} onClick={() => void goToCheckout()}>
               <span>{isCheckingOut ? "Redirecting..." : "Checkout"}</span>
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>

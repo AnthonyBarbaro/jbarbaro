@@ -240,6 +240,7 @@ export default defineConfig({
             fields: [
               textField("slug", "Slug"),
               textField("name", "Name"),
+              textField("shopifyCollectionHandle", "Shopify Collection Handle"),
               textField("shortDescription", "Short Description", true),
               textField("longDescription", "Long Description", true),
             ],

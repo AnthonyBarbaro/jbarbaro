@@ -102,9 +102,14 @@ function arraysEqual(left: string[], right: string[]) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+function getCollectionFilters(searchParams: Pick<URLSearchParams, "getAll">) {
+  return Array.from(new Set(searchParams.getAll("collection").map((value) => value.trim()).filter(Boolean)));
+}
+
 export function ShopCatalogClient({ products, collections }: ShopCatalogClientProps) {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q")?.trim() || "";
+  const initialCollections = getCollectionFilters(searchParams);
   const [isPending, startTransition] = useTransition();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [gridColumns, setGridColumns] = useState<GridColumns>(1);
@@ -112,7 +117,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
   const [sort, setSort] = useState<SortOption>("featured");
   const [availability, setAvailability] = useState<AvailabilityOption>(DEFAULT_AVAILABILITY);
   const [priceFilter, setPriceFilter] = useState<PriceOption>("all");
-  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>(initialCollections);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -139,6 +144,11 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery]);
+
+  useEffect(() => {
+    const nextSelectedCollections = getCollectionFilters(searchParams);
+    setSelectedCollections((current) => (arraysEqual(current, nextSelectedCollections) ? current : nextSelectedCollections));
+  }, [searchParams]);
 
   const appliedFilterSignature = JSON.stringify({
     sort: deferredSort,

@@ -25,6 +25,7 @@ export type Location = {
 export type MenCategory = {
   slug: string;
   name: string;
+  shopifyCollectionHandle?: string;
   shortDescription: string;
   longDescription: string;
 };

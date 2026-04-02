@@ -10,3 +10,7 @@ const categoryData = categoriesJson as CategoriesData;
 
 export const menCategories = categoryData.items;
 export const menCategoryMap = Object.fromEntries(menCategories.map((category) => [category.slug, category]));
+
+export function getMenCategoryHref(category: MenCategory) {
+  return `/for-men/${category.slug}`;
+}

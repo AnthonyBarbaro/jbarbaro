@@ -50,6 +50,11 @@ export type ShopifyCollectionPreview = {
   title: string;
 };
 
+export type ShopifyCollection = ShopifyCollectionPreview & {
+  description: string;
+  products: ShopifyProduct[];
+};
+
 export type ShopifyCartSnapshot = {
   totalQuantity: number;
   checkoutUrl: string;

@@ -1,5 +1,7 @@
 import navigationJson from "@content/site/navigation.json";
 
+import { getMenCategoryHref, menCategories } from "@/data/men-categories";
+
 export type NavChild = {
   label: string;
   href: string;
@@ -25,7 +27,20 @@ type NavigationData = {
 
 const navigation = navigationJson as NavigationData;
 
-export const primaryNavigation = navigation.primaryNavigation;
+export const primaryNavigation: NavItem[] = navigation.primaryNavigation.map((item): NavItem => {
+  if (item.label !== "For Men") {
+    return item;
+  }
+
+  return {
+    ...item,
+    href: item.href || "/for-men",
+    children: menCategories.map((category): NavChild => ({
+      label: category.name,
+      href: getMenCategoryHref(category),
+    })),
+  };
+});
 export const headerTopLinks = navigation.headerTopLinks;
 export const headerCtas = navigation.headerCtas;
 export const footerShoppingLinks = navigation.footerShoppingLinks;

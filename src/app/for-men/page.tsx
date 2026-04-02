@@ -6,7 +6,7 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
-import { menCategories } from "@/data/men-categories";
+import { getMenCategoryHref, menCategories } from "@/data/men-categories";
 import { pageContent } from "@/lib/site-content";
 import { buildMetadata } from "@/lib/seo";
 
@@ -38,7 +38,7 @@ export default function ForMenHubPage() {
                   <h2 className="mt-4 font-heading text-2xl text-ink sm:text-3xl">{category.name}</h2>
                   <p className="mt-3 text-sm leading-7 text-smoke">{category.shortDescription}</p>
                   <Link
-                    href={`/for-men/${category.slug}`}
+                    href={getMenCategoryHref(category)}
                     className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
                   >
                     View Category

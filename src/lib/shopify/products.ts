@@ -1,7 +1,7 @@
 import "server-only";
 
 import { storefrontRequest } from "@/lib/shopify/client";
-import type { ShopifyCollectionPreview, ShopifyProduct, ShopifyProductSearchResult } from "@/lib/shopify/types";
+import type { ShopifyCollection, ShopifyCollectionPreview, ShopifyProduct, ShopifyProductSearchResult } from "@/lib/shopify/types";
 
 type RawProduct = {
   id: string;
@@ -64,6 +64,20 @@ type ProductsResponse = {
 
 type ProductResponse = {
   product: RawProduct | null;
+};
+
+type RawCollection = {
+  id: string;
+  handle: string;
+  title: string;
+  description: string;
+  products: {
+    nodes: RawProduct[];
+  };
+};
+
+type CollectionResponse = {
+  collection: RawCollection | null;
 };
 
 type CollectionsResponse = {
@@ -159,6 +173,16 @@ function normalizeProduct(product: RawProduct): ShopifyProduct {
   };
 }
 
+function normalizeCollection(collection: RawCollection): ShopifyCollection {
+  return {
+    id: collection.id,
+    handle: collection.handle,
+    title: collection.title,
+    description: collection.description,
+    products: collection.products.nodes.map(normalizeProduct),
+  };
+}
+
 export async function getShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductsResponse, { limit: number }>({
     query: `
@@ -197,6 +221,36 @@ export async function getShopProduct(handle: string): Promise<ShopifyProduct | n
   }
 
   return normalizeProduct(data.product);
+}
+
+export async function getShopCollection(handle: string, limit = 12): Promise<ShopifyCollection | null> {
+  const data = await storefrontRequest<CollectionResponse, { handle: string; limit: number }>({
+    query: `
+      query ShopCollection($handle: String!, $limit: Int!) {
+        collection(handle: $handle) {
+          id
+          handle
+          title
+          description
+          products(first: $limit) {
+            nodes {
+              ${productFields}
+            }
+          }
+        }
+      }
+    `,
+    variables: {
+      handle,
+      limit,
+    },
+  });
+
+  if (!data.collection) {
+    return null;
+  }
+
+  return normalizeCollection(data.collection);
 }
 
 export async function getShopCollections(limit = 8): Promise<ShopifyCollectionPreview[]> {

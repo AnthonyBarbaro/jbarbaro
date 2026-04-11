@@ -38,7 +38,7 @@ export function WaveSection({
   return (
     <Component className={cn("relative", backgroundClass[background], className)}>
       {topWave ? <WaveDivider variant={topWave} /> : null}
-      <div className={cn(padded && "py-12 sm:py-16 lg:py-20", contentClassName)}>{children}</div>
+      <div className={cn(padded && "py-14 sm:py-18 lg:py-22", contentClassName)}>{children}</div>
       {bottomWave ? <WaveDivider variant={bottomWave} flipped /> : null}
     </Component>
   );

@@ -348,21 +348,20 @@ export const defaultSiteSettings: SiteSettingsContent = {
 export const defaultNavigation: NavigationContent = {
   primaryNavigation,
   headerTopLinks: [
-    { label: "Shop Online", href: "/shop-coming-soon" },
-    { label: "Schedule Appointment", href: "/schedule-appointment" },
-    { label: "View Cart", href: "/cart" },
+    { label: "Locations", href: "/locations" },
+    { label: "Reviews", href: "/reviews" },
+    { label: "Contact", href: "/contact-us" },
   ],
   headerCtas: [
-    { label: "Shop Online", href: "/shop-coming-soon" },
     { label: "Book Appointment", href: "/schedule-appointment" },
   ],
   footerShoppingLinks: [
-    { label: "Shop Online", href: "/shop-coming-soon" },
-    { label: "Schedule Appointment", href: "/schedule-appointment" },
-    { label: "Tuxedo Rentals", href: "/suit-tuxedo-rentals" },
-    { label: "Register Wedding", href: "/register-your-wedding" },
-    { label: "Sale Coming Soon", href: "/sale-coming-soon" },
-    { label: "Cart", href: "/cart" },
+    { label: "Shop", href: "/shop" },
+    { label: "Categories", href: "/for-men" },
+    { label: "Designers", href: "/designers/featured-designers" },
+    { label: "Appointments", href: "/schedule-appointment" },
+    { label: "Formalwear", href: "/suit-tuxedo-rentals" },
+    { label: "Bag", href: "/cart" },
   ],
   footerUtilityLinks: [
     { label: "Home", href: "/" },
@@ -375,43 +374,42 @@ export const defaultNavigation: NavigationContent = {
     { label: "Terms", href: "/terms-of-use" },
     { label: "Privacy", href: "/privacy-policy" },
   ],
-  footerNewsletterTitle: "Stay in the Loop",
+  footerNewsletterTitle: "Stay Connected",
   footerNewsletterCopy:
-    "New arrivals, seasonal edits, and private appointment windows. Newsletter signup backend is coming soon.",
+    "Follow J. Barbaro Clothiers for new arrivals, designer highlights, and appointment updates.",
 };
 
 export const defaultHomePage: HomePageContent = {
   metaTitle: `${SITE_NAME} | Classic Tailoring & Luxury Menswear`,
   metaDescription:
-    "Classic tailoring, designer menswear, and personal styling at J. Barbaro Clothiers. Book a one-on-one appointment in Metro Detroit.",
-  heroImage: heroSlides[2].image,
-  heroTitle: "Classic Tailoring for the Modern Gentleman",
+    "Shop live menswear, browse designer categories, and book a private fitting at J. Barbaro Clothiers in Metro Detroit.",
+  heroImage: heroSlides[0].image,
+  heroTitle: "Luxury Menswear, Tailored Around You",
   heroDescription:
-    "An appointment-first menswear experience focused on precision fit, premium designer labels, and exceptional personal service.",
-  heroBadges: [{ label: SITE_NAME }, { label: "Clinton Township" }, { label: "Auburn Hills" }],
+    "Shop live arrivals online, use concierge search to narrow the floor fast, and book a private fitting whenever you want expert guidance on fit, occasion, or wardrobe planning.",
+  heroBadges: [{ label: SITE_NAME }, { label: "Luxury Menswear" }, { label: "Metro Detroit" }],
   heroCtas: [
-    { label: "Book an Appointment", href: "/schedule-appointment" },
-    { label: "Shop Online", href: "/shop-coming-soon" },
-    { label: "About Jason Barbaro", href: "/about" },
+    { label: "Shop Online", href: "/shop" },
+    { label: "Book Appointment", href: "/schedule-appointment" },
   ],
   heroSlides,
   ctaTiles,
   retailBanner: {
-    badge: "Retail + Ecommerce",
-    title: "Shop In-Store Today. Shop Online Next.",
+    badge: "Now Online",
+    title: "Shop Online. Finish with a Perfect Fit.",
     description:
-      "We are building a full online store experience with premium product pages, concierge checkout support, and curated seasonal drops.",
+      "Browse live products, jump by category when you need direction, and book an appointment when you want the shortlist prepared before you arrive.",
     buttons: [
-      { label: "Explore Online Shop", href: "/shop-coming-soon" },
-      { label: "View Sale Preview", href: "/sale-coming-soon" },
-      { label: "Tuxedo Catalogs", href: "/suit-tuxedo-rentals" },
+      { label: "Shop Online", href: "/shop" },
+      { label: "Shop by Category", href: "/for-men" },
+      { label: "Book Appointment", href: "/schedule-appointment" },
     ],
   },
   tailorProcess: {
-    eyebrow: "The Tailor’s Method",
-    title: "A Proven Process for Elevated Fit",
+    eyebrow: "Tailoring Support",
+    title: "Fit Expertise Built Into Every Purchase",
     description:
-      "Every appointment is intentionally structured so you leave with confidence, clarity, and garments that move with you.",
+      "Shopping is easier when fit, alterations, and occasion guidance are part of the process instead of an afterthought.",
     items: [
       {
         title: "Consultation",
@@ -431,39 +429,39 @@ export const defaultHomePage: HomePageContent = {
     eyebrow: "Shop by Category",
     title: "Refined Menswear, Curated by Need",
     description:
-      "Start with the category that fits your immediate goal, then book an appointment for expert recommendations.",
-    buttonLabel: "View All Categories",
-    buttonHref: "/for-men",
+      "Start with the category that matches your occasion, then refine the look with designer recommendations and in-store fit support.",
+    buttonLabel: "Shop All Products",
+    buttonHref: "/shop",
   },
   brandsSection: {
-    eyebrow: "Featured Designers",
-    title: "Luxury Labels We Trust",
+    eyebrow: "Designer Trust",
+    title: "Brands That Define the Floor",
     description:
-      "Explore our featured designer lineup and discover the labels defining the season.",
+      "Explore the labels we rely on for refined tailoring, polished sportswear, and wardrobe longevity.",
     buttons: [
       { label: "View Featured Designers", href: "/designers/featured-designers" },
       { label: "Browse All Designers", href: "/designers/all-designer-brands" },
     ],
   },
   appointmentPriority: {
-    badge: "Appointment Priority",
-    title: "Bring Your Vision. We’ll Handle the Fit.",
+    badge: "Private Styling",
+    title: "Want the Shortlist Prepared for You?",
     description:
-      "The fastest way to build a wardrobe you actually wear is a focused appointment. We prepare options in your size, discuss your goals, and deliver a polished final fit.",
+      "Book a one-on-one session and we’ll pull the strongest options for your size, occasion, and preferred silhouette before you arrive.",
     buttonLabel: "Reserve Appointment",
     buttonHref: "/schedule-appointment",
     testimonialHeading: "Client Feedback",
   },
   locationsSection: {
     eyebrow: "Visit In Person",
-    title: "Two Locations. One Consistent Standard.",
+    title: "Visit the Store That Fits Your Schedule.",
     description:
-      "Choose the store that is most convenient and book ahead for a prepared fitting session.",
+      "Choose the location that is most convenient and book ahead for a prepared fitting session.",
   },
   journalSection: {
     eyebrow: "Journal",
-    title: "Style Guidance from the Floor",
-    description: "Editorial insights on fit, tailoring, and seasonal wardrobe planning.",
+    title: "Advice for Buying and Wearing Well",
+    description: "Editorial guidance on fit, tailoring, occasion dressing, and wardrobe planning.",
   },
 };
 
@@ -662,7 +660,7 @@ export const defaultRentalsPage: RentalsPageContent = {
       "Register your wedding party today and our team will follow up with the next steps.",
     buttons: [
       { label: "Register Wedding", href: "/register-your-wedding" },
-      { label: "Shop Online Preview", href: "/shop-coming-soon" },
+      { label: "Browse Categories", href: "/for-men" },
     ],
     footerLinkLabel: "Go to Registration",
     footerLinkHref: "/register-your-wedding",
@@ -741,19 +739,19 @@ export const defaultDesignersPage: DesignersPageContent = {
 };
 
 export const defaultForMenPage: ForMenPageContent = {
-  metaTitle: "For Men Collections",
+  metaTitle: "Collections | J. Barbaro Clothiers",
   metaDescription:
-    "Browse designer menswear categories including suits, dress shirts, denim, footwear, accessories, and more.",
+    "Browse the live J. Barbaro collections, explore image-led category edits, and move from online discovery to a prepared fitting.",
   hero: {
-    title: "For Men",
+    title: "Collections",
     description:
-      "Explore premium menswear categories curated for business, occasion, and elevated daily style.",
-    ctaPrimary: { label: "Book a Styling Session", href: "/schedule-appointment" },
+      "A cleaner way to browse the live floor by category, with stronger visuals, refined product edits, and an easy path into a prepared fitting.",
+    ctaPrimary: { label: "Shop All Products", href: "/shop" },
   },
-  closingCardTitle: "Need Direction on Where to Start?",
+  closingCardTitle: "Need a Curated Pull List?",
   closingCardDescription:
-    "If you're refreshing your wardrobe or dressing for an upcoming event, our team can build a category-by-category plan around your needs.",
-  closingButtonLabel: "Schedule Appointment",
+    "Tell us the occasion, fit direction, and preferred categories and we’ll prepare a sharper shortlist before you arrive.",
+  closingButtonLabel: "Book Styling Appointment",
   closingButtonHref: "/schedule-appointment",
 };
 

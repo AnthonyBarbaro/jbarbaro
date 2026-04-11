@@ -12,7 +12,7 @@ type CardProps = {
 
 const toneClasses: Record<CardTone, string> = {
   ivory: "bg-ivory text-ink",
-  stone: "bg-stone text-ink",
+  stone: "bg-[linear-gradient(180deg,rgba(245,239,231,0.95),rgba(231,222,211,0.95))] text-ink",
   ink: "bg-ink text-ivory",
 };
 
@@ -20,7 +20,7 @@ export function Card({ children, className, tone = "ivory", ...props }: CardProp
   return (
     <article
       className={cn(
-        "luxe-shadow overflow-hidden rounded-3xl border border-ink/10",
+        "luxe-shadow overflow-hidden rounded-[1.75rem] border border-ink/8",
         toneClasses[tone],
         className,
       )}
@@ -32,5 +32,5 @@ export function Card({ children, className, tone = "ivory", ...props }: CardProp
 }
 
 export function CardContent({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("p-5 sm:p-7", className)}>{children}</div>;
+  return <div className={cn("p-5 sm:p-6 lg:p-7", className)}>{children}</div>;
 }

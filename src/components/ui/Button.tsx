@@ -28,16 +28,16 @@ const sizeClasses: Record<ButtonSize, string> = {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "bg-gold text-ink border border-gold hover:bg-ink hover:border-ink hover:text-ivory focus-visible:ring-gold/45",
+    "border border-gold bg-gold text-ink shadow-[0_20px_36px_-24px_rgba(11,15,20,0.58)] hover:-translate-y-0.5 hover:border-[#d4b37d] hover:bg-[#d4b37d] focus-visible:ring-gold/45",
   secondary:
-    "bg-transparent text-ink border border-ink/65 hover:border-gold hover:text-gold focus-visible:ring-gold/40",
-  teal: "bg-deep-teal text-ivory border border-deep-teal hover:bg-gold hover:border-gold hover:text-ink focus-visible:ring-deep-teal/40",
+    "border border-ink/50 bg-transparent text-ink hover:-translate-y-0.5 hover:border-ink hover:bg-ink/[0.04] focus-visible:ring-gold/40",
+  teal: "border border-deep-teal bg-deep-teal text-ivory shadow-[0_20px_36px_-24px_rgba(15,91,91,0.55)] hover:-translate-y-0.5 hover:border-[#136868] hover:bg-[#136868] focus-visible:ring-deep-teal/40",
   ghost:
-    "bg-transparent text-ink border border-transparent hover:border-ink/20 hover:bg-stone/55 focus-visible:ring-gold/30",
+    "border border-transparent bg-transparent text-ink hover:border-ink/20 hover:bg-stone/55 focus-visible:ring-gold/30",
 };
 
 const commonClassName =
-  "inline-flex items-center justify-center rounded-full text-center font-semibold leading-tight whitespace-normal uppercase transition-all duration-300 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-full text-center font-semibold leading-tight whitespace-normal uppercase transition-all duration-300 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60";
 
 export function Button({ className, children, variant = "primary", size = "md", type = "button", ...props }: ButtonProps) {
   return (

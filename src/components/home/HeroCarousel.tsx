@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
@@ -12,9 +11,27 @@ import { cn } from "@/lib/utils";
 
 type HeroCarouselProps = {
   slides: HeroSlide[];
+  badges?: Array<{ label: string }>;
+  secondaryCta?: { label: string; href: string };
 };
 
-export function HeroCarousel({ slides }: HeroCarouselProps) {
+function getPrimaryCtaLabel(slide: HeroSlide) {
+  if (slide.href === "/tailored-clothing") {
+    return "Explore Tailoring";
+  }
+
+  if (slide.href === "/suit-tuxedo-rentals") {
+    return "View Formalwear";
+  }
+
+  if (slide.title.toLowerCase().includes("$299")) {
+    return "Shop the Offer";
+  }
+
+  return "Shop Now";
+}
+
+export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
@@ -34,9 +51,11 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
   }
 
   const activeSlide = slides[activeIndex];
+  const slideCounter = `${String(activeIndex + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`;
+  const fallbackSecondaryCta = secondaryCta ?? { label: "Book Appointment", href: "/schedule-appointment" };
 
   return (
-    <section className="relative h-[78svh] min-h-[560px] w-full overflow-hidden">
+    <section className="relative min-h-[640px] overflow-hidden bg-ink text-ivory sm:min-h-[700px]">
       {slides.map((slide, index) => {
         const isActive = index === activeIndex;
 
@@ -57,75 +76,87 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
               sizes="100vw"
               className="object-cover"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(11,15,20,0.84),rgba(11,15,20,0.55)_40%,rgba(11,15,20,0.26)_100%)]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(199,164,106,0.2),transparent_28%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(11,15,20,0.97),rgba(11,15,20,0.74)_42%,rgba(11,15,20,0.36)_72%,rgba(11,15,20,0.12))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,20,0.16),rgba(11,15,20,0.18)_45%,rgba(11,15,20,0.76))]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_16%,rgba(199,164,106,0.22),transparent_28%)]" />
           </article>
         );
       })}
 
-      <div className="relative z-10 mx-auto flex h-full max-w-7xl items-end px-4 pb-14 sm:px-6 sm:pb-18 lg:px-8">
-        <div className="w-full max-w-4xl text-ivory">
-          <Badge variant="gold">Luxury Menswear in Metro Detroit</Badge>
-          <h1 className="mt-6 font-heading text-4xl leading-tight sm:text-5xl lg:text-7xl">
-            Tailored Confidence. <span className="text-gold">Modern Menswear.</span>
-          </h1>
-          <p className="mt-5 max-w-2xl text-base leading-8 text-ivory/82 sm:text-lg">
-            Discover designer collections, precision tailoring, and one-on-one styling built around your lifestyle.
-          </p>
+      <button
+        type="button"
+        onClick={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)}
+        className="absolute left-3 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ivory/20 bg-ink/72 text-ivory transition-colors hover:border-gold hover:text-gold sm:left-5 sm:h-12 sm:w-12"
+        aria-label="Previous slide"
+      >
+        <ChevronLeft className="h-5 w-5" />
+      </button>
 
-          <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/schedule-appointment" size="lg">
-              Book an Appointment
-            </ButtonLink>
-            <ButtonLink href="/for-men" variant="secondary" size="lg" className="border-ivory/80 text-ivory hover:border-gold hover:text-gold">
-              Explore Collections
-            </ButtonLink>
+      <button
+        type="button"
+        onClick={() => setActiveIndex((current) => (current + 1) % slides.length)}
+        className="absolute right-3 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ivory/20 bg-ink/72 text-ivory transition-colors hover:border-gold hover:text-gold sm:right-5 sm:h-12 sm:w-12"
+        aria-label="Next slide"
+      >
+        <ChevronRight className="h-5 w-5" />
+      </button>
+
+      <div className="relative z-10 mx-auto flex min-h-[640px] max-w-7xl items-end px-4 py-14 sm:min-h-[700px] sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+        <div className="w-full">
+          <div className="max-w-4xl">
+            <div className="flex flex-wrap items-center gap-2.5">
+              {badges.map((badge, index) =>
+                index === 0 ? (
+                  <Badge
+                    key={badge.label}
+                    variant="gold"
+                    className="border-gold/95 bg-gold px-4 py-1.5 text-[0.72rem] font-bold tracking-[0.12em] text-ink shadow-[0_8px_24px_-12px_rgba(0,0,0,0.85)] sm:text-xs"
+                  >
+                    {badge.label}
+                  </Badge>
+                ) : (
+                  <span
+                    key={badge.label}
+                    className="rounded-full border border-ivory/20 bg-ivory/8 px-3.5 py-1.5 text-[0.68rem] font-semibold tracking-[0.12em] text-ivory/82 uppercase backdrop-blur-sm sm:text-[11px]"
+                  >
+                    {badge.label}
+                  </span>
+                ),
+              )}
+              <span className="rounded-full border border-ivory/18 bg-ink/45 px-3.5 py-1.5 text-[0.68rem] font-semibold tracking-[0.16em] text-ivory/82 uppercase backdrop-blur-sm sm:text-[11px]">
+                {slideCounter}
+              </span>
+            </div>
+
+            <p className="mt-6 text-[11px] font-semibold tracking-[0.22em] text-gold uppercase">Campaign spotlight</p>
+            <h1 className="mt-4 max-w-4xl text-balance font-heading text-[2.8rem] leading-[0.98] sm:text-6xl lg:text-7xl">
+              {activeSlide.title}
+            </h1>
+            <p className="mt-5 max-w-2xl text-pretty text-[0.98rem] leading-7 text-ivory/84 sm:text-lg sm:leading-8">
+              {activeSlide.caption}
+            </p>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <ButtonLink
+                href={activeSlide.href}
+                target={activeSlide.external ? "_blank" : undefined}
+                rel={activeSlide.external ? "noopener noreferrer" : undefined}
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                {getPrimaryCtaLabel(activeSlide)}
+              </ButtonLink>
+              <ButtonLink
+                href={fallbackSecondaryCta.href}
+                variant="secondary"
+                size="lg"
+                className="w-full border-ivory/70 text-ivory hover:border-gold hover:bg-transparent hover:text-gold sm:w-auto"
+              >
+                {fallbackSecondaryCta.label}
+              </ButtonLink>
+            </div>
           </div>
-
-          <Link
-            href={activeSlide.href}
-            target={activeSlide.external ? "_blank" : undefined}
-            rel={activeSlide.external ? "noopener noreferrer" : undefined}
-            className="mt-7 inline-flex items-center gap-2 text-sm font-medium text-ivory/90 hover:text-gold"
-          >
-            Featured: {activeSlide.title}
-            <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
-      </div>
-
-      <div className="absolute right-4 bottom-6 z-20 flex items-center gap-2 sm:right-6 lg:right-8">
-        <button
-          type="button"
-          onClick={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ivory/35 bg-ink/40 text-ivory backdrop-blur hover:border-gold hover:text-gold"
-          aria-label="Previous slide"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveIndex((current) => (current + 1) % slides.length)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ivory/35 bg-ink/40 text-ivory backdrop-blur hover:border-gold hover:text-gold"
-          aria-label="Next slide"
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
-      </div>
-
-      <div className="absolute bottom-6 left-4 z-20 flex items-center gap-2 sm:left-6 lg:left-8">
-        {slides.map((slide, index) => (
-          <button
-            key={slide.id}
-            type="button"
-            onClick={() => setActiveIndex(index)}
-            className={cn(
-              "h-2.5 rounded-full transition-all",
-              index === activeIndex ? "w-10 bg-gold" : "w-2.5 bg-ivory/70",
-            )}
-            aria-label={`Show slide ${index + 1}`}
-          />
-        ))}
       </div>
     </section>
   );

@@ -1,25 +1,11 @@
 {
   "primaryNavigation": [
     {
-      "label": "About",
-      "href": "/about",
-      "children": [
-        {
-          "label": "Our History",
-          "href": "/about/our-history"
-        },
-        {
-          "label": "Services",
-          "href": "/services"
-        },
-        {
-          "label": "Reviews",
-          "href": "/reviews"
-        }
-      ]
+      "label": "Shop All",
+      "href": "/shop"
     },
     {
-      "label": "For Men",
+      "label": "Collections",
       "children": [
         {
           "label": "Accessories",
@@ -69,6 +55,7 @@
     },
     {
       "label": "Designers",
+      "href": "/designers",
       "children": [
         {
           "label": "Featured Designers",
@@ -86,6 +73,7 @@
     },
     {
       "label": "Tuxedos",
+      "href": "/suit-tuxedo-rentals",
       "children": [
         {
           "label": "Suit & Tuxedo Rentals",
@@ -102,11 +90,26 @@
       "href": "/locations"
     },
     {
-      "label": "Contact",
-      "href": "/contact-us"
+      "label": "About",
+      "href": "/about",
+      "children": [
+        {
+          "label": "Our History",
+          "href": "/about/our-history"
+        },
+        {
+          "label": "Services",
+          "href": "/services"
+        },
+        {
+          "label": "Reviews",
+          "href": "/reviews"
+        }
+      ]
     },
     {
       "label": "What's New",
+      "href": "/blog",
       "children": [
         {
           "label": "Blog",
@@ -119,8 +122,8 @@
       ]
     },
     {
-      "label": "Shop",
-      "href": "/shop-coming-soon"
+      "label": "Contact",
+      "href": "/contact-us"
     },
     {
       "label": "Sale",
@@ -129,23 +132,19 @@
   ],
   "headerTopLinks": [
     {
-      "label": "Shop Online",
-      "href": "/shop-coming-soon"
+      "label": "Locations",
+      "href": "/locations"
     },
     {
-      "label": "Schedule Appointment",
-      "href": "/schedule-appointment"
+      "label": "Reviews",
+      "href": "/reviews"
     },
     {
-      "label": "View Cart",
-      "href": "/cart"
+      "label": "Contact",
+      "href": "/contact-us"
     }
   ],
   "headerCtas": [
-    {
-      "label": "Shop Online",
-      "href": "/shop-coming-soon"
-    },
     {
       "label": "Book Appointment",
       "href": "/schedule-appointment"
@@ -153,27 +152,27 @@
   ],
   "footerShoppingLinks": [
     {
-      "label": "Shop Online",
-      "href": "/shop-coming-soon"
+      "label": "Shop All",
+      "href": "/shop"
     },
     {
-      "label": "Schedule Appointment",
+      "label": "Categories",
+      "href": "/for-men"
+    },
+    {
+      "label": "Designers",
+      "href": "/designers/featured-designers"
+    },
+    {
+      "label": "Appointments",
       "href": "/schedule-appointment"
     },
     {
-      "label": "Tuxedo Rentals",
+      "label": "Formalwear",
       "href": "/suit-tuxedo-rentals"
     },
     {
-      "label": "Register Wedding",
-      "href": "/register-your-wedding"
-    },
-    {
-      "label": "Sale Coming Soon",
-      "href": "/sale-coming-soon"
-    },
-    {
-      "label": "Cart",
+      "label": "Bag",
       "href": "/cart"
     }
   ],
@@ -215,6 +214,6 @@
       "href": "/privacy-policy"
     }
   ],
-  "footerNewsletterTitle": "Stay in the Loop",
-  "footerNewsletterCopy": "New arrivals, seasonal edits, and private appointment windows. Newsletter signup backend is coming soon."
+  "footerNewsletterTitle": "Stay Connected",
+  "footerNewsletterCopy": "Follow J. Barbaro Clothiers for new arrivals, designer highlights, and appointment updates."
 }

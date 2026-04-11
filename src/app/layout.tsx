@@ -1,31 +1,21 @@
 import type { Metadata } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { FloatingCartBar } from "@/components/shop/FloatingCartBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { buildPrimaryNavigation } from "@/data/navigation";
 import { siteSettings } from "@/data/site-settings";
 import { socialLinks } from "@/data/social";
 import { SITE_URL } from "@/lib/constants";
 import { getDefaultSiteMetadata } from "@/lib/seo";
+import { resolveCollectionNavItems } from "@/lib/shopify/collection-nav";
+import { resolveMenCategories } from "@/lib/shopify/men-categories";
 
 import "./globals.css";
 
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-  weight: ["500", "600", "700"],
-});
-
 export const metadata: Metadata = getDefaultSiteMetadata();
+export const revalidate = 300;
 
 const organizationJsonLd = {
   "@context": "https://schema.org",
@@ -38,9 +28,18 @@ const organizationJsonLd = {
   logo: siteSettings.logoUrl,
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const categories = await resolveMenCategories(24, 1);
+  const collectionNavItems = await resolveCollectionNavItems(40);
+  const navItems = buildPrimaryNavigation(
+    categories.map((category) => ({
+      label: category.name,
+      href: category.href,
+    })),
+  );
+
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en">
       <body className="luxe-shell antialiased">
         <a
           href="#main-content"
@@ -49,7 +48,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           Skip to content
         </a>
         <SeoJsonLd data={organizationJsonLd} />
-        <SiteHeader />
+        <SiteHeader navItems={navItems} collectionItems={collectionNavItems} />
         <main id="main-content" className="min-h-[60vh]">
           {children}
         </main>

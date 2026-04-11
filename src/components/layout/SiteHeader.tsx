@@ -3,21 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Facebook,
-  Instagram,
-  Linkedin,
-  Menu,
-  MoveUpRight,
-  PinIcon,
-  X,
-  XIcon,
-} from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ButtonLink } from "@/components/ui/Button";
+import { Facebook, Instagram, Linkedin, Menu, PinIcon, X, XIcon } from "lucide-react";
 
+import { HeaderCartButton } from "@/components/layout/HeaderCartButton";
 import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
-import { headerTopLinks, primaryNavigation } from "@/data/navigation";
+import { MainNav } from "@/components/layout/MainNav";
+import { headerCtas, headerTopLinks, primaryNavigation } from "@/data/navigation";
+import type { NavItem } from "@/data/navigation";
 import { siteSettings } from "@/data/site-settings";
+import type { CollectionNavItem } from "@/lib/shopify/collection-nav";
 import { socialLinks } from "@/data/social";
 import { cn } from "@/lib/utils";
 
@@ -40,14 +36,44 @@ function iconForSocial(label: string) {
   }
 }
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  navItems?: NavItem[];
+  collectionItems?: CollectionNavItem[];
+};
+
+export function SiteHeader({ navItems = primaryNavigation, collectionItems = [] }: SiteHeaderProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const primaryCta = headerCtas[0];
+
+  useEffect(() => {
+    function handleScroll() {
+      setIsScrolled(window.scrollY > 12);
+    }
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  function matchesPath(href?: string) {
+    if (!href) {
+      return false;
+    }
+
+    if (href === "/") {
+      return pathname === href;
+    }
+
+    return pathname === href || pathname.startsWith(`${href}/`);
+  }
 
   return (
-    <header className="sticky top-0 z-[90] border-b border-ink/10 bg-ivory/95 lg:backdrop-blur-xl">
-      <div className="hidden bg-ink text-ivory lg:block">
-        <div className="mx-auto flex h-10 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+    <>
+      <div className="hidden border-b border-ink/8 bg-ink text-ivory lg:block">
+        <div className="mx-auto flex h-10 max-w-[84rem] items-center justify-between px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             {socialLinks.map((social) => (
               <Link
@@ -62,6 +88,7 @@ export function SiteHeader() {
               </Link>
             ))}
           </div>
+
           <div className="flex items-center gap-4 text-[11px] font-medium tracking-[0.18em] uppercase">
             {headerTopLinks.map((item, index) => (
               <div key={item.href} className="flex items-center gap-4">
@@ -70,7 +97,7 @@ export function SiteHeader() {
                     |
                   </span>
                 ) : null}
-                <Link href={item.href} className={index === 0 ? "text-gold hover:text-ivory" : "hover:text-gold"}>
+                <Link href={item.href} className={cn("transition-colors hover:text-gold", matchesPath(item.href) && "text-gold")}>
                   {item.label}
                 </Link>
               </div>
@@ -79,96 +106,74 @@ export function SiteHeader() {
         </div>
       </div>
 
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 sm:h-20 sm:px-6 lg:px-8">
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 text-ink sm:h-10 sm:w-10 lg:hidden"
-          aria-label="Open navigation"
-          aria-expanded={isOpen}
-        >
-          <Menu className="h-5 w-5" />
-        </button>
+      <header
+        className={cn(
+          "sticky top-0 z-[96] border-b border-ink/10 bg-ivory/95 backdrop-blur-xl transition-shadow duration-200",
+          isScrolled ? "shadow-[0_18px_34px_-30px_rgba(14,23,38,0.24)]" : "shadow-none",
+        )}
+      >
+        <div className="mx-auto max-w-[84rem] px-4 sm:px-6 lg:px-8">
+          <div className="lg:hidden">
+            <div className="grid h-16 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-3 sm:h-[4.5rem] sm:grid-cols-[2.75rem_1fr_2.75rem]">
+              <button
+                type="button"
+                onClick={() => setIsOpen(true)}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink/20 text-ink"
+                aria-label="Open navigation"
+                aria-expanded={isOpen}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
 
-        <Link href="/" className="mx-auto lg:mx-0" aria-label="J. Barbaro Clothiers Home">
-          <Image
-            src={siteSettings.logoUrl}
-            alt={`${siteSettings.siteName} logo`}
-            width={222}
-            height={68}
-            priority
-            className="h-auto w-[140px] min-[400px]:w-[170px] sm:w-[220px]"
-          />
-        </Link>
+              <Link href="/" className="flex justify-center" aria-label="J. Barbaro Clothiers Home">
+                <Image
+                  src={siteSettings.logoUrl}
+                  alt={`${siteSettings.siteName} logo`}
+                  width={222}
+                  height={68}
+                  priority
+                  className="h-auto w-[148px] min-[400px]:w-[176px] sm:w-[188px]"
+                />
+              </Link>
 
-        <div aria-hidden className="h-9 w-9 shrink-0 sm:h-10 sm:w-10 lg:hidden" />
+              <div className="flex justify-end">
+                <HeaderCartButton compact />
+              </div>
+            </div>
 
-        <div className="hidden min-w-0 flex-1 justify-end pl-6 lg:flex">
-          <div className="w-full max-w-md">
-            <HeaderProductSearch />
+            <div className="pb-4">
+              <HeaderProductSearch />
+            </div>
+          </div>
+
+          <div className="hidden lg:flex lg:h-[5rem] lg:items-center lg:justify-between lg:gap-8">
+            <Link href="/" className="shrink-0" aria-label="J. Barbaro Clothiers Home">
+              <Image
+                src={siteSettings.logoUrl}
+                alt={`${siteSettings.siteName} logo`}
+                width={222}
+                height={68}
+                priority
+                className="h-auto w-[190px] xl:w-[208px]"
+              />
+            </Link>
+
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2.5 xl:gap-3">
+              <div className="w-full max-w-[24rem] xl:max-w-[30rem]">
+                <HeaderProductSearch />
+              </div>
+              {primaryCta ? (
+                <ButtonLink href={primaryCta.href} size="sm" variant="primary" className="shrink-0">
+                  {primaryCta.label}
+                </ButtonLink>
+              ) : null}
+              <HeaderCartButton compact className="h-10 w-10 shrink-0 border-ink/14 bg-white hover:bg-stone/55" />
+            </div>
           </div>
         </div>
-      </div>
 
-      <nav className="hidden border-t border-ink/10 bg-ivory lg:block" aria-label="Primary">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <ul className="flex items-center justify-center gap-6 py-4 text-[11px] font-semibold tracking-[0.15em] uppercase">
-            {primaryNavigation.map((item) => (
-              <li key={item.label} className="group relative">
-                {item.children ? (
-                  <>
-                    <Link
-                      href={item.href || item.children[0]?.href || "/"}
-                      target={item.external ? "_blank" : undefined}
-                      rel={item.external ? "noopener noreferrer" : undefined}
-                      className={cn(
-                        "inline-flex items-center gap-1 text-ink transition-colors hover:text-deep-teal",
-                        (pathname === item.href || item.children.some((child) => pathname === child.href)) && "text-deep-teal",
-                      )}
-                    >
-                      {item.label}
-                      {item.external ? <MoveUpRight className="h-3.5 w-3.5" /> : null}
-                    </Link>
-                    <div className="invisible absolute top-full left-1/2 mt-4 w-[300px] -translate-x-1/2 rounded-2xl border border-ink/10 bg-ivory p-3 opacity-0 shadow-xl transition-all duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
-                      <ul className="space-y-1.5">
-                        {item.children.map((child) => (
-                          <li key={child.href}>
-                            <Link
-                              href={child.href}
-                              target={child.external ? "_blank" : undefined}
-                              rel={child.external ? "noopener noreferrer" : undefined}
-                              className={cn(
-                                "flex items-center justify-between rounded-xl px-3 py-2 text-[11px] font-medium tracking-[0.1em] text-ink uppercase transition-all hover:bg-stone hover:text-deep-teal",
-                                pathname === child.href && "bg-stone text-deep-teal",
-                              )}
-                            >
-                              <span>{child.label}</span>
-                              {child.external ? <MoveUpRight className="h-3.5 w-3.5" /> : null}
-                            </Link>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </>
-                ) : (
-                  <Link
-                    href={item.href || "/"}
-                    target={item.external ? "_blank" : undefined}
-                    rel={item.external ? "noopener noreferrer" : undefined}
-                    className={cn(
-                      "inline-flex items-center gap-1 text-ink transition-colors hover:text-deep-teal",
-                      pathname === item.href && "text-deep-teal",
-                    )}
-                  >
-                    {item.label}
-                    {item.external ? <MoveUpRight className="h-3.5 w-3.5" /> : null}
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </nav>
+        <MainNav primaryItems={navItems} collectionItems={collectionItems} />
+      </header>
 
       <div
         className={cn(
@@ -187,7 +192,7 @@ export function SiteHeader() {
         aria-label="Mobile navigation panel"
       >
         <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold tracking-[0.18em] text-ink/70 uppercase">Menu</p>
+          <p className="text-xs font-semibold tracking-[0.18em] text-ink/70 uppercase">Navigation</p>
           <button
             type="button"
             onClick={() => setIsOpen(false)}
@@ -200,60 +205,36 @@ export function SiteHeader() {
 
         <HeaderProductSearch className="mt-6" onNavigate={() => setIsOpen(false)} />
 
-        <nav className="mt-6" aria-label="Mobile">
-          <ul className="space-y-2">
-            {primaryNavigation.map((item) => (
-              <li key={item.label} className="rounded-2xl border border-ink/10 bg-stone/50">
-                {item.children ? (
-                  <details>
-                    <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold tracking-[0.08em] text-ink uppercase">
-                      {item.label}
-                    </summary>
-                    {item.href ? (
-                      <div className="px-2">
-                        <Link
-                          href={item.href}
-                          onClick={() => setIsOpen(false)}
-                          className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-semibold tracking-[0.08em] text-deep-teal uppercase hover:bg-ivory"
-                        >
-                          View {item.label}
-                        </Link>
-                      </div>
-                    ) : null}
-                    <ul className="space-y-1 border-t border-ink/10 p-2">
-                      {item.children.map((child) => (
-                        <li key={child.href}>
-                          <Link
-                            href={child.href}
-                            target={child.external ? "_blank" : undefined}
-                            rel={child.external ? "noopener noreferrer" : undefined}
-                            onClick={() => setIsOpen(false)}
-                            className="flex items-center justify-between rounded-xl px-3 py-2 text-sm text-ink/85 hover:bg-ivory"
-                          >
-                            {child.label}
-                            {child.external ? <MoveUpRight className="h-4 w-4" /> : null}
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  </details>
-                ) : (
-                  <Link
-                    href={item.href || "/"}
-                    target={item.external ? "_blank" : undefined}
-                    rel={item.external ? "noopener noreferrer" : undefined}
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center justify-between px-4 py-3 text-sm font-semibold tracking-[0.08em] text-ink uppercase"
-                  >
-                    {item.label}
-                    {item.external ? <MoveUpRight className="h-4 w-4" /> : null}
-                  </Link>
-                )}
-              </li>
+        {primaryCta ? (
+          <div className="mt-4">
+            <ButtonLink href={primaryCta.href} onClick={() => setIsOpen(false)} size="sm" className="w-full">
+              {primaryCta.label}
+            </ButtonLink>
+          </div>
+        ) : null}
+
+        <MainNav
+          mobile
+          primaryItems={navItems}
+          collectionItems={collectionItems}
+          onNavigate={() => setIsOpen(false)}
+        />
+
+        <div className="mt-6 border-t border-ink/10 pt-6">
+          <div className="grid grid-cols-3 gap-2">
+            {headerTopLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="rounded-2xl border border-ink/10 bg-white px-3 py-3 text-center text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-gold/35"
+              >
+                {item.label}
+              </Link>
             ))}
-          </ul>
-        </nav>
+          </div>
+        </div>
       </div>
-    </header>
+    </>
   );
 }

@@ -27,20 +27,28 @@ type NavigationData = {
 
 const navigation = navigationJson as NavigationData;
 
-export const primaryNavigation: NavItem[] = navigation.primaryNavigation.map((item): NavItem => {
-  if (item.label !== "For Men") {
-    return item;
-  }
+const defaultForMenChildren = menCategories.map((category): NavChild => ({
+  label: category.name,
+  href: getMenCategoryHref(category),
+}));
 
-  return {
-    ...item,
-    href: item.href || "/for-men",
-    children: menCategories.map((category): NavChild => ({
-      label: category.name,
-      href: getMenCategoryHref(category),
-    })),
-  };
-});
+export function buildPrimaryNavigation(forMenChildren: NavChild[] = defaultForMenChildren): NavItem[] {
+  return navigation.primaryNavigation.map((item): NavItem => {
+    if (item.label !== "Collections") {
+      return item;
+    }
+
+    const liveChildren = forMenChildren.filter((child) => child.href && child.label);
+
+    return {
+      ...item,
+      href: item.href || "/for-men",
+      ...(liveChildren.length > 0 ? { children: liveChildren } : {}),
+    };
+  });
+}
+
+export const primaryNavigation: NavItem[] = buildPrimaryNavigation();
 export const headerTopLinks = navigation.headerTopLinks;
 export const headerCtas = navigation.headerCtas;
 export const footerShoppingLinks = navigation.footerShoppingLinks;

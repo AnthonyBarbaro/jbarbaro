@@ -194,6 +194,7 @@ function assertCartMutationResult(payload: CartMutationPayload | undefined, oper
 export async function getCart(cartId: string, buyerIp?: string | null): Promise<ShopifyCartSnapshot | null> {
   const data = await storefrontRequest<CartQueryResponse, { cartId: string }>({
     buyerIp,
+    cache: "no-store",
     query: `
       ${CART_FRAGMENT}
       query GetCart($cartId: ID!) {
@@ -216,6 +217,7 @@ export async function createCart(options?: {
 }): Promise<{ cartId: string; cart: ShopifyCartSnapshot }> {
   const data = await storefrontRequest<CartCreateResponse, { input?: { lines?: ShopifyCartLineInput[] } }>({
     buyerIp: options?.buyerIp,
+    cache: "no-store",
     query: `
       ${CART_FRAGMENT}
       mutation CreateCart($input: CartInput) {
@@ -251,6 +253,7 @@ export async function createCart(options?: {
 export async function addCartLines(cartId: string, lines: ShopifyCartLineInput[], buyerIp?: string | null) {
   const data = await storefrontRequest<CartLinesAddResponse, { cartId: string; lines: ShopifyCartLineInput[] }>({
     buyerIp,
+    cache: "no-store",
     query: `
       ${CART_FRAGMENT}
       mutation AddCartLines($cartId: ID!, $lines: [CartLineInput!]!) {
@@ -277,6 +280,7 @@ export async function addCartLines(cartId: string, lines: ShopifyCartLineInput[]
 export async function updateCartLines(cartId: string, lines: ShopifyCartLineUpdate[], buyerIp?: string | null) {
   const data = await storefrontRequest<CartLinesUpdateResponse, { cartId: string; lines: ShopifyCartLineUpdate[] }>({
     buyerIp,
+    cache: "no-store",
     query: `
       ${CART_FRAGMENT}
       mutation UpdateCartLines($cartId: ID!, $lines: [CartLineUpdateInput!]!) {
@@ -303,6 +307,7 @@ export async function updateCartLines(cartId: string, lines: ShopifyCartLineUpda
 export async function removeCartLines(cartId: string, lineIds: string[], buyerIp?: string | null) {
   const data = await storefrontRequest<CartLinesRemoveResponse, { cartId: string; lineIds: string[] }>({
     buyerIp,
+    cache: "no-store",
     query: `
       ${CART_FRAGMENT}
       mutation RemoveCartLines($cartId: ID!, $lineIds: [ID!]!) {

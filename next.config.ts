@@ -92,6 +92,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/shop-coming-soon",
+        destination: "/shop",
+        permanent: true,
+      },
+      {
         source: "/admin",
         destination: "/admin/index.html",
         permanent: false,

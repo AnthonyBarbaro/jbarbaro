@@ -1,7 +1,6 @@
 import { ShoppingBag, UserRoundCheck } from "lucide-react";
 
 import { ShopifyCartClient } from "@/components/shop/ShopifyCartClient";
-import { ShopifyReadinessPanel } from "@/components/shop/ShopifyReadinessPanel";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -11,7 +10,7 @@ import { getShopifyConfigStatus } from "@/lib/shopify/config";
 
 export const metadata = buildMetadata({
   title: "Cart",
-  description: "Traditional shopping bag page with live Shopify cart updates and checkout handoff.",
+  description: "Shopping bag with live totals and secure checkout.",
   path: "/cart",
 });
 
@@ -31,17 +30,15 @@ export default function CartPlaceholderPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">Cart</p>
-              <h1 className="mt-3 font-heading text-4xl text-ink sm:text-5xl">
-                {status.configured ? "Shopping Bag" : "Cart Experience in Build"}
-              </h1>
+              <h1 className="mt-3 font-heading text-4xl text-ink sm:text-5xl">Shopping Bag</h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-smoke">
                 {status.configured
                   ? "Selected pieces, live totals, and a clean transition into secure checkout."
-                  : "We&apos;re preparing a traditional shopping bag flow on this site with Shopify handling the commerce layer and checkout."}
+                  : "Online checkout is temporarily unavailable. You can still browse the shop or book an appointment for a prepared fitting."}
               </p>
             </div>
-            <ButtonLink href={status.configured ? "/shop" : "/for-men"} variant="secondary" className="w-full sm:w-auto">
-              {status.configured ? "Continue Shopping" : "Browse Collections"}
+            <ButtonLink href="/shop" variant="secondary" className="w-full sm:w-auto">
+              Continue Shopping
             </ButtonLink>
           </div>
         </Container>
@@ -57,10 +54,18 @@ export default function CartPlaceholderPage() {
                 <CardContent className="flex items-start gap-3">
                   <ShoppingBag className="h-6 w-6 text-deep-teal" />
                   <div>
-                    <h2 className="font-heading text-2xl text-ink sm:text-3xl">Headless Cart Foundation</h2>
+                    <h2 className="font-heading text-2xl text-ink sm:text-3xl">Keep Shopping</h2>
                     <p className="mt-2 text-sm leading-7 text-smoke">
-                      Cart session handling, Shopify checkout handoff, and Storefront API plumbing are now the active workstream.
+                      Explore current arrivals, category pages, and seasonal favorites while we finish refreshing bag access.
                     </p>
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <ButtonLink href="/shop" className="w-full sm:w-auto">
+                        Browse the Shop
+                      </ButtonLink>
+                      <ButtonLink href="/for-men" variant="secondary" className="w-full sm:w-auto">
+                        Shop by Category
+                      </ButtonLink>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -70,24 +75,16 @@ export default function CartPlaceholderPage() {
                   <div>
                     <h2 className="font-heading text-2xl text-ink sm:text-3xl">Get a Personalized Pull List</h2>
                     <p className="mt-2 text-sm leading-7 text-smoke">
-                      While online commerce is being wired up, book an appointment and we&apos;ll prepare styles in your size before you
-                      arrive.
+                      Book an appointment and we&apos;ll prepare styles in your size before you arrive.
                     </p>
                     <div className="mt-5 flex flex-wrap gap-3">
                       <ButtonLink href="/schedule-appointment" className="w-full sm:w-auto">
                         Book Appointment
                       </ButtonLink>
-                      <ButtonLink href="/for-men" variant="secondary" className="w-full sm:w-auto">
-                        Browse Collections
-                      </ButtonLink>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            </div>
-
-            <div className="mt-8">
-              <ShopifyReadinessPanel />
             </div>
           </Container>
         )}

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
       {
         configured: false,
         results: [],
-        message: `Shopify search is unavailable. Missing environment variables: ${status.missingKeys.join(", ")}`,
+        message: "Search is temporarily unavailable.",
       },
       { status: 503 },
     );

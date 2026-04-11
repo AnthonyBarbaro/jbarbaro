@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
         {
           configured: false,
           missingKeys: status.missingKeys,
-          message: "Shopify Storefront API is not configured.",
+          message: "Checkout is temporarily unavailable.",
         },
         { status: 503 },
       );
@@ -50,6 +50,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ message: "Unexpected Shopify checkout error." }, { status: 500 });
+    return NextResponse.json({ message: "Unexpected checkout error." }, { status: 500 });
   }
 }

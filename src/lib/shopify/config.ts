@@ -2,6 +2,8 @@ import "server-only";
 
 import { z } from "zod";
 
+export const SHOPIFY_STOREFRONT_REVALIDATE_SECONDS = 300;
+
 const blankToUndefined = (value: unknown) => {
   if (typeof value !== "string") {
     return undefined;

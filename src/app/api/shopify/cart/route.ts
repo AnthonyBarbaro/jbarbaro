@@ -46,7 +46,7 @@ function getUnavailableResponse() {
     {
       configured: false,
       missingKeys: status.missingKeys,
-      message: "Shopify Storefront API is not configured.",
+      message: "Shopping bag is temporarily unavailable.",
     },
     { status: 503 },
   );
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ configured: true, cart });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ message: "Unexpected Shopify cart error." }, { status: 500 });
+    return NextResponse.json({ message: "Unexpected bag error." }, { status: 500 });
   }
 }
 
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ configured: true, cart: createdCart.cart }, { status: 201 });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ message: "Unexpected Shopify cart error." }, { status: 500 });
+    return NextResponse.json({ message: "Unexpected bag error." }, { status: 500 });
   }
 }
 
@@ -156,7 +156,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ configured: true, cart });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ message: "Unexpected Shopify cart error." }, { status: 500 });
+    return NextResponse.json({ message: "Unexpected bag error." }, { status: 500 });
   }
 }
 
@@ -185,6 +185,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ configured: true, cart });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ message: "Unexpected Shopify cart error." }, { status: 500 });
+    return NextResponse.json({ message: "Unexpected bag error." }, { status: 500 });
   }
 }

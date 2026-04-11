@@ -1,7 +1,6 @@
 "use client";
 
 import { useDeferredValue, useEffect, useRef, useState, useTransition } from "react";
-import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, X } from "lucide-react";
 
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
@@ -104,13 +103,19 @@ function pluralize(count: number, singular: string, plural = `${singular}s`) {
   return count === 1 ? singular : plural;
 }
 
+function readQueryFromLocation() {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  return new URLSearchParams(window.location.search).get("q")?.trim() || "";
+}
+
 export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
-  const searchParams = useSearchParams();
-  const initialQuery = searchParams.get("q")?.trim() || "";
   const [isPending, startTransition] = useTransition();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [gridColumns, setGridColumns] = useState<GridColumns>(1);
-  const [query, setQuery] = useState(initialQuery);
+  const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOption>("featured");
   const [availability, setAvailability] = useState<AvailabilityOption>(DEFAULT_AVAILABILITY);
   const [priceFilter, setPriceFilter] = useState<PriceOption>("all");
@@ -137,8 +142,17 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
   const searchableQuery = deferredQuery.trim().toLowerCase();
 
   useEffect(() => {
-    setQuery(initialQuery);
-  }, [initialQuery]);
+    function syncQueryFromLocation() {
+      setQuery(readQueryFromLocation());
+    }
+
+    syncQueryFromLocation();
+    window.addEventListener("popstate", syncQueryFromLocation);
+
+    return () => {
+      window.removeEventListener("popstate", syncQueryFromLocation);
+    };
+  }, []);
 
   const appliedFilterSignature = JSON.stringify({
     sort: deferredSort,

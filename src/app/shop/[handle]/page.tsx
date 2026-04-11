@@ -3,11 +3,12 @@ import { notFound } from "next/navigation";
 
 import { ProductDetailClient } from "@/components/shop/ProductDetailClient";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
+import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
-import { getRecommendedProducts, getShopProduct, getShopProducts } from "@/lib/shopify/products";
+import { getRecommendedProducts, getShopProduct, getShopProductPreviews, getShopProducts } from "@/lib/shopify/products";
+import type { ShopifyProduct } from "@/lib/shopify/types";
 
 type ShopProductPageProps = {
   params: Promise<{
@@ -15,14 +16,41 @@ type ShopProductPageProps = {
   }>;
 };
 
+export const revalidate = 300;
+
+async function loadShopProduct(handle: string) {
+  try {
+    return {
+      product: await getShopProduct(handle),
+      unavailable: false,
+    };
+  } catch (error) {
+    console.error(`Unable to load Shopify product "${handle}".`, error);
+    return {
+      product: null,
+      unavailable: true,
+    };
+  }
+}
+
+export async function generateStaticParams() {
+  try {
+    const products = await getShopProductPreviews(100);
+    return products.map((product) => ({ handle: product.handle }));
+  } catch (error) {
+    console.error("Unable to build static params for Shopify product pages.", error);
+    return [];
+  }
+}
+
 export async function generateMetadata({ params }: ShopProductPageProps): Promise<Metadata> {
   const { handle } = await params;
-  const product = await getShopProduct(handle);
+  const { product } = await loadShopProduct(handle);
 
   if (!product) {
     return buildMetadata({
-      title: "Product Not Found",
-      description: "Requested shop product was not found.",
+      title: "Shop Product",
+      description: "Product detail from the J. Barbaro online shop.",
       path: `/shop/${handle}`,
     });
   }
@@ -62,22 +90,44 @@ export async function generateMetadata({ params }: ShopProductPageProps): Promis
 
 export default async function ShopProductPage({ params }: ShopProductPageProps) {
   const { handle } = await params;
-  const product = await getShopProduct(handle);
+  const { product, unavailable } = await loadShopProduct(handle);
+
+  if (unavailable) {
+    return (
+      <WaveSection topWave="A" background="ivory" contentClassName="py-8 sm:py-12 lg:py-16">
+        <Container>
+          <div className="rounded-[2rem] border border-ink/10 bg-white/88 p-6 sm:p-8">
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">Product temporarily unavailable</p>
+            <h1 className="mt-3 font-heading text-3xl text-ink sm:text-4xl">This product page is temporarily unavailable.</h1>
+            <p className="mt-4 max-w-3xl text-sm leading-7 text-smoke sm:text-base sm:leading-8">
+              Please check back shortly, or continue shopping and book an appointment if you&apos;d like us to prepare options for you in person.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <ButtonLink href="/shop">Back to Shop</ButtonLink>
+              <ButtonLink href="/schedule-appointment" variant="secondary">
+                Book Appointment
+              </ButtonLink>
+            </div>
+          </div>
+        </Container>
+      </WaveSection>
+    );
+  }
 
   if (!product) {
     notFound();
   }
 
-  const breadcrumbs = [
-    { name: "Home", href: "/" },
-    { name: "Shop", href: "/shop" },
-    { name: product.title, href: `/shop/${product.handle}` },
-  ];
+  let relatedProducts: ShopifyProduct[] = [];
 
-  let relatedProducts = await getRecommendedProducts(product.id, product.handle, 4);
+  try {
+    relatedProducts = await getRecommendedProducts(product.id, product.handle, 4);
 
-  if (relatedProducts.length === 0) {
-    relatedProducts = (await getShopProducts(8)).filter((item) => item.handle !== product.handle).slice(0, 4);
+    if (relatedProducts.length === 0) {
+      relatedProducts = (await getShopProducts(8)).filter((item) => item.handle !== product.handle).slice(0, 4);
+    }
+  } catch (error) {
+    console.error(`Unable to load related Shopify products for "${product.handle}".`, error);
   }
 
   relatedProducts = relatedProducts
@@ -129,8 +179,7 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
   return (
     <div className="overflow-x-clip">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
-      <Breadcrumbs items={breadcrumbs} />
-      <WaveSection topWave="A" background="ivory" className="overflow-x-clip" contentClassName="py-6 sm:py-10 lg:py-16">
+      <WaveSection topWave="A" background="ivory" className="overflow-x-clip" contentClassName="py-6 sm:py-10 lg:py-14">
         <Container>
           <ProductDetailClient key={product.id} product={product} />
         </Container>
@@ -140,8 +189,8 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
         <WaveSection topWave="C" background="stone" className="overflow-x-clip">
           <Container className="overflow-x-clip">
             <div className="flex flex-col gap-3">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">Recommended</p>
-              <h2 className="font-heading text-[2rem] text-ink sm:text-4xl">You May Also Like</h2>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">More to Explore</p>
+              <h2 className="font-heading text-[2rem] text-ink sm:text-4xl">Complete the Look</h2>
             </div>
             <div className="mt-8 md:hidden">
               <div className="overflow-x-hidden">

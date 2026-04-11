@@ -2,19 +2,17 @@
 
 import { useDeferredValue, useEffect, useRef, useState, useTransition } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
-import { Container } from "@/components/ui/Container";
 import { FieldLabel, Input, Select } from "@/components/ui/Field";
-import type { ShopifyCollectionPreview, ShopifyProduct } from "@/lib/shopify/types";
+import type { ShopifyProduct } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils";
 
 type ShopCatalogClientProps = {
   products: ShopifyProduct[];
-  collections: ShopifyCollectionPreview[];
 };
 
 type SortOption = "featured" | "price-low" | "price-high" | "title-asc";
@@ -102,14 +100,13 @@ function arraysEqual(left: string[], right: string[]) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
-function getCollectionFilters(searchParams: Pick<URLSearchParams, "getAll">) {
-  return Array.from(new Set(searchParams.getAll("collection").map((value) => value.trim()).filter(Boolean)));
+function pluralize(count: number, singular: string, plural = `${singular}s`) {
+  return count === 1 ? singular : plural;
 }
 
-export function ShopCatalogClient({ products, collections }: ShopCatalogClientProps) {
+export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get("q")?.trim() || "";
-  const initialCollections = getCollectionFilters(searchParams);
   const [isPending, startTransition] = useTransition();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [gridColumns, setGridColumns] = useState<GridColumns>(1);
@@ -117,7 +114,6 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
   const [sort, setSort] = useState<SortOption>("featured");
   const [availability, setAvailability] = useState<AvailabilityOption>(DEFAULT_AVAILABILITY);
   const [priceFilter, setPriceFilter] = useState<PriceOption>("all");
-  const [selectedCollections, setSelectedCollections] = useState<string[]>(initialCollections);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
@@ -129,7 +125,6 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
   const deferredSort = useDeferredValue(sort);
   const deferredAvailability = useDeferredValue(availability);
   const deferredPriceFilter = useDeferredValue(priceFilter);
-  const deferredSelectedCollections = useDeferredValue(selectedCollections);
   const deferredSelectedTypes = useDeferredValue(selectedTypes);
   const deferredSelectedVendors = useDeferredValue(selectedVendors);
   const deferredSelectedSizes = useDeferredValue(selectedSizes);
@@ -145,16 +140,10 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
     setQuery(initialQuery);
   }, [initialQuery]);
 
-  useEffect(() => {
-    const nextSelectedCollections = getCollectionFilters(searchParams);
-    setSelectedCollections((current) => (arraysEqual(current, nextSelectedCollections) ? current : nextSelectedCollections));
-  }, [searchParams]);
-
   const appliedFilterSignature = JSON.stringify({
     sort: deferredSort,
     availability: deferredAvailability,
     priceFilter: deferredPriceFilter,
-    collections: deferredSelectedCollections,
     types: deferredSelectedTypes,
     vendors: deferredSelectedVendors,
     sizes: deferredSelectedSizes,
@@ -163,9 +152,6 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
 
   let filteredProducts = products.filter((product) => {
     const matchesQuery = searchableQuery.length === 0 || formatSearchText(product).includes(searchableQuery);
-    const matchesCollection =
-      deferredSelectedCollections.length === 0 ||
-      product.collections.some((collection) => deferredSelectedCollections.includes(collection.handle));
     const matchesType = deferredSelectedTypes.length === 0 || deferredSelectedTypes.includes(product.productType);
     const matchesVendor = deferredSelectedVendors.length === 0 || deferredSelectedVendors.includes(product.vendor);
     const matchesSize = matchesVariantOption(product, "size", deferredSelectedSizes);
@@ -173,7 +159,6 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
 
     return (
       matchesQuery &&
-      matchesCollection &&
       matchesType &&
       matchesVendor &&
       matchesSize &&
@@ -207,7 +192,6 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
       setSort("featured");
       setAvailability(DEFAULT_AVAILABILITY);
       setPriceFilter("all");
-      setSelectedCollections([]);
       setSelectedTypes([]);
       setSelectedVendors([]);
       setSelectedSizes([]);
@@ -219,7 +203,6 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
     query.trim().length > 0 ||
     availability !== DEFAULT_AVAILABILITY ||
     priceFilter !== "all" ||
-    selectedCollections.length > 0 ||
     selectedTypes.length > 0 ||
     selectedVendors.length > 0 ||
     selectedSizes.length > 0 ||
@@ -231,13 +214,11 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
     sort !== deferredSort ||
     availability !== deferredAvailability ||
     priceFilter !== deferredPriceFilter ||
-    !arraysEqual(selectedCollections, deferredSelectedCollections) ||
     !arraysEqual(selectedTypes, deferredSelectedTypes) ||
     !arraysEqual(selectedVendors, deferredSelectedVendors) ||
     !arraysEqual(selectedSizes, deferredSelectedSizes) ||
     !arraysEqual(selectedColors, deferredSelectedColors);
   const activeFilterCount =
-    selectedCollections.length +
     selectedTypes.length +
     selectedVendors.length +
     selectedSizes.length +
@@ -318,19 +299,16 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
 
     return (
       <Card
-        tone="stone"
         className={cn(
-          variant === "mobile" && "flex max-h-[min(82dvh,48rem)] flex-col border-ink/12 shadow-[0_30px_80px_-50px_rgba(14,23,38,0.4)]",
+          "border-ink/10 bg-white",
+          variant === "mobile" && "flex max-h-[min(82dvh,48rem)] flex-col shadow-[0_30px_80px_-50px_rgba(14,23,38,0.4)]",
           variant === "desktop" &&
-            "flex h-full max-h-[calc(100dvh-7.5rem)] flex-col border-ink/8 bg-[#f8f5ee] shadow-[0_30px_70px_-52px_rgba(14,23,38,0.32)]",
+            "flex h-full max-h-[calc(100dvh-6.25rem)] flex-col rounded-none border-y-0 border-l-0 border-r border-ink/10 shadow-none",
         )}
       >
         <CardContent className={cn((variant === "mobile" || variant === "desktop") && "flex min-h-0 flex-1 flex-col")}>
           <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-smoke uppercase">Refine the Rack</p>
-              <h2 className="mt-2 font-heading text-3xl text-ink">Filter Products</h2>
-            </div>
+            <p className="text-xs font-semibold tracking-[0.22em] text-smoke uppercase sm:text-sm">Filter & Sort</p>
             <div className="flex items-center gap-3">
               {hasActiveFilters ? (
                 <button
@@ -362,7 +340,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
             )}
           >
             <div>
-              <FieldLabel htmlFor={searchId}>Search the collection</FieldLabel>
+              <FieldLabel htmlFor={searchId}>Search</FieldLabel>
               <div className="relative mt-2">
                 <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-smoke" />
                 <Input
@@ -372,7 +350,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
                     shouldScrollToResultsRef.current = variant === "desktop";
                     setQuery(event.target.value);
                   }}
-                  placeholder="Search by brand, collection, or style"
+                  placeholder="Search products"
                   className="mt-0 pl-11 transition-all duration-200"
                 />
               </div>
@@ -551,27 +529,6 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
               </div>
             ) : null}
 
-            {collections.length > 0 ? (
-              <div>
-                <p className="text-sm font-medium text-ink/90">Collections</p>
-                <div className="mt-3 space-y-2">
-                  {collections.map((collection) => (
-                    <label
-                      key={collection.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm text-smoke transition-all duration-200 hover:border-ink/10 hover:bg-ivory/65 hover:text-ink"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedCollections.includes(collection.handle)}
-                        onChange={() => toggleValue(selectedCollections, collection.handle, setSelectedCollections)}
-                        className="h-4 w-4 rounded border-ink/30 accent-deep-teal"
-                      />
-                      <span>{collection.title}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </div>
 
           {variant === "mobile" ? (
@@ -604,24 +561,10 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
     );
   }
 
-  function renderActiveFilterBadges({ includeSearchStatus }: { includeSearchStatus: boolean }) {
+  function renderActiveFilterBadges() {
     return (
       <>
-        {includeSearchStatus ? (
-          <Badge variant="teal">
-            <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-            Live search
-          </Badge>
-        ) : null}
         {isFiltering ? <Badge variant="neutral">Refreshing results</Badge> : null}
-        {selectedCollections.map((handle) => {
-          const collection = collections.find((item) => item.handle === handle);
-          return collection ? (
-            <Badge key={handle} variant="neutral">
-              {collection.title}
-            </Badge>
-          ) : null;
-        })}
         {selectedTypes.map((productType) => (
           <Badge key={productType} variant="neutral">
             {productType}
@@ -660,7 +603,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
 
   function renderViewToggle() {
     return (
-      <div className="inline-flex rounded-full border border-ink/10 bg-ivory p-1">
+      <div className="inline-flex rounded-full border border-ink/10 bg-white p-1">
         {([
           { label: "List view", shortLabel: "List", value: 1 as GridColumns },
           { label: "Two-column grid", shortLabel: "Grid", value: 2 as GridColumns },
@@ -688,9 +631,11 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
   }
 
   return (
-    <Container>
-      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)] xl:items-start">
-        <aside className="hidden xl:sticky xl:top-28 xl:block xl:h-[calc(100dvh-7.5rem)] xl:overflow-hidden">{renderFilterPanel("desktop")}</aside>
+    <div className="w-full px-4 sm:px-5 lg:px-6 xl:px-0">
+      <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)] xl:gap-0 xl:items-start">
+        <aside className="hidden xl:sticky xl:top-[5.05rem] xl:block xl:h-[calc(100dvh-5.05rem)] xl:overflow-hidden">
+          {renderFilterPanel("desktop")}
+        </aside>
 
         <div>
           <div className="xl:hidden">
@@ -717,7 +662,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
 
             {hasActiveFilters || isFiltering ? (
               <div className="mb-5 flex flex-wrap items-center gap-2">
-                {renderActiveFilterBadges({ includeSearchStatus: false })}
+                {renderActiveFilterBadges()}
                 {hasActiveFilters ? (
                   <button
                     type="button"
@@ -747,43 +692,46 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
             ) : null}
           </div>
 
-          <Card className="hidden overflow-hidden border-ink/8 bg-[linear-gradient(135deg,#fcfbf7_0%,#f3eee3_48%,#f9f7f2_100%)] xl:block">
-            <CardContent className="p-6 sm:p-7">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-end">
-                <div>
-                  <div className="flex items-center gap-2 text-sm font-semibold tracking-[0.14em] text-deep-teal uppercase">
-                    <SlidersHorizontal className="h-4 w-4" />
-                    Curated Inventory
-                  </div>
-                  <h2 className="mt-3 font-heading text-4xl text-ink">Ready to Wear</h2>
-                  <p className="mt-3 max-w-3xl text-sm leading-7 text-smoke">
-                    Search, sort, compare, and move directly into product detail or bag without the catalog feeling heavy.
-                  </p>
-                </div>
-                <div className="flex items-center justify-between gap-4 lg:justify-end">
-                  <p className={cn("text-sm text-smoke", isFiltering && "text-deep-teal")}>
-                    {filteredProducts.length} of {products.length} products
-                    {activeFilterCount > 0 ? ` • ${activeFilterCount} filter${activeFilterCount === 1 ? "" : "s"}` : ""}
-                    {isFiltering ? " • Updating" : ""}
-                  </p>
-                  {renderViewToggle()}
-                </div>
+          <div className="hidden border-b border-ink/8 px-5 pb-4 xl:block xl:px-6 2xl:px-8">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold tracking-[0.22em] text-smoke uppercase sm:text-sm">Results</p>
+                <p className={cn("mt-2 text-base leading-7 text-smoke sm:text-lg sm:leading-8", isFiltering && "text-deep-teal")}>
+                  {filteredProducts.length} {pluralize(filteredProducts.length, "item")} shown
+                  {filteredProducts.length !== products.length ? ` of ${products.length}` : ""}
+                  {activeFilterCount > 0 ? ` • ${activeFilterCount} ${pluralize(activeFilterCount, "filter")}` : ""}
+                  {isFiltering ? " • Updating" : ""}
+                </p>
               </div>
-
-              <div className="mt-6 flex flex-wrap gap-2 border-t border-ink/8 pt-5">
-                {renderActiveFilterBadges({ includeSearchStatus: true })}
+              <div className="flex items-center gap-3">
+                {hasActiveFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="inline-flex min-h-10 items-center justify-center rounded-full border border-ink/15 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-all duration-200 hover:border-ink/25"
+                  >
+                    Clear all
+                  </button>
+                ) : null}
+                {renderViewToggle()}
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          <div ref={resultsAnchorRef} className="h-px" />
+            {hasActiveFilters || isFiltering ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {renderActiveFilterBadges()}
+              </div>
+            ) : null}
+          </div>
+
+          <div ref={resultsAnchorRef} className="h-px xl:mx-6 2xl:mx-8" />
 
           {filteredProducts.length > 0 ? (
             <div
               aria-busy={isFiltering}
               className={cn(
-                "mt-6 grid transition-[opacity,transform,filter] duration-300 ease-out",
-                gridColumns === 1 ? "grid-cols-1 gap-2.5 sm:gap-3" : "grid-cols-2 gap-3 sm:gap-4",
+                "mt-6 grid transition-[opacity,transform,filter] duration-300 ease-out xl:px-6 2xl:px-8",
+                gridColumns === 1 ? "grid-cols-1 gap-2.5 sm:gap-3" : "grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 xl:gap-4",
                 isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
               )}
             >
@@ -794,7 +742,7 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
           ) : (
             <Card
               className={cn(
-                "mt-8 transition-[opacity,transform,filter] duration-300 ease-out",
+                "mt-8 transition-[opacity,transform,filter] duration-300 ease-out xl:mx-6 2xl:mx-8",
                 isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
               )}
             >
@@ -815,6 +763,6 @@ export function ShopCatalogClient({ products, collections }: ShopCatalogClientPr
           )}
         </div>
       </div>
-    </Container>
+    </div>
   );
 }

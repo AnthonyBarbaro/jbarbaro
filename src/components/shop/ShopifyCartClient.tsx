@@ -170,8 +170,10 @@ export function ShopifyCartClient() {
       <Container>
         <Card tone="stone">
           <CardContent>
-            <h2 className="font-heading text-3xl text-ink">Shopify is not configured</h2>
-            <p className="mt-3 text-sm leading-7 text-smoke">Add the Storefront API credentials to enable the live cart experience.</p>
+            <h2 className="font-heading text-3xl text-ink">Shopping bag unavailable</h2>
+            <p className="mt-3 text-sm leading-7 text-smoke">
+              The bag is temporarily unavailable. Please keep shopping or book an appointment and we&apos;ll prepare options for you.
+            </p>
           </CardContent>
         </Card>
       </Container>
@@ -259,14 +261,14 @@ export function ShopifyCartClient() {
                       {lineMeta ? <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">{lineMeta}</p> : null}
                       <h3
                         className="mt-2 font-heading text-[1.5rem] leading-[1.18] text-ink sm:text-[1.7rem]"
-                        title={line.productTitle || "Shopify Product"}
+                        title={line.productTitle || "Selected Item"}
                       >
                         {productHref ? (
                           <Link href={productHref} className="transition-colors hover:text-deep-teal">
-                            {line.productTitle || "Shopify Product"}
+                            {line.productTitle || "Selected Item"}
                           </Link>
                         ) : (
-                          line.productTitle || "Shopify Product"
+                          line.productTitle || "Selected Item"
                         )}
                       </h3>
                       <button
@@ -351,7 +353,7 @@ export function ShopifyCartClient() {
               <div className="mt-6 rounded-2xl border border-ink/10 bg-stone/55 px-4 py-4">
                 <p className="text-xs font-semibold tracking-[0.14em] text-smoke uppercase">Checkout</p>
                 <p className="mt-2 text-sm leading-6 text-smoke">
-                  Final shipping methods and any required taxes are confirmed on secure Shopify checkout.
+                  Final shipping methods and any required taxes are confirmed at secure checkout.
                 </p>
               </div>
 
@@ -378,7 +380,7 @@ export function ShopifyCartClient() {
                 </div>
                 <div className="flex items-start gap-3">
                   <LockKeyhole className="mt-1 h-4 w-4 text-deep-teal" />
-                  <p>Checkout is completed on Shopify&apos;s secure hosted checkout.</p>
+                  <p>Checkout is completed on our secure checkout page.</p>
                 </div>
               </div>
             </CardContent>

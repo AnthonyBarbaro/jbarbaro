@@ -41,10 +41,10 @@ function ProductImageStage({
   showVendorTag?: boolean;
 }) {
   return (
-    <div className={cn("relative overflow-hidden bg-[linear-gradient(180deg,#f7f3eb_0%,#efe9df_100%)]", className)}>
+    <div className={cn("relative overflow-hidden bg-white", className)}>
       {showVendorTag ? (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] flex items-start p-4">
-          <span className="rounded-full border border-ink/10 bg-ivory/90 px-3 py-1 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase backdrop-blur">
+          <span className="rounded-full border border-ink/10 bg-white/88 px-3 py-1 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase shadow-[0_12px_20px_-16px_rgba(14,23,38,0.45)] backdrop-blur">
             {product.vendor || "Shop"}
           </span>
         </div>
@@ -96,51 +96,67 @@ export function ShopProductCard({ product, columns = 1 }: ShopProductCardProps) 
   const secondaryImage = getSecondaryImage(product);
   const sizeOptions = getOptionValues(product, "size").slice(0, 4);
   const colorOptions = getOptionValues(product, "color").slice(0, 3);
+  const detailChips = sizeOptions.length > 0 ? sizeOptions : colorOptions;
+  const detailLabel = sizeOptions.length > 0 ? "Sizes" : colorOptions.length > 0 ? "Colors" : null;
   const isCompact = columns === 2;
 
   if (isCompact) {
     return (
-      <Card className="group flex h-full flex-col overflow-hidden rounded-[1.25rem] border-ink/8 bg-white transition-all duration-300 hover:border-gold/45 hover:shadow-[0_24px_54px_-36px_rgba(14,23,38,0.3)]">
+      <Card className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border-ink/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,246,239,0.98))] transition-all duration-300 hover:-translate-y-1 hover:border-gold/45 hover:shadow-[0_30px_58px_-40px_rgba(14,23,38,0.32)]">
         <ProductImageStage
           product={product}
           secondaryImage={secondaryImage}
           imageSizes="(max-width: 768px) 50vw, (max-width: 1280px) 50vw, 33vw"
-          className="aspect-[4/5] border-b border-ink/6 px-3 pb-3 pt-4 sm:px-4 sm:pb-4 sm:pt-5"
+          className="aspect-[4/4.85] border-b border-ink/8 bg-[radial-gradient(circle_at_top,rgba(255,255,255,1),rgba(237,231,223,0.96))] px-5 pb-5 pt-6"
         />
 
-        <CardContent className="flex flex-1 flex-col p-3.5 sm:p-4">
+        <CardContent className="flex flex-1 flex-col p-5">
           {primaryCollection ? (
-            <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">{primaryCollection.title}</p>
+            <p className="text-[10px] font-bold tracking-[0.18em] text-deep-teal uppercase">{primaryCollection.title}</p>
           ) : product.productType ? (
-            <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">{product.productType}</p>
+            <p className="text-[10px] font-bold tracking-[0.18em] text-deep-teal uppercase">{product.productType}</p>
           ) : null}
 
-          <h2 className="mt-1.5 line-clamp-2 text-[0.92rem] leading-5 font-semibold text-ink sm:text-[0.98rem]">
+          <h2 className="mt-2 line-clamp-2 text-[1rem] leading-5 font-semibold tracking-[-0.01em] text-ink sm:text-[1.08rem] sm:leading-6">
             <Link href={`/shop/${product.handle}`} className="transition-colors hover:text-deep-teal">
               {product.title}
             </Link>
           </h2>
 
-          <div className="mt-2.5 flex items-end justify-between gap-2.5">
-            <div className="min-w-0 flex-1">
-              <p className="text-[1.02rem] font-bold text-ink sm:text-lg">{priceLabel}</p>
-              <div className="mt-1.5 space-y-1 text-[11px] text-smoke">
-                {sizeOptions.length > 0 ? <p className="line-clamp-1">Sizes: {sizeOptions.join(", ")}</p> : null}
-                {colorOptions.length > 0 ? <p className="line-clamp-1">Colors: {colorOptions.join(", ")}</p> : null}
+          {detailLabel && detailChips.length > 0 ? (
+            <div className="mt-3">
+              <p className="text-[11px] font-medium text-smoke">{detailLabel}</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {detailChips.map((value) => (
+                  <span
+                    key={`${product.id}-${detailLabel}-${value}`}
+                    className="rounded-full border border-ink/8 bg-white/80 px-2.5 py-1 text-[10px] font-semibold tracking-[0.08em] text-ink uppercase"
+                  >
+                    {value}
+                  </span>
+                ))}
               </div>
             </div>
-            {primaryVariant ? (
-              <AddToCartButton
-                merchandiseId={primaryVariant.id}
-                availableForSale={primaryVariant.availableForSale}
-                className="h-10 w-10 min-h-10 shrink-0 rounded-full px-0"
-                label="Add to Bag"
-                ariaLabel={`Add ${product.title} to bag`}
-                iconOnly
-              />
-            ) : (
-              <p className="text-right text-xs text-smoke">Unavailable</p>
-            )}
+          ) : null}
+
+          <div className="mt-auto pt-5">
+            <div className="border-t border-ink/8 pt-4">
+              <p className="text-[1.18rem] font-bold tracking-[-0.02em] text-ink sm:text-[1.3rem]">{priceLabel}</p>
+
+              {primaryVariant ? (
+                <AddToCartButton
+                  merchandiseId={primaryVariant.id}
+                  availableForSale={primaryVariant.availableForSale}
+                  className="mt-4 w-full rounded-full border-ink bg-ink text-ivory shadow-[0_18px_34px_-24px_rgba(14,23,38,0.8)] hover:border-deep-teal hover:bg-deep-teal"
+                  label="Add to Bag"
+                  ariaLabel={`Add ${product.title} to bag`}
+                />
+              ) : (
+                <p className="mt-4 rounded-full border border-ink/10 bg-white/80 px-4 py-3 text-center text-[11px] font-semibold tracking-[0.14em] text-smoke uppercase">
+                  Unavailable
+                </p>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

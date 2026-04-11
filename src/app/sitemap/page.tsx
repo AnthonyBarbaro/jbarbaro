@@ -7,19 +7,30 @@ import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { brands } from "@/data/brands";
 import { locations } from "@/data/locations";
-import { menCategories } from "@/data/men-categories";
 import { getCollection } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMenCategories } from "@/lib/shopify/men-categories";
+import { getShopProductPreviews } from "@/lib/shopify/products";
+import type { ShopifyProductPreview } from "@/lib/shopify/types";
 
 export const metadata = buildMetadata({
   title: "HTML Sitemap",
   description: "Browse all key pages across the J. Barbaro Clothiers website.",
   path: "/sitemap",
 });
+export const revalidate = 300;
 
-export default function HtmlSitemapPage() {
+export default async function HtmlSitemapPage() {
   const blogPosts = getCollection("blog");
   const stylePosts = getCollection("style-guide");
+  const menCategories = await resolveMenCategories(40, 1);
+  let shopProducts: ShopifyProductPreview[] = [];
+
+  try {
+    shopProducts = await getShopProductPreviews(100);
+  } catch (error) {
+    console.error("Unable to load Shopify product previews for the HTML sitemap.", error);
+  }
 
   const sections: Array<{ title: string; links: Array<{ label: string; href: string }> }> = [
     {
@@ -40,8 +51,12 @@ export default function HtmlSitemapPage() {
       ],
     },
     {
-      title: "For Men",
-      links: menCategories.map((category) => ({ label: category.name, href: `/for-men/${category.slug}` })),
+      title: "Collections",
+      links: menCategories.map((category) => ({ label: category.name, href: category.href })),
+    },
+    {
+      title: "Shop Products",
+      links: shopProducts.map((product) => ({ label: product.title, href: `/shop/${product.handle}` })),
     },
     {
       title: "Locations",

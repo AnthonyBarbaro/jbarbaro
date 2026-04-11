@@ -16,6 +16,7 @@ export type ShopifyProduct = {
   handle: string;
   title: string;
   description: string;
+  descriptionHtml: string;
   vendor: string;
   productType: string;
   tags: string[];
@@ -44,10 +45,18 @@ export type ShopifyProductSearchResult = Pick<
   "id" | "handle" | "title" | "vendor" | "productType" | "featuredImage" | "priceRange"
 >;
 
+export type ShopifyProductPreview = Pick<ShopifyProduct, "id" | "handle" | "title">;
+
 export type ShopifyCollectionPreview = {
   id: string;
   handle: string;
   title: string;
+  image: {
+    url: string;
+    altText: string | null;
+    width: number | null;
+    height: number | null;
+  } | null;
 };
 
 export type ShopifyCollection = ShopifyCollectionPreview & {

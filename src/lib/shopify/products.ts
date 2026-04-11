@@ -1,13 +1,23 @@
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+
 import { storefrontRequest } from "@/lib/shopify/client";
-import type { ShopifyCollection, ShopifyCollectionPreview, ShopifyProduct, ShopifyProductSearchResult } from "@/lib/shopify/types";
+import { SHOPIFY_STOREFRONT_REVALIDATE_SECONDS } from "@/lib/shopify/config";
+import type {
+  ShopifyCollection,
+  ShopifyCollectionPreview,
+  ShopifyProduct,
+  ShopifyProductPreview,
+  ShopifyProductSearchResult,
+} from "@/lib/shopify/types";
 
 type RawProduct = {
   id: string;
   handle: string;
   title: string;
   description: string;
+  descriptionHtml: string;
   vendor: string;
   productType: string;
   tags: string[];
@@ -30,6 +40,12 @@ type RawProduct = {
       id: string;
       handle: string;
       title: string;
+      image: {
+        url: string;
+        altText: string | null;
+        width: number | null;
+        height: number | null;
+      } | null;
     }>;
   };
   priceRange: {
@@ -71,6 +87,12 @@ type RawCollection = {
   handle: string;
   title: string;
   description: string;
+  image: {
+    url: string;
+    altText: string | null;
+    width: number | null;
+    height: number | null;
+  } | null;
   products: {
     nodes: RawProduct[];
   };
@@ -86,7 +108,19 @@ type CollectionsResponse = {
       id: string;
       handle: string;
       title: string;
+      image: {
+        url: string;
+        altText: string | null;
+        width: number | null;
+        height: number | null;
+      } | null;
     }>;
+  };
+};
+
+type CollectionsWithProductsResponse = {
+  collections: {
+    nodes: RawCollection[];
   };
 };
 
@@ -100,11 +134,22 @@ type PredictiveSearchResponse = {
   };
 };
 
+type ProductPreviewsResponse = {
+  products: {
+    nodes: Array<{
+      id: string;
+      handle: string;
+      title: string;
+    }>;
+  };
+};
+
 const productFields = `
   id
   handle
   title
   description
+  descriptionHtml
   vendor
   productType
   tags
@@ -127,6 +172,12 @@ const productFields = `
       id
       handle
       title
+      image {
+        url
+        altText
+        width
+        height
+      }
     }
   }
   priceRange {
@@ -162,6 +213,7 @@ function normalizeProduct(product: RawProduct): ShopifyProduct {
     handle: product.handle,
     title: product.title,
     description: product.description,
+    descriptionHtml: product.descriptionHtml,
     vendor: product.vendor,
     productType: product.productType,
     tags: product.tags,
@@ -178,12 +230,13 @@ function normalizeCollection(collection: RawCollection): ShopifyCollection {
     id: collection.id,
     handle: collection.handle,
     title: collection.title,
+    image: collection.image,
     description: collection.description,
     products: collection.products.nodes.map(normalizeProduct),
   };
 }
 
-export async function getShopProducts(limit = 12): Promise<ShopifyProduct[]> {
+async function fetchShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductsResponse, { limit: number }>({
     query: `
       query ShopProducts($limit: Int!) {
@@ -202,7 +255,42 @@ export async function getShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   return data.products.nodes.map(normalizeProduct);
 }
 
-export async function getShopProduct(handle: string): Promise<ShopifyProduct | null> {
+const getShopProductsCached = unstable_cache(fetchShopProducts, ["shopify-products"], {
+  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+});
+
+export async function getShopProducts(limit = 12): Promise<ShopifyProduct[]> {
+  return getShopProductsCached(limit);
+}
+
+async function fetchBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
+  const data = await storefrontRequest<ProductsResponse, { limit: number }>({
+    query: `
+      query BestSellingProducts($limit: Int!) {
+        products(first: $limit, sortKey: BEST_SELLING) {
+          nodes {
+            ${productFields}
+          }
+        }
+      }
+    `,
+    variables: {
+      limit,
+    },
+  });
+
+  return data.products.nodes.map(normalizeProduct);
+}
+
+const getBestSellingProductsCached = unstable_cache(fetchBestSellingProducts, ["shopify-best-selling-products"], {
+  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+});
+
+export async function getBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
+  return getBestSellingProductsCached(limit);
+}
+
+async function fetchShopProduct(handle: string): Promise<ShopifyProduct | null> {
   const data = await storefrontRequest<ProductResponse, { handle: string }>({
     query: `
       query ShopProduct($handle: String!) {
@@ -223,7 +311,15 @@ export async function getShopProduct(handle: string): Promise<ShopifyProduct | n
   return normalizeProduct(data.product);
 }
 
-export async function getShopCollection(handle: string, limit = 12): Promise<ShopifyCollection | null> {
+const getShopProductCached = unstable_cache(fetchShopProduct, ["shopify-product"], {
+  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+});
+
+export async function getShopProduct(handle: string): Promise<ShopifyProduct | null> {
+  return getShopProductCached(handle);
+}
+
+async function fetchShopCollection(handle: string, limit = 12): Promise<ShopifyCollection | null> {
   const data = await storefrontRequest<CollectionResponse, { handle: string; limit: number }>({
     query: `
       query ShopCollection($handle: String!, $limit: Int!) {
@@ -232,6 +328,12 @@ export async function getShopCollection(handle: string, limit = 12): Promise<Sho
           handle
           title
           description
+          image {
+            url
+            altText
+            width
+            height
+          }
           products(first: $limit) {
             nodes {
               ${productFields}
@@ -253,11 +355,96 @@ export async function getShopCollection(handle: string, limit = 12): Promise<Sho
   return normalizeCollection(data.collection);
 }
 
-export async function getShopCollections(limit = 8): Promise<ShopifyCollectionPreview[]> {
+const getShopCollectionCached = unstable_cache(fetchShopCollection, ["shopify-collection"], {
+  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+});
+
+export async function getShopCollection(handle: string, limit = 12): Promise<ShopifyCollection | null> {
+  return getShopCollectionCached(handle, limit);
+}
+
+async function fetchShopCollections(limit = 8): Promise<ShopifyCollectionPreview[]> {
   const data = await storefrontRequest<CollectionsResponse, { limit: number }>({
     query: `
       query ShopCollections($limit: Int!) {
         collections(first: $limit) {
+          nodes {
+            id
+            handle
+            title
+            image {
+              url
+              altText
+              width
+              height
+            }
+          }
+        }
+      }
+    `,
+    variables: {
+      limit,
+    },
+  });
+
+  return data.collections.nodes;
+}
+
+const getShopCollectionsCached = unstable_cache(fetchShopCollections, ["shopify-collections"], {
+  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+});
+
+export async function getShopCollections(limit = 8): Promise<ShopifyCollectionPreview[]> {
+  return getShopCollectionsCached(limit);
+}
+
+async function fetchShopCollectionsWithProducts(limit = 8, productLimit = 4): Promise<ShopifyCollection[]> {
+  const data = await storefrontRequest<CollectionsWithProductsResponse, { limit: number; productLimit: number }>({
+    query: `
+      query ShopCollectionsWithProducts($limit: Int!, $productLimit: Int!) {
+        collections(first: $limit) {
+          nodes {
+            id
+            handle
+            title
+            description
+            image {
+              url
+              altText
+              width
+              height
+            }
+            products(first: $productLimit) {
+              nodes {
+                ${productFields}
+              }
+            }
+          }
+        }
+      }
+    `,
+    variables: {
+      limit,
+      productLimit,
+    },
+  });
+
+  return data.collections.nodes.map(normalizeCollection);
+}
+
+const getShopCollectionsWithProductsCached = unstable_cache(fetchShopCollectionsWithProducts, ["shopify-collections-products"], {
+  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+});
+
+export async function getShopCollectionsWithProducts(limit = 8, productLimit = 4): Promise<ShopifyCollection[]> {
+  return getShopCollectionsWithProductsCached(limit, productLimit);
+}
+
+async function fetchShopProductPreviews(limit = 100): Promise<ShopifyProductPreview[]> {
+  const data = await storefrontRequest<ProductPreviewsResponse, { limit: number }>({
+    query: `
+      query ShopProductPreviews($limit: Int!) {
+        products(first: $limit) {
           nodes {
             id
             handle
@@ -271,10 +458,18 @@ export async function getShopCollections(limit = 8): Promise<ShopifyCollectionPr
     },
   });
 
-  return data.collections.nodes;
+  return data.products.nodes;
 }
 
-export async function getRecommendedProducts(productId: string, excludeHandle: string, limit = 4): Promise<ShopifyProduct[]> {
+const getShopProductPreviewsCached = unstable_cache(fetchShopProductPreviews, ["shopify-product-previews"], {
+  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+});
+
+export async function getShopProductPreviews(limit = 100): Promise<ShopifyProductPreview[]> {
+  return getShopProductPreviewsCached(limit);
+}
+
+async function fetchRecommendedProducts(productId: string, excludeHandle: string, limit = 4): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductRecommendationsResponse, { productId: string }>({
     query: `
       query ProductRecommendations($productId: ID!) {
@@ -292,6 +487,14 @@ export async function getRecommendedProducts(productId: string, excludeHandle: s
     .map(normalizeProduct)
     .filter((product) => product.handle !== excludeHandle)
     .slice(0, limit);
+}
+
+const getRecommendedProductsCached = unstable_cache(fetchRecommendedProducts, ["shopify-product-recommendations"], {
+  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+});
+
+export async function getRecommendedProducts(productId: string, excludeHandle: string, limit = 4): Promise<ShopifyProduct[]> {
+  return getRecommendedProductsCached(productId, excludeHandle, limit);
 }
 
 export async function searchShopProducts(query: string, limit = 6): Promise<ShopifyProductSearchResult[]> {
@@ -335,6 +538,7 @@ export async function searchShopProducts(query: string, limit = 6): Promise<Shop
       query: normalizedQuery,
       limit,
     },
+    cache: "no-store",
   });
 
   return data.predictiveSearch.products.map((product) => ({

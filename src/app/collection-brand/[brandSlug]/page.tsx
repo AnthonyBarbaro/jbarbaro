@@ -10,9 +10,11 @@ import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { brandMap, brands } from "@/data/brands";
-import { menCategories } from "@/data/men-categories";
 import { buildMetadata } from "@/lib/seo";
+import { resolveMenCategories } from "@/lib/shopify/men-categories";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
+
+export const revalidate = 300;
 
 export function generateStaticParams() {
   return brands.map((brand) => ({ brandSlug: brand.slug }));
@@ -42,7 +44,7 @@ export default async function CollectionBrandPage({ params }: { params: Promise<
     notFound();
   }
 
-  const relatedCategories = menCategories.slice(0, 5);
+  const relatedCategories = (await resolveMenCategories(24, 1)).slice(0, 5);
   const relatedBrands = brands.filter((item) => item.slug !== brand.slug).slice(0, 6);
 
   return (
@@ -98,8 +100,8 @@ export default async function CollectionBrandPage({ params }: { params: Promise<
                   <h2 className="font-heading text-2xl text-ink sm:text-3xl">Related Categories</h2>
                   <ul className="mt-3 space-y-2 text-sm font-semibold tracking-[0.08em] text-ink uppercase">
                     {relatedCategories.map((category) => (
-                      <li key={category.slug}>
-                        <Link href={`/for-men/${category.slug}`} className="hover:text-deep-teal">
+                      <li key={category.href}>
+                        <Link href={category.href} className="hover:text-deep-teal">
                           {category.name}
                         </Link>
                       </li>

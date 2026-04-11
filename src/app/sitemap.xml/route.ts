@@ -1,8 +1,10 @@
 import { SITE_URL } from "@/lib/constants";
 import { getSitemapRoutes } from "@/lib/sitemap-routes";
 
+export const revalidate = 300;
+
 export async function GET() {
-  const routes = getSitemapRoutes();
+  const routes = await getSitemapRoutes();
 
   const entries = routes
     .map((path) => {

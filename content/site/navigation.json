@@ -101,6 +101,10 @@
     {
       "label": "Bag",
       "href": "/cart"
+    },
+    {
+      "label": "Account",
+      "href": "/account"
     }
   ],
   "footerUtilityLinks": [

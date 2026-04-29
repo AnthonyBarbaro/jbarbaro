@@ -13,6 +13,7 @@ export async function getSitemapRoutes() {
     "/reviews",
     "/categories",
     "/shop",
+    "/account",
     "/designers",
     "/designers/featured-designers",
     "/designers/all-designer-brands",
@@ -41,9 +42,12 @@ export async function getSitemapRoutes() {
   let shopProductRoutes: string[] = [];
 
   try {
-    shopProductRoutes = (await getShopProductPreviews(100)).map((product) => `/shop/${product.handle}`);
+    shopProductRoutes = (await getShopProductPreviews(100)).map(
+      (product) => `/shop/${product.handle}`,
+    );
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown Shopify product sitemap error.";
+    const message =
+      error instanceof Error ? error.message : "Unknown Shopify product sitemap error.";
     console.error(`Unable to build dynamic /shop sitemap routes: ${message}`);
   }
 

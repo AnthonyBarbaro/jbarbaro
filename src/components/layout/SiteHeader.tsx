@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ChevronDown, Menu, MoveUpRight, X } from "lucide-react";
 
+import { HeaderAccountButton } from "@/components/layout/HeaderAccountButton";
 import { HeaderCartButton } from "@/components/layout/HeaderCartButton";
 import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
 import { primaryNavigation } from "@/data/navigation";
@@ -28,7 +29,8 @@ const dropdownMedia: Record<string, { href: string; imageAlt: string; imageSrc: 
   Designers: {
     href: "/designers",
     imageAlt: "Canali designer tailoring campaign",
-    imageSrc: "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/canali-072319-080-500x500.jpg",
+    imageSrc:
+      "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/canali-072319-080-500x500.jpg",
   },
   Formalwear: {
     href: "/suit-tuxedo-rentals",
@@ -41,6 +43,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const desktopNavItems = navItems.filter((item) => item.label !== "Cart");
+  const mobileNavItems = navItems.filter((item) => item.label !== "Cart");
 
   function matchesPath(href?: string) {
     if (!href) {
@@ -111,9 +114,17 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
                   : "left-1/2 w-[min(38rem,calc(100vw-2rem))] -translate-x-1/2",
               )}
             >
-              <div className={cn("rounded-lg border border-ink/10 bg-white p-2 shadow-[0_26px_80px_-48px_rgba(14,23,38,0.55)]", media && "grid grid-cols-[13rem_minmax(0,1fr)] gap-2")}>
+              <div
+                className={cn(
+                  "rounded-lg border border-ink/10 bg-white p-2 shadow-[0_26px_80px_-48px_rgba(14,23,38,0.55)]",
+                  media && "grid grid-cols-[13rem_minmax(0,1fr)] gap-2",
+                )}
+              >
                 {media ? (
-                  <Link href={media.href} className="group/media relative min-h-[17rem] overflow-hidden rounded-md bg-stone">
+                  <Link
+                    href={media.href}
+                    className="group/media relative min-h-[17rem] overflow-hidden rounded-md bg-stone"
+                  >
                     <Image
                       src={media.imageSrc}
                       alt={media.imageAlt}
@@ -126,7 +137,12 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
                   </Link>
                 ) : null}
 
-                <ul className={cn("grid max-h-[min(28rem,calc(100vh-8rem))] gap-1 overflow-y-auto p-1", dropdownLinks.length > 6 ? "grid-cols-2" : "grid-cols-1")}>
+                <ul
+                  className={cn(
+                    "grid max-h-[min(28rem,calc(100vh-8rem))] gap-1 overflow-y-auto p-1",
+                    dropdownLinks.length > 6 ? "grid-cols-2" : "grid-cols-1",
+                  )}
+                >
                   {dropdownLinks.map((child) => (
                     <li key={`${item.label}-${child.href}`}>
                       <Link
@@ -136,7 +152,9 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
                         className="flex min-h-11 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-stone/70"
                       >
                         <span className="min-w-0 truncate">{child.label}</span>
-                        {child.external ? <MoveUpRight className="mt-1 h-4 w-4 shrink-0 text-smoke" /> : null}
+                        {child.external ? (
+                          <MoveUpRight className="mt-1 h-4 w-4 shrink-0 text-smoke" />
+                        ) : null}
                       </Link>
                     </li>
                   ))}
@@ -201,19 +219,19 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
       }
 
       return (
-      <Link
-        key={item.href || item.label}
-        href={item.href || "/"}
-        target={item.external ? "_blank" : undefined}
-        rel={item.external ? "noopener noreferrer" : undefined}
-        onClick={() => setIsOpen(false)}
-        className={cn(
-          "flex min-h-12 items-center justify-between border-b border-ink/10 text-sm font-semibold tracking-[0.08em] text-ink uppercase",
-          active && "text-deep-teal",
-        )}
-      >
-        {item.label}
-      </Link>
+        <Link
+          key={item.href || item.label}
+          href={item.href || "/"}
+          target={item.external ? "_blank" : undefined}
+          rel={item.external ? "noopener noreferrer" : undefined}
+          onClick={() => setIsOpen(false)}
+          className={cn(
+            "flex min-h-12 items-center justify-between border-b border-ink/10 text-sm font-semibold tracking-[0.08em] text-ink uppercase",
+            active && "text-deep-teal",
+          )}
+        >
+          {item.label}
+        </Link>
       );
     });
   }
@@ -256,6 +274,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
               <div className="hidden w-[17rem] lg:block xl:hidden">
                 <HeaderProductSearch />
               </div>
+              <HeaderAccountButton compact className="h-10 w-10 rounded-md bg-ivory" />
               <HeaderCartButton compact className="h-10 w-10 rounded-md bg-ivory" />
             </div>
           </div>
@@ -302,8 +321,13 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
 
         <HeaderProductSearch className="mt-6" onNavigate={() => setIsOpen(false)} />
 
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <HeaderAccountButton onNavigate={() => setIsOpen(false)} />
+          <HeaderCartButton onNavigate={() => setIsOpen(false)} />
+        </div>
+
         <nav className="mt-6" aria-label="Mobile primary">
-          {renderMobileNav(navItems)}
+          {renderMobileNav(mobileNavItems)}
         </nav>
       </aside>
     </>

@@ -1,10 +1,10 @@
 {
   "homePage": {
-    "metaTitle": "J. Barbaro Clothiers | Classic Tailoring & Luxury Menswear",
-    "metaDescription": "Shop live menswear, browse designer categories, and book a private fitting at J. Barbaro Clothiers in Metro Detroit.",
+    "metaTitle": "J. Barbaro Clothiers | Luxury Menswear & Perfect Fit",
+    "metaDescription": "Shop suits, shirts, shoes, accessories, and formalwear from premium menswear brands, or book a fitting appointment in Metro Detroit.",
     "heroImage": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h3_lg.jpg",
-    "heroTitle": "Luxury Menswear, Tailored Around You",
-    "heroDescription": "Shop live arrivals online, use concierge search to narrow the floor fast, and book a private fitting whenever you want expert guidance on fit, occasion, or wardrobe planning.",
+    "heroTitle": "Luxury Menswear. Perfect Fit.",
+    "heroDescription": "Shop suits, shirts, shoes, accessories, and formalwear from premium menswear brands.",
     "heroBadges": [
       {
         "label": "J. Barbaro Clothiers"
@@ -29,31 +29,38 @@
     "heroSlides": [
       {
         "id": "slide-1",
-        "title": "Luxury Menswear, Tailored Around You",
-        "caption": "Shop live arrivals online, use concierge search to narrow the floor fast, and book a private fitting whenever you want expert guidance on fit, occasion, or wardrobe planning.",
+        "title": "Luxury Menswear. Perfect Fit.",
+        "caption": "Shop suits, shirts, shoes, accessories, and formalwear from premium menswear brands.",
         "href": "/shop",
         "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h3_lg.jpg"
       },
       {
         "id": "slide-2",
         "title": "Suits from $299",
-        "caption": "An easy starting point for event dressing, office rotation, or a wardrobe refresh.",
+        "caption": "An easy starting point for event dressing, office rotation, or a clean wardrobe refresh.",
         "href": "/shop",
         "image": "/images/hero-suits-299.jpg"
       },
       {
         "id": "slide-3",
-        "title": "New Styles Are Here",
-        "caption": "Seasonal arrivals from the world's top designer brands.",
-        "href": "/shop",
-        "image": "/images/remote/www.jasonbarbaro.com/assets/media/2021/01/fw2020.jpg"
+        "title": "Tuxedo Rentals for the Whole Party",
+        "caption": "Explore tuxedo and suit rentals for weddings, galas, proms, and black-tie events.",
+        "href": "/suit-tuxedo-rentals",
+        "image": "/images/remote/www.barbaroformalwear.com/wp-content/uploads/2024/02/h3lg.jpg"
       },
       {
         "id": "slide-4",
-        "title": "Tuxedo Sales & Rentals",
-        "caption": "Explore suit and tuxedo styles for rent or purchase.",
-        "href": "/suit-tuxedo-rentals",
+        "title": "Register Your Wedding Party",
+        "caption": "Coordinate groomsmen, fittings, dates, and formalwear details before the rush.",
+        "href": "/register-your-wedding",
         "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h4_lg.jpg"
+      },
+      {
+        "id": "slide-5",
+        "title": "New Arrivals Now Available",
+        "caption": "Browse fresh products online, then book an appointment when you want fit help in store.",
+        "href": "/shop",
+        "image": "/images/remote/www.jasonbarbaro.com/assets/media/2021/01/fw2020.jpg"
       }
     ],
     "ctaTiles": [
@@ -97,7 +104,7 @@
         },
         {
           "label": "Shop by Category",
-          "href": "/for-men"
+          "href": "/categories"
         },
         {
           "label": "Book Appointment",
@@ -401,7 +408,7 @@
         },
         {
           "label": "Browse Categories",
-          "href": "/for-men"
+          "href": "/categories"
         }
       ],
       "footerLinkLabel": "Go to Registration",

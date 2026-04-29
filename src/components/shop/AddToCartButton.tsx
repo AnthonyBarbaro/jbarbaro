@@ -112,7 +112,7 @@ export function AddToCartButton({
           label
         )}
       </Button>
-      {error ? <p className="text-xs text-[color:#8b1e3f]">{error}</p> : null}
+      {error ? <p className="text-xs text-ink">{error}</p> : null}
     </div>
   );
 }

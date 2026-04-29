@@ -8,6 +8,7 @@ export type ShopifyProductVariant = {
   title: string;
   availableForSale: boolean;
   price: ShopifyMoney;
+  compareAtPrice: ShopifyMoney | null;
   selectedOptions: { name: string; value: string }[];
 };
 
@@ -15,6 +16,7 @@ export type ShopifyProduct = {
   id: string;
   handle: string;
   title: string;
+  createdAt: string;
   description: string;
   descriptionHtml: string;
   vendor: string;
@@ -86,5 +88,6 @@ export type ShopifyCartSnapshot = {
     } | null;
     unitPrice: ShopifyMoney;
     totalPrice: ShopifyMoney;
+    variants: ShopifyProductVariant[];
   }>;
 };

@@ -9,6 +9,7 @@ type SeoOptions = {
   path: string;
   image?: string;
   keywords?: string[];
+  robots?: Metadata["robots"];
   type?: "website" | "article";
 };
 
@@ -39,6 +40,7 @@ export function buildMetadata({
   path,
   image,
   keywords = defaultKeywords,
+  robots,
   type = "website",
 }: SeoOptions): Metadata {
   const canonicalUrl = absoluteUrl(path);
@@ -48,6 +50,7 @@ export function buildMetadata({
     title,
     description,
     keywords,
+    robots,
     alternates: {
       canonical: canonicalUrl,
     },

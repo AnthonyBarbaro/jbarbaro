@@ -22,7 +22,20 @@ const addCartLinesSchema = z.object({
 });
 
 const updateCartLinesSchema = z.object({
-  lines: z.array(z.object({ id: z.string().min(1), quantity: z.number().int().positive().max(25) })).min(1).max(25),
+  lines: z
+    .array(
+      z
+        .object({
+          id: z.string().min(1),
+          quantity: z.number().int().positive().max(25).optional(),
+          merchandiseId: z.string().min(1).optional(),
+        })
+        .refine((line) => line.quantity !== undefined || line.merchandiseId !== undefined, {
+          message: "Provide a quantity or variant.",
+        }),
+    )
+    .min(1)
+    .max(25),
 });
 
 const removeCartLinesSchema = z.object({
@@ -91,7 +104,17 @@ export async function POST(request: NextRequest) {
 
     const buyerIp = getBuyerIp(request);
     const rawBody = await request.text();
-    const parsedBody = rawBody ? addCartLinesSchema.safeParse(JSON.parse(rawBody) as unknown) : null;
+    let parsedJson: unknown = null;
+
+    if (rawBody) {
+      try {
+        parsedJson = JSON.parse(rawBody) as unknown;
+      } catch {
+        return NextResponse.json({ message: "Invalid cart line items." }, { status: 400 });
+      }
+    }
+
+    const parsedBody = rawBody ? addCartLinesSchema.safeParse(parsedJson) : null;
 
     if (rawBody && (!parsedBody || !parsedBody.success)) {
       return NextResponse.json({ message: "Invalid cart line items." }, { status: 400 });

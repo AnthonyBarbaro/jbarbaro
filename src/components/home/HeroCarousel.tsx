@@ -16,16 +16,24 @@ type HeroCarouselProps = {
 };
 
 function getPrimaryCtaLabel(slide: HeroSlide) {
+  if (slide.href === "/register-your-wedding") {
+    return "Register Wedding";
+  }
+
+  if (slide.href === "/schedule-appointment") {
+    return "Book Appointment";
+  }
+
   if (slide.href === "/tailored-clothing") {
     return "Explore Tailoring";
   }
 
   if (slide.href === "/suit-tuxedo-rentals") {
-    return "View Formalwear";
+    return "View Rentals";
   }
 
   if (slide.title.toLowerCase().includes("$299")) {
-    return "Shop the Offer";
+    return "Shop Suits";
   }
 
   return "Shop Now";
@@ -55,7 +63,7 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
   const fallbackSecondaryCta = secondaryCta ?? { label: "Book Appointment", href: "/schedule-appointment" };
 
   return (
-    <section className="relative min-h-[640px] overflow-hidden bg-ink text-ivory sm:min-h-[700px]">
+    <section className="relative overflow-hidden bg-[#0b0f14] text-white">
       {slides.map((slide, index) => {
         const isActive = index === activeIndex;
 
@@ -76,34 +84,37 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
               sizes="100vw"
               className="object-cover"
             />
-            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(11,15,20,0.97),rgba(11,15,20,0.74)_42%,rgba(11,15,20,0.36)_72%,rgba(11,15,20,0.12))]" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,20,0.16),rgba(11,15,20,0.18)_45%,rgba(11,15,20,0.76))]" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_16%,rgba(199,164,106,0.22),transparent_28%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(11,15,20,0.88),rgba(11,15,20,0.64)_48%,rgba(11,15,20,0.2))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,20,0.04),rgba(11,15,20,0.56))]" />
           </article>
         );
       })}
 
-      <button
-        type="button"
-        onClick={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)}
-        className="absolute left-3 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ivory/20 bg-ink/72 text-ivory transition-colors hover:border-gold hover:text-gold sm:left-5 sm:h-12 sm:w-12"
-        aria-label="Previous slide"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
+      {slides.length > 1 ? (
+        <>
+          <button
+            type="button"
+            onClick={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)}
+            className="absolute top-1/2 left-3 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md border border-white/20 bg-[#0b0f14]/72 text-white transition-colors hover:border-gold hover:text-gold sm:left-5 sm:h-11 sm:w-11"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
 
-      <button
-        type="button"
-        onClick={() => setActiveIndex((current) => (current + 1) % slides.length)}
-        className="absolute right-3 top-1/2 z-20 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ivory/20 bg-ink/72 text-ivory transition-colors hover:border-gold hover:text-gold sm:right-5 sm:h-12 sm:w-12"
-        aria-label="Next slide"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
+          <button
+            type="button"
+            onClick={() => setActiveIndex((current) => (current + 1) % slides.length)}
+            className="absolute top-1/2 right-3 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md border border-white/20 bg-[#0b0f14]/72 text-white transition-colors hover:border-gold hover:text-gold sm:right-5 sm:h-11 sm:w-11"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </>
+      ) : null}
 
-      <div className="relative z-10 mx-auto flex min-h-[640px] max-w-7xl items-end px-4 py-14 sm:min-h-[700px] sm:px-6 sm:py-16 lg:px-8 lg:py-20">
+      <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-end px-4 py-12 sm:min-h-[580px] sm:items-center sm:px-6 sm:py-16 lg:min-h-[620px] lg:px-8 lg:py-20">
         <div className="w-full">
-          <div className="max-w-4xl">
+          <div className="max-w-3xl">
             <div className="flex flex-wrap items-center gap-2.5">
               {badges.map((badge, index) =>
                 index === 0 ? (
@@ -123,16 +134,15 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
                   </span>
                 ),
               )}
-              <span className="rounded-full border border-ivory/18 bg-ink/45 px-3.5 py-1.5 text-[0.68rem] font-semibold tracking-[0.16em] text-ivory/82 uppercase backdrop-blur-sm sm:text-[11px]">
+              <span className="rounded-md border border-white/18 bg-[#0b0f14]/45 px-3.5 py-1.5 text-[0.68rem] font-semibold tracking-[0.16em] text-white/82 uppercase backdrop-blur-sm sm:text-[11px]">
                 {slideCounter}
               </span>
             </div>
 
-            <p className="mt-6 text-[11px] font-semibold tracking-[0.22em] text-gold uppercase">Campaign spotlight</p>
-            <h1 className="mt-4 max-w-4xl text-balance font-heading text-[2.8rem] leading-[0.98] sm:text-6xl lg:text-7xl">
+            <h1 className="mt-6 max-w-4xl text-balance font-heading text-[2.8rem] leading-[0.98] sm:text-6xl lg:text-7xl">
               {activeSlide.title}
             </h1>
-            <p className="mt-5 max-w-2xl text-pretty text-[0.98rem] leading-7 text-ivory/84 sm:text-lg sm:leading-8">
+            <p className="mt-5 max-w-2xl text-pretty text-[0.98rem] leading-7 text-white/84 sm:text-lg sm:leading-8">
               {activeSlide.caption}
             </p>
 
@@ -150,12 +160,29 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
                 href={fallbackSecondaryCta.href}
                 variant="secondary"
                 size="lg"
-                className="w-full border-ivory/70 text-ivory hover:border-gold hover:bg-transparent hover:text-gold sm:w-auto"
+                className="w-full border-white/70 bg-transparent text-white hover:border-gold hover:bg-transparent hover:text-gold sm:w-auto"
               >
                 {fallbackSecondaryCta.label}
               </ButtonLink>
             </div>
           </div>
+
+          {slides.length > 1 ? (
+            <div className="mt-9 flex flex-wrap gap-2">
+              {slides.map((slide, index) => (
+                <button
+                  key={slide.id}
+                  type="button"
+                  onClick={() => setActiveIndex(index)}
+                  aria-label={`Show ${slide.title}`}
+                  className={cn(
+                    "h-1.5 w-10 rounded-full transition-colors",
+                    index === activeIndex ? "bg-gold" : "bg-white/35 hover:bg-white/65",
+                  )}
+                />
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>

@@ -17,9 +17,9 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
   }
 
   return (
-    <div className="border-b border-ink/10 bg-stone/55">
-      <Container className="py-3">
-        <nav aria-label="Breadcrumb" className="min-w-0 text-sm">
+    <div className="border-b border-ink/8 bg-ivory">
+      <Container className="py-2.5">
+        <nav aria-label="Breadcrumb" className="min-w-0 text-xs sm:text-sm">
           <ol className="flex min-w-0 items-center gap-2 overflow-hidden text-smoke">
             {items.map((item, index) => {
               const isLast = index === items.length - 1;
@@ -34,7 +34,7 @@ export function Breadcrumbs({ items }: BreadcrumbsProps) {
                       {item.name}
                     </Link>
                   )}
-                  {!isLast ? <span aria-hidden className="text-ink/35">/</span> : null}
+                  {!isLast ? <span aria-hidden className="text-ink/25">/</span> : null}
                 </li>
               );
             })}

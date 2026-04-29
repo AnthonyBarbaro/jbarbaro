@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useDeferredValue, useEffect, useRef, useState } from "react";
-import { Search, ShoppingBag } from "lucide-react";
+import { Search } from "lucide-react";
 
 import type { ShopifyProductSearchResult } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
@@ -48,12 +48,14 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
     }
 
     let isMounted = true;
+    const controller = new AbortController();
     setIsLoading(true);
 
     async function loadResults() {
       try {
         const response = await fetch(`/api/shopify/search?q=${encodeURIComponent(normalizedQuery)}`, {
           cache: "no-store",
+          signal: controller.signal,
         });
         const payload = (await response.json()) as SearchResponse;
 
@@ -64,7 +66,7 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
         setResults(payload.results);
         setIsOpen(true);
       } catch (error) {
-        if (isMounted) {
+        if (isMounted && !(error instanceof DOMException && error.name === "AbortError")) {
           console.error(error);
         }
       } finally {
@@ -74,10 +76,14 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
       }
     }
 
-    void loadResults();
+    const timeoutId = window.setTimeout(() => {
+      void loadResults();
+    }, 180);
 
     return () => {
       isMounted = false;
+      window.clearTimeout(timeoutId);
+      controller.abort();
     };
   }, [deferredQuery]);
 
@@ -86,7 +92,7 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
       <form
         action="/shop"
         method="get"
-        className="flex min-h-12 items-center rounded-full border border-ink/12 bg-ivory/90 px-4 shadow-[0_20px_50px_-36px_rgba(14,23,38,0.65)]"
+        className="flex h-10 items-center rounded-md border border-ink/12 bg-ivory px-3 shadow-none"
       >
         <Search className="h-4 w-4 shrink-0 text-smoke" />
         <input
@@ -100,19 +106,19 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
             }
           }}
           placeholder="Search products, brands, sizes, or colors"
-          className="h-12 w-full bg-transparent px-3 text-sm text-ink outline-none placeholder:text-smoke"
+          className="h-10 w-full bg-transparent px-3 text-sm text-ink outline-none placeholder:text-smoke"
           aria-label="Search products"
         />
         <button
           type="submit"
-          className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-full bg-ink px-4 text-[11px] font-semibold tracking-[0.14em] text-ivory uppercase transition-colors hover:bg-deep-teal"
+          className="hidden h-8 shrink-0 items-center justify-center rounded-md bg-deep-teal px-3 text-[11px] font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:bg-[#136868] sm:inline-flex"
         >
           Search
         </button>
       </form>
 
       {(isOpen || isLoading) && deferredQuery.trim().length >= 2 ? (
-        <div className="absolute inset-x-0 top-[calc(100%+0.6rem)] z-[120] overflow-hidden rounded-[1.75rem] border border-ink/10 bg-ivory shadow-[0_32px_90px_-36px_rgba(14,23,38,0.45)]">
+        <div className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-[120] overflow-hidden rounded-lg border border-ink/10 bg-ivory shadow-xl shadow-ink/10">
           <div className="border-b border-ink/10 px-5 py-4">
             <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">Product Search</p>
             <p className="mt-1 text-sm text-ink">{isLoading ? "Searching the catalog..." : `${results.length} product matches`}</p>
@@ -159,7 +165,7 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-stone/55 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-end gap-3 bg-stone/55 px-5 py-4">
             <Link
               href={`/shop?q=${encodeURIComponent(query.trim())}`}
               onClick={() => {
@@ -169,17 +175,6 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
               className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
             >
               View all search results
-            </Link>
-            <Link
-              href="/cart"
-              onClick={() => {
-                setIsOpen(false);
-                onNavigate?.();
-              }}
-              className="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-ink uppercase hover:text-deep-teal"
-            >
-              <ShoppingBag className="h-4 w-4" />
-              Open cart
             </Link>
           </div>
         </div>

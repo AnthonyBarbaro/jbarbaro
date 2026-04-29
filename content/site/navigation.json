@@ -1,57 +1,8 @@
 {
   "primaryNavigation": [
     {
-      "label": "Shop All",
+      "label": "Shop",
       "href": "/shop"
-    },
-    {
-      "label": "Collections",
-      "children": [
-        {
-          "label": "Accessories",
-          "href": "/for-men/accessories"
-        },
-        {
-          "label": "Casual Shirts",
-          "href": "/for-men/casual-shirts"
-        },
-        {
-          "label": "Denim",
-          "href": "/for-men/denim"
-        },
-        {
-          "label": "Dress Shirts",
-          "href": "/for-men/dress-shirts"
-        },
-        {
-          "label": "Footwear",
-          "href": "/for-men/footwear"
-        },
-        {
-          "label": "Formalwear",
-          "href": "/for-men/formalwear"
-        },
-        {
-          "label": "Neckwear",
-          "href": "/for-men/neckwear"
-        },
-        {
-          "label": "Outerwear",
-          "href": "/for-men/outerwear"
-        },
-        {
-          "label": "Suits & Sports Coats",
-          "href": "/for-men/suits-sports-coats"
-        },
-        {
-          "label": "Sweaters",
-          "href": "/for-men/sweaters"
-        },
-        {
-          "label": "Trousers",
-          "href": "/for-men/trousers"
-        }
-      ]
     },
     {
       "label": "Designers",
@@ -68,80 +19,52 @@
       ]
     },
     {
-      "label": "Tailored",
-      "href": "/tailored-clothing"
-    },
-    {
-      "label": "Tuxedos",
+      "label": "Formalwear",
       "href": "/suit-tuxedo-rentals",
       "children": [
         {
-          "label": "Suit & Tuxedo Rentals",
+          "label": "Tuxedo Rentals",
           "href": "/suit-tuxedo-rentals"
         },
         {
-          "label": "Register Your Wedding",
+          "label": "Wedding Registration",
           "href": "/register-your-wedding"
+        },
+        {
+          "label": "Formalwear Appointment",
+          "href": "/schedule-appointment"
         }
       ]
+    },
+    {
+      "label": "Appointments",
+      "href": "/schedule-appointment"
     },
     {
       "label": "Locations",
       "href": "/locations"
     },
     {
-      "label": "About",
-      "href": "/about",
-      "children": [
-        {
-          "label": "Our History",
-          "href": "/about/our-history"
-        },
-        {
-          "label": "Services",
-          "href": "/services"
-        },
-        {
-          "label": "Reviews",
-          "href": "/reviews"
-        }
-      ]
-    },
-    {
-      "label": "What's New",
-      "href": "/blog",
-      "children": [
-        {
-          "label": "Blog",
-          "href": "/blog"
-        },
-        {
-          "label": "Style Guide",
-          "href": "/style-guide"
-        }
-      ]
-    },
-    {
-      "label": "Contact",
-      "href": "/contact-us"
-    },
-    {
-      "label": "Sale",
-      "href": "/sale-coming-soon"
+      "label": "Cart",
+      "href": "/cart"
     }
   ],
   "headerTopLinks": [
     {
+      "label": "Shop",
+      "href": "/shop"
+    },
+    {
+      "label": "Formalwear",
+      "href": "/suit-tuxedo-rentals"
+    },
+    {
+      "label": "Appointments",
+      "href": "/schedule-appointment"
+    },
+    {
       "label": "Locations",
       "href": "/locations"
-    },
-    {
-      "label": "Reviews",
-      "href": "/reviews"
-    },
-    {
-      "label": "Contact",
-      "href": "/contact-us"
     }
   ],
   "headerCtas": [
@@ -152,24 +75,28 @@
   ],
   "footerShoppingLinks": [
     {
-      "label": "Shop All",
+      "label": "Shop",
       "href": "/shop"
     },
     {
       "label": "Categories",
-      "href": "/for-men"
+      "href": "/categories"
     },
     {
       "label": "Designers",
-      "href": "/designers/featured-designers"
+      "href": "/designers"
+    },
+    {
+      "label": "Tuxedo Rentals",
+      "href": "/suit-tuxedo-rentals"
+    },
+    {
+      "label": "Wedding Registration",
+      "href": "/register-your-wedding"
     },
     {
       "label": "Appointments",
       "href": "/schedule-appointment"
-    },
-    {
-      "label": "Formalwear",
-      "href": "/suit-tuxedo-rentals"
     },
     {
       "label": "Bag",
@@ -178,32 +105,12 @@
   ],
   "footerUtilityLinks": [
     {
-      "label": "Home",
-      "href": "/"
-    },
-    {
-      "label": "Our History",
-      "href": "/about/our-history"
-    },
-    {
       "label": "Locations",
       "href": "/locations"
     },
     {
       "label": "Contact Us",
       "href": "/contact-us"
-    },
-    {
-      "label": "Sitemap",
-      "href": "/sitemap"
-    },
-    {
-      "label": "XML",
-      "href": "/sitemap.xml"
-    },
-    {
-      "label": "RSS",
-      "href": "/rss.xml"
     },
     {
       "label": "Terms",
@@ -214,6 +121,6 @@
       "href": "/privacy-policy"
     }
   ],
-  "footerNewsletterTitle": "Stay Connected",
-  "footerNewsletterCopy": "Follow J. Barbaro Clothiers for new arrivals, designer highlights, and appointment updates."
+  "footerNewsletterTitle": "New Arrivals",
+  "footerNewsletterCopy": "Get new arrivals, private events, and appointment updates."
 }

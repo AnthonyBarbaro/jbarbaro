@@ -305,7 +305,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                         setPreferredTimeWindow("");
                       }}
                       className={selected
-                        ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-ivory transition"
+                        ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-white transition"
                         : "rounded-2xl border border-ink/10 bg-white px-3 py-2 text-left text-smoke transition hover:border-ink/20 hover:text-ink"}
                     >
                       <div className="text-[11px] font-semibold tracking-[0.08em] uppercase">{date.weekday}</div>
@@ -362,11 +362,11 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                         type="button"
                         onClick={() => setPreferredTimeWindow(slot)}
                         className={selected
-                          ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-ivory transition"
+                          ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-white transition"
                           : "rounded-2xl border border-ink/10 bg-white px-3 py-2 text-left text-smoke transition hover:border-ink/20 hover:text-ink"}
                       >
                         <div className="text-sm font-semibold">{slot}</div>
-                        <div className={selected ? "text-xs text-ivory/85" : "text-xs text-smoke/85"}>
+                        <div className={selected ? "text-xs text-white/85" : "text-xs text-smoke/85"}>
                           Local store time
                         </div>
                       </button>
@@ -375,7 +375,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                 </div>
               ) : null}
 
-              {slotMessage ? <p className="text-xs text-red-700">{slotMessage}</p> : null}
+              {slotMessage ? <p className="text-xs text-ink">{slotMessage}</p> : null}
             </div>
 
             {selectedDateLabel && preferredTimeWindow ? (
@@ -440,7 +440,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
               <p
                 className={
                   submission.status === "error"
-                    ? "text-xs text-red-700"
+                    ? "text-xs text-ink"
                     : submission.status === "success"
                       ? "text-xs text-deep-teal"
                       : "text-xs text-smoke"

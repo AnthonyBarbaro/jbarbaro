@@ -18,14 +18,14 @@ type MainNavProps = {
 };
 
 const dropdownDescriptions: Record<string, string> = {
-  "Shop All":
+  Shop:
     "Move straight into the online floor with the collections clients browse most, from suiting and shirts to shoes and finishing details.",
   Accessories:
     "Explore the details that complete the look, then cross-shop the categories that pair naturally with belts, ties, shoes, and occasion dressing.",
 };
 
 const dropdownMedia: Record<string, NavDropdownMedia> = {
-  "Shop All": {
+  Shop: {
     eyebrow: "Spring Collection",
     title: "Premium Tailoring",
     description: "Designed to feel like the front door to the online store, with the strongest categories ready to browse immediately.",
@@ -41,7 +41,7 @@ const dropdownMedia: Record<string, NavDropdownMedia> = {
     imageSrc: "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
     imageAlt: "Luxury menswear accessories presentation",
     ctaLabel: "Browse Accessories",
-    ctaHref: "/for-men/accessories",
+    ctaHref: "/categories/accessories",
   },
 };
 
@@ -87,7 +87,7 @@ export function MainNav({ collectionItems, mobile = false, onNavigate, primaryIt
     const media = dropdownMedia[label];
     const description = dropdownDescriptions[label];
 
-    if (!media || !description) {
+    if (!media || !description || collectionItems.length === 0) {
       return null;
     }
 
@@ -109,17 +109,17 @@ export function MainNav({ collectionItems, mobile = false, onNavigate, primaryIt
     return (
       <div className="mt-6 space-y-6">
         <section>
-          <p className="text-[11px] font-semibold tracking-[0.18em] text-smoke uppercase">Browse</p>
+          <p className="text-[11px] font-semibold tracking-[0.18em] text-smoke uppercase">Shop & Visit</p>
           <ul className="mt-3 space-y-2">
             {primaryItems.map((item) => (
               <li
                 key={item.label}
                 className={cn(
                   "overflow-hidden rounded-[1.5rem] border border-ink/10 bg-white",
-                  item.label === "Shop All" && "border-gold/45 bg-gold/10",
+                  item.label === "Shop" && "border-gold/45 bg-gold/10",
                 )}
               >
-                {item.children?.length && item.label !== "Shop All" ? (
+                {item.children?.length && item.label !== "Shop" ? (
                   <details>
                     <summary className="cursor-pointer list-none px-4 py-3.5 text-sm font-semibold tracking-[0.08em] text-ink uppercase">
                       {item.label}
@@ -149,7 +149,7 @@ export function MainNav({ collectionItems, mobile = false, onNavigate, primaryIt
                     onClick={onNavigate}
                     className={cn(
                       "flex items-center justify-between px-4 py-3.5 text-sm font-semibold tracking-[0.08em] uppercase transition-colors",
-                      item.label === "Shop All" ? "text-deep-teal" : "text-ink",
+                      item.label === "Shop" ? "text-deep-teal" : "text-ink",
                     )}
                   >
                     {item.label}
@@ -159,62 +159,6 @@ export function MainNav({ collectionItems, mobile = false, onNavigate, primaryIt
               </li>
             ))}
           </ul>
-        </section>
-
-        <section className="rounded-[1.75rem] border border-ink/10 bg-white p-4 shadow-[0_20px_44px_-34px_rgba(14,23,38,0.18)]">
-          <details open>
-            <summary className="cursor-pointer list-none text-[11px] font-semibold tracking-[0.18em] text-smoke uppercase">
-              Shop Categories
-            </summary>
-
-            <ul className="mt-4 space-y-2">
-              {collectionItems.map((item) => (
-                <li key={item.href} className="overflow-hidden rounded-[1.35rem] border border-ink/8 bg-[#fcfbf8]">
-                  {item.label === "Accessories" ? (
-                    <details>
-                      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-semibold tracking-[0.08em] text-ink uppercase">
-                        {item.label}
-                      </summary>
-                      <div className="border-t border-ink/10 bg-white px-4 py-4">
-                        <p className="text-sm leading-6 text-smoke">{item.description}</p>
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                          {getDropdownLinks("Accessories").map((link) => (
-                            <Link
-                              key={`${link.href}-${link.label}`}
-                              href={link.href}
-                              onClick={onNavigate}
-                              className="rounded-xl border border-ink/10 bg-[#fcfbf8] px-3 py-3 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-gold/35"
-                            >
-                              {link.label}
-                            </Link>
-                          ))}
-                        </div>
-                        <Link
-                          href={item.href}
-                          onClick={onNavigate}
-                          className="mt-4 inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.16em] text-deep-teal uppercase"
-                        >
-                          Browse Accessories
-                          <MoveUpRight className="h-3.5 w-3.5" />
-                        </Link>
-                      </div>
-                    </details>
-                  ) : (
-                    <Link
-                      href={item.href}
-                      onClick={onNavigate}
-                      className={cn(
-                        "flex items-center justify-between px-4 py-3 text-sm font-semibold tracking-[0.08em] text-ink uppercase transition-colors hover:bg-white",
-                        matchesPath(item.href) && "text-deep-teal",
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </details>
         </section>
       </div>
     );
@@ -231,33 +175,13 @@ export function MainNav({ collectionItems, mobile = false, onNavigate, primaryIt
                   <li key={item.label}>
                     <NavItem
                       active={matchesPath(item.href)}
-                      emphasized={item.label === "Shop All"}
+                      emphasized={item.label === "Shop"}
                       external={item.external}
                       href={item.href || "/"}
                       label={item.label}
                       tier="primary"
                     >
-                      {item.label === "Shop All" ? getDesktopDropdown(item.label, index === 0 ? "left" : "center") : null}
-                    </NavItem>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <nav className="border-t border-ink/8 bg-ivory/92" aria-label="Shop categories">
-        <div className="mx-auto max-w-[84rem] px-4 sm:px-6 lg:px-8">
-          <div className="relative -mx-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="pointer-events-none absolute inset-y-0 left-4 z-[1] hidden w-10 bg-gradient-to-r from-ivory via-ivory/95 to-transparent xl:block" />
-            <div className="pointer-events-none absolute inset-y-0 right-4 z-[1] hidden w-10 bg-gradient-to-l from-ivory via-ivory/95 to-transparent xl:block" />
-            <div className="flex min-w-max justify-center">
-              <ul className="flex h-12 items-center gap-7 px-6 xl:gap-8">
-                {collectionItems.map((item, index) => (
-                  <li key={item.href}>
-                    <NavItem active={matchesPath(item.href)} href={item.href} label={item.label} tier="secondary">
-                      {item.label === "Accessories" ? getDesktopDropdown(item.label, index === 0 ? "left" : "center") : null}
+                      {item.label === "Shop" ? getDesktopDropdown(item.label, index === 0 ? "left" : "center") : null}
                     </NavItem>
                   </li>
                 ))}

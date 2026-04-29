@@ -36,3 +36,4 @@ export function createRateLimiter({ max, windowMs }: RateLimitOptions) {
 
 export const contactRateLimiter = createRateLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
 export const weddingRateLimiter = createRateLimiter({ max: 5, windowMs: 60 * 60 * 1000 });
+export const newsletterRateLimiter = createRateLimiter({ max: 8, windowMs: 60 * 60 * 1000 });

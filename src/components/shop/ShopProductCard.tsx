@@ -2,13 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
+import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { getProductFitMatches } from "@/lib/fit-profile";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
 type ShopProductCardProps = {
   product: ShopifyProduct;
   columns?: 1 | 2;
+  fitSizes?: string[];
 };
 
 function getSecondaryImage(product: ShopifyProduct) {
@@ -61,10 +64,10 @@ function ProductImageStage({
                 fill
                 sizes={imageSizes}
                 className={cn(
-                  "object-contain object-center transition-all duration-700",
+                  "scale-[1.12] object-contain object-center transition-all duration-700",
                   secondaryImage
-                    ? "opacity-100 group-hover:scale-[1.01] group-hover:opacity-0 group-focus-within:scale-[1.01] group-focus-within:opacity-0"
-                    : "group-hover:scale-[1.03] group-focus-within:scale-[1.03]",
+                    ? "opacity-100 group-hover:scale-[1.15] group-hover:opacity-0 group-focus-within:scale-[1.15] group-focus-within:opacity-0"
+                    : "group-hover:scale-[1.15] group-focus-within:scale-[1.15]",
                 )}
               />
               {secondaryImage ? (
@@ -73,7 +76,7 @@ function ProductImageStage({
                   alt={secondaryImage.altText || `${product.title} alternate view`}
                   fill
                   sizes={imageSizes}
-                  className="object-contain object-center opacity-0 transition-all duration-700 group-hover:scale-[1.01] group-hover:opacity-100 group-focus-within:scale-[1.01] group-focus-within:opacity-100"
+                  className="scale-[1.12] object-contain object-center opacity-0 transition-all duration-700 group-hover:scale-[1.15] group-hover:opacity-100 group-focus-within:scale-[1.15] group-focus-within:opacity-100"
                 />
               ) : null}
             </>
@@ -86,12 +89,18 @@ function ProductImageStage({
   );
 }
 
-export function ShopProductCard({ product, columns = 1 }: ShopProductCardProps) {
-  const primaryVariant = product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
+export function ShopProductCard({ product, columns = 1, fitSizes = [] }: ShopProductCardProps) {
+  const availableVariants = product.variants.filter((variant) => variant.availableForSale);
+  const primaryVariant = availableVariants[0] ?? product.variants[0];
+  const canQuickAdd = availableVariants.length === 1;
   const hasPriceRange = product.priceRange.minVariantPrice.amount !== product.priceRange.maxVariantPrice.amount;
   const priceLabel = hasPriceRange
     ? `${formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode)} - ${formatMoney(product.priceRange.maxVariantPrice.amount, product.priceRange.maxVariantPrice.currencyCode)}`
     : formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode);
+  const compareAtPrice =
+    primaryVariant?.compareAtPrice && Number(primaryVariant.compareAtPrice.amount) > Number(primaryVariant.price.amount)
+      ? formatMoney(primaryVariant.compareAtPrice.amount, primaryVariant.compareAtPrice.currencyCode)
+      : null;
   const primaryCollection = product.collections[0];
   const secondaryImage = getSecondaryImage(product);
   const sizeOptions = getOptionValues(product, "size").slice(0, 4);
@@ -99,25 +108,34 @@ export function ShopProductCard({ product, columns = 1 }: ShopProductCardProps) 
   const detailChips = sizeOptions.length > 0 ? sizeOptions : colorOptions;
   const detailLabel = sizeOptions.length > 0 ? "Sizes" : colorOptions.length > 0 ? "Colors" : null;
   const isCompact = columns === 2;
+  const fitMatches = getProductFitMatches(product, fitSizes);
+  const fitMatchLabel = fitMatches.length > 0 ? fitMatches.slice(0, 2).join(", ") : null;
 
   if (isCompact) {
     return (
-      <Card className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border-ink/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.98),rgba(250,246,239,0.98))] transition-all duration-300 hover:-translate-y-1 hover:border-gold/45 hover:shadow-[0_30px_58px_-40px_rgba(14,23,38,0.32)]">
-        <ProductImageStage
-          product={product}
-          secondaryImage={secondaryImage}
-          imageSizes="(max-width: 768px) 50vw, (max-width: 1280px) 50vw, 33vw"
-          className="aspect-[4/4.85] border-b border-ink/8 bg-[radial-gradient(circle_at_top,rgba(255,255,255,1),rgba(237,231,223,0.96))] px-5 pb-5 pt-6"
-        />
+      <Card className="group flex h-full flex-col overflow-hidden rounded-lg border-ink/10 bg-ivory transition-colors duration-200 hover:border-ink/25">
+        <div className="relative">
+          {fitMatchLabel ? (
+            <div className="absolute right-3 bottom-3 z-[3] rounded-md bg-deep-teal px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-white uppercase shadow-sm">
+              Your size {fitMatchLabel}
+            </div>
+          ) : null}
+          <ProductImageStage
+            product={product}
+            secondaryImage={secondaryImage}
+            imageSizes="(max-width: 768px) 50vw, (max-width: 1280px) 50vw, 33vw"
+            className="aspect-[4/3] border-b border-ink/10 bg-white px-4 py-4"
+          />
+        </div>
 
-        <CardContent className="flex flex-1 flex-col p-5">
+        <CardContent className="flex flex-1 flex-col p-4">
           {primaryCollection ? (
-            <p className="text-[10px] font-bold tracking-[0.18em] text-deep-teal uppercase">{primaryCollection.title}</p>
+            <p className="text-[10px] font-bold tracking-[0.16em] text-smoke uppercase">{primaryCollection.title}</p>
           ) : product.productType ? (
-            <p className="text-[10px] font-bold tracking-[0.18em] text-deep-teal uppercase">{product.productType}</p>
+            <p className="text-[10px] font-bold tracking-[0.16em] text-smoke uppercase">{product.productType}</p>
           ) : null}
 
-          <h2 className="mt-2 line-clamp-2 text-[1rem] leading-5 font-semibold tracking-[-0.01em] text-ink sm:text-[1.08rem] sm:leading-6">
+          <h2 className="mt-2 line-clamp-2 text-[0.95rem] leading-5 font-semibold tracking-[-0.01em] text-ink sm:text-[1rem] sm:leading-6">
             <Link href={`/shop/${product.handle}`} className="transition-colors hover:text-deep-teal">
               {product.title}
             </Link>
@@ -141,16 +159,27 @@ export function ShopProductCard({ product, columns = 1 }: ShopProductCardProps) 
 
           <div className="mt-auto pt-5">
             <div className="border-t border-ink/8 pt-4">
-              <p className="text-[1.18rem] font-bold tracking-[-0.02em] text-ink sm:text-[1.3rem]">{priceLabel}</p>
+              <div className="flex flex-wrap items-baseline gap-2">
+                <p className="text-[1.08rem] font-bold tracking-[-0.02em] text-ink sm:text-[1.18rem]">{priceLabel}</p>
+                {compareAtPrice ? <p className="text-sm font-medium text-smoke line-through">{compareAtPrice}</p> : null}
+              </div>
 
-              {primaryVariant ? (
+              {primaryVariant && canQuickAdd ? (
                 <AddToCartButton
                   merchandiseId={primaryVariant.id}
                   availableForSale={primaryVariant.availableForSale}
-                  className="mt-4 w-full rounded-full border-ink bg-ink text-ivory shadow-[0_18px_34px_-24px_rgba(14,23,38,0.8)] hover:border-deep-teal hover:bg-deep-teal"
+                  className="mt-4 w-full rounded-md border-deep-teal bg-deep-teal text-white hover:border-[#136868] hover:bg-[#136868]"
                   label="Add to Bag"
                   ariaLabel={`Add ${product.title} to bag`}
                 />
+              ) : primaryVariant ? (
+                <ButtonLink
+                  href={`/shop/${product.handle}`}
+                  variant="secondary"
+                  className="mt-4 w-full rounded-md border-ink/20 bg-ivory text-ink hover:border-ink/35 hover:bg-stone/55"
+                >
+                  Choose Options
+                </ButtonLink>
               ) : (
                 <p className="mt-4 rounded-full border border-ink/10 bg-white/80 px-4 py-3 text-center text-[11px] font-semibold tracking-[0.14em] text-smoke uppercase">
                   Unavailable
@@ -186,16 +215,20 @@ export function ShopProductCard({ product, columns = 1 }: ShopProductCardProps) 
                 {product.title}
               </h2>
 
-              <p className="mt-2 text-[1.02rem] font-bold text-ink sm:text-[1.08rem]">{priceLabel}</p>
+              <div className="mt-2 flex flex-wrap items-baseline gap-2">
+                <p className="text-[1.02rem] font-bold text-ink sm:text-[1.08rem]">{priceLabel}</p>
+                {compareAtPrice ? <p className="text-xs font-medium text-smoke line-through">{compareAtPrice}</p> : null}
+              </div>
 
               <div className="mt-1.5 space-y-1 text-[11px] leading-4.5 text-smoke sm:text-[12px] sm:leading-5">
+                {fitMatchLabel ? <p className="font-semibold text-deep-teal">Your saved size is available: {fitMatchLabel}</p> : null}
                 {sizeOptions.length > 0 ? <p>Sizes: {sizeOptions.join(", ")}</p> : null}
                 {colorOptions.length > 0 ? <p>Colors: {colorOptions.join(", ")}</p> : null}
                 {primaryCollection && product.productType ? <p>Category: {product.productType}</p> : null}
               </div>
             </Link>
 
-            {primaryVariant ? (
+            {primaryVariant && canQuickAdd ? (
               <AddToCartButton
                 merchandiseId={primaryVariant.id}
                 availableForSale={primaryVariant.availableForSale}
@@ -204,6 +237,14 @@ export function ShopProductCard({ product, columns = 1 }: ShopProductCardProps) 
                 ariaLabel={`Add ${product.title} to bag`}
                 iconOnly
               />
+            ) : primaryVariant ? (
+              <Link
+                href={`/shop/${product.handle}`}
+                className="mt-0.5 inline-flex min-h-10 shrink-0 items-center justify-center rounded-md border border-ink/20 bg-ivory px-3 text-[10px] font-semibold tracking-[0.1em] text-ink uppercase transition-colors hover:border-ink/35 hover:bg-stone/55"
+                aria-label={`Choose options for ${product.title}`}
+              >
+                Options
+              </Link>
             ) : (
               <p className="text-right text-xs text-smoke">Unavailable</p>
             )}

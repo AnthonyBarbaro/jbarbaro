@@ -13,7 +13,7 @@ type WaveDividerProps = {
 const waveStops: Record<WaveVariant, [string, string]> = {
   A: ["rgba(199,164,106,0.35)", "rgba(15,91,91,0.35)"],
   B: ["rgba(15,91,91,0.30)", "rgba(11,15,20,0.25)"],
-  C: ["rgba(231,222,211,1)", "rgba(250,247,242,1)"],
+  C: ["rgba(244,246,248,1)", "rgba(255,255,255,1)"],
 };
 
 export function WaveDivider({ variant = "A", flipped = false, className }: WaveDividerProps) {

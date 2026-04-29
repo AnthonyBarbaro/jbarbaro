@@ -54,7 +54,7 @@ function buildResolvedCategory({
 
   return {
     slug,
-    href: `/for-men/${slug}`,
+    href: `/categories/${slug}`,
     name,
     shortDescription,
     longDescription,
@@ -94,7 +94,13 @@ async function safeGetShopCollection(handle: string, limit: number) {
 
 export async function resolveMenCategories(limit = 24, productLimit = 4): Promise<ResolvedMenCategory[]> {
   if (!getShopifyConfigStatus().configured) {
-    return [];
+    return menCategories.map((category) =>
+      buildResolvedCategory({
+        editorialCategory: category,
+        shopifyCollection: null,
+        slugOverride: category.slug,
+      }),
+    );
   }
 
   let shopifyCollections: ShopifyCollection[] = [];
@@ -103,8 +109,14 @@ export async function resolveMenCategories(limit = 24, productLimit = 4): Promis
     shopifyCollections = await getShopCollectionsWithProducts(limit, productLimit);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown Shopify collections error.";
-    console.error(`Unable to load Shopify collections for /for-men: ${message}`);
-    return [];
+    console.error(`Unable to load Shopify collections for /categories: ${message}`);
+    return menCategories.map((category) =>
+      buildResolvedCategory({
+        editorialCategory: category,
+        shopifyCollection: null,
+        slugOverride: category.slug,
+      }),
+    );
   }
 
   const collectionByHandle = new Map(shopifyCollections.map((collection) => [collection.handle, collection]));
@@ -145,11 +157,17 @@ export async function resolveMenCategories(limit = 24, productLimit = 4): Promis
 }
 
 export async function resolveMenCategory(slugOrHandle: string, productLimit = 8): Promise<ResolvedMenCategory | null> {
-  if (!getShopifyConfigStatus().configured) {
-    return null;
-  }
-
   const editorialCategory = menCategoryMap[slugOrHandle] ?? getMenCategoryByHandle(slugOrHandle);
+
+  if (!getShopifyConfigStatus().configured) {
+    return editorialCategory
+      ? buildResolvedCategory({
+          editorialCategory,
+          shopifyCollection: null,
+          slugOverride: editorialCategory.slug,
+        })
+      : null;
+  }
 
   for (const handle of getCollectionHandleCandidates(slugOrHandle, editorialCategory)) {
     const shopifyCollection = await safeGetShopCollection(handle, productLimit);
@@ -163,7 +181,13 @@ export async function resolveMenCategory(slugOrHandle: string, productLimit = 8)
     }
   }
 
-  return null;
+  return editorialCategory
+    ? buildResolvedCategory({
+        editorialCategory,
+        shopifyCollection: null,
+        slugOverride: editorialCategory.slug,
+      })
+    : null;
 }
 
 export async function getMenCategoryRoutes(limit = 40) {

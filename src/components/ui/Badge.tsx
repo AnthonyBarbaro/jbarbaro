@@ -12,7 +12,7 @@ type BadgeProps = {
 
 const variantClass: Record<BadgeVariant, string> = {
   gold: "bg-gold text-ink border-gold/95 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.65)]",
-  teal: "bg-deep-teal text-ivory border-deep-teal/95 shadow-[0_10px_24px_-14px_rgba(11,15,20,0.55)]",
+  teal: "bg-deep-teal text-white border-deep-teal/95 shadow-[0_10px_24px_-14px_rgba(11,15,20,0.55)]",
   neutral: "bg-ivory text-ink border-ink/30",
 };
 

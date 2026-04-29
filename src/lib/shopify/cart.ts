@@ -1,7 +1,7 @@
 import "server-only";
 
 import { storefrontRequest } from "@/lib/shopify/client";
-import type { ShopifyCartSnapshot, ShopifyMoney } from "@/lib/shopify/types";
+import type { ShopifyCartSnapshot, ShopifyMoney, ShopifyProductVariant } from "@/lib/shopify/types";
 
 type MoneyV2 = {
   amount: string;
@@ -19,6 +19,15 @@ type RawCart = {
   lines: {
     nodes: RawCartLine[];
   };
+};
+
+type RawProductVariant = {
+  id: string;
+  title: string;
+  availableForSale: boolean;
+  price: MoneyV2;
+  compareAtPrice: MoneyV2 | null;
+  selectedOptions: { name: string; value: string }[];
 };
 
 type RawCartLine = {
@@ -42,6 +51,9 @@ type RawCartLine = {
         product: {
           title: string;
           handle: string;
+          variants: {
+            nodes: RawProductVariant[];
+          };
         };
       }
     | null;
@@ -64,7 +76,8 @@ export type ShopifyCartLineInput = {
 
 export type ShopifyCartLineUpdate = {
   id: string;
-  quantity: number;
+  quantity?: number;
+  merchandiseId?: string;
 };
 
 type CartQueryResponse = {
@@ -136,6 +149,25 @@ const CART_FRAGMENT = `
             product {
               title
               handle
+              variants(first: 100) {
+                nodes {
+                  id
+                  title
+                  availableForSale
+                  price {
+                    amount
+                    currencyCode
+                  }
+                  compareAtPrice {
+                    amount
+                    currencyCode
+                  }
+                  selectedOptions {
+                    name
+                    value
+                  }
+                }
+              }
             }
           }
         }
@@ -149,6 +181,17 @@ function toCartMoney(value: MoneyV2): ShopifyMoney {
     amount: value.amount,
     currencyCode: value.currencyCode,
   };
+}
+
+function normalizeCartVariants(nodes: RawProductVariant[]): ShopifyProductVariant[] {
+  return (Array.isArray(nodes) ? nodes : []).map((variant) => ({
+    id: variant.id,
+    title: variant.title,
+    availableForSale: variant.availableForSale,
+    price: toCartMoney(variant.price),
+    compareAtPrice: variant.compareAtPrice ? toCartMoney(variant.compareAtPrice) : null,
+    selectedOptions: variant.selectedOptions,
+  }));
 }
 
 function normalizeCart(cart: RawCart): ShopifyCartSnapshot {
@@ -169,6 +212,7 @@ function normalizeCart(cart: RawCart): ShopifyCartSnapshot {
       image: line.merchandise?.image ?? null,
       unitPrice: toCartMoney(line.cost.amountPerQuantity),
       totalPrice: toCartMoney(line.cost.totalAmount),
+      variants: line.merchandise ? normalizeCartVariants(line.merchandise.product.variants.nodes) : [],
     })),
   };
 }

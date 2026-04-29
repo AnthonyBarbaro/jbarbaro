@@ -71,7 +71,7 @@ function collectionMatches(collection: ShopifyCollectionPreview, spec: Collectio
 export async function resolveCollectionNavItems(limit = 40): Promise<CollectionNavItem[]> {
   const staticItems = collectionNavSpecs.map((item) => ({
     label: item.label,
-    href: `/for-men/${item.matches?.[0]?.toLowerCase().replace(/[^a-z0-9]+/g, "-") ?? item.label.toLowerCase()}`,
+    href: `/categories/${item.matches?.[0]?.toLowerCase().replace(/[^a-z0-9]+/g, "-") ?? item.label.toLowerCase()}`,
     description: item.description,
   }));
 
@@ -99,7 +99,7 @@ export async function resolveCollectionNavItems(limit = 40): Promise<CollectionN
 
       return {
         label: item.label,
-        href: `/for-men/${matchedCollection.handle}`,
+        href: `/categories/${matchedCollection.handle}`,
         description: item.description,
       };
     });

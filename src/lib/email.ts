@@ -9,6 +9,7 @@ import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import type {
   AppointmentSubmissionPayload,
   ContactSubmissionPayload,
+  NewsletterSignupPayload,
   WeddingRegistrationPayload,
 } from "@/types/submissions";
 
@@ -712,4 +713,69 @@ export async function sendWeddingRegistrationEmails(
     customer: customerStatus,
     internal: internalStatus,
   };
+}
+
+function buildNewsletterInternalEmail(signup: NewsletterSignupPayload) {
+  const subject = `New Newsletter Signup ${signup.reference} - ${SITE_NAME}`;
+  const text = [
+    `New newsletter signup ${signup.reference}`,
+    `Email: ${signup.email}`,
+    `Source: ${signup.source}`,
+    `IP: ${signup.ipAddress || "unknown"}`,
+    `User-Agent: ${signup.userAgent || "unknown"}`,
+  ].join("\n");
+
+  const html = buildBrandedEmail({
+    preheader: `New newsletter signup from ${signup.email}`,
+    badge: "Newsletter",
+    title: `New Newsletter Signup ${signup.reference}`,
+    subtitle: "A visitor joined the new arrivals and private events list.",
+    sections: [
+      {
+        title: "Signup",
+        fields: [
+          { label: "Reference", value: signup.reference },
+          { label: "Email", value: signup.email },
+          { label: "Source", value: signup.source },
+        ],
+      },
+      {
+        title: "Request Metadata",
+        fields: [
+          { label: "IP Address", value: signup.ipAddress || "unknown" },
+          { label: "User Agent", value: signup.userAgent || "unknown" },
+        ],
+      },
+    ],
+    footerNote: `${SITE_NAME} newsletter notification`,
+  });
+
+  return { subject, text, html };
+}
+
+export async function sendNewsletterSignupEmail(signup: NewsletterSignupPayload): Promise<DeliveryResult> {
+  const internalRecipients = getNotificationRecipients([
+    "CONTACT_NOTIFICATION_TO",
+    "APPOINTMENT_NOTIFICATION_TO",
+    "SMTP_REPLY_TO",
+  ]);
+
+  if (internalRecipients.length === 0) {
+    console.log(`[Newsletter] Logged-only signup ${signup.reference}: ${signup.email}`);
+    return "LOGGED";
+  }
+
+  const internalEmail = buildNewsletterInternalEmail(signup);
+
+  return deliverEmail({
+    to: internalRecipients.join(", "),
+    subject: internalEmail.subject,
+    text: internalEmail.text,
+    html: internalEmail.html,
+    replyTo: signup.email,
+    headers: {
+      "X-Form-Type": "newsletter-internal",
+      "X-Form-Reference": signup.reference,
+    },
+  });
 }

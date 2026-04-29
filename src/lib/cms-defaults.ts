@@ -348,19 +348,21 @@ export const defaultSiteSettings: SiteSettingsContent = {
 export const defaultNavigation: NavigationContent = {
   primaryNavigation,
   headerTopLinks: [
+    { label: "Shop", href: "/shop" },
+    { label: "Formalwear", href: "/suit-tuxedo-rentals" },
+    { label: "Appointments", href: "/schedule-appointment" },
     { label: "Locations", href: "/locations" },
-    { label: "Reviews", href: "/reviews" },
-    { label: "Contact", href: "/contact-us" },
   ],
   headerCtas: [
     { label: "Book Appointment", href: "/schedule-appointment" },
   ],
   footerShoppingLinks: [
     { label: "Shop", href: "/shop" },
-    { label: "Categories", href: "/for-men" },
-    { label: "Designers", href: "/designers/featured-designers" },
+    { label: "Categories", href: "/categories" },
+    { label: "Designers", href: "/designers" },
+    { label: "Tuxedo Rentals", href: "/suit-tuxedo-rentals" },
+    { label: "Wedding Registration", href: "/register-your-wedding" },
     { label: "Appointments", href: "/schedule-appointment" },
-    { label: "Formalwear", href: "/suit-tuxedo-rentals" },
     { label: "Bag", href: "/cart" },
   ],
   footerUtilityLinks: [
@@ -401,7 +403,7 @@ export const defaultHomePage: HomePageContent = {
       "Browse live products, jump by category when you need direction, and book an appointment when you want the shortlist prepared before you arrive.",
     buttons: [
       { label: "Shop Online", href: "/shop" },
-      { label: "Shop by Category", href: "/for-men" },
+      { label: "Shop by Category", href: "/categories" },
       { label: "Book Appointment", href: "/schedule-appointment" },
     ],
   },
@@ -660,7 +662,7 @@ export const defaultRentalsPage: RentalsPageContent = {
       "Register your wedding party today and our team will follow up with the next steps.",
     buttons: [
       { label: "Register Wedding", href: "/register-your-wedding" },
-      { label: "Browse Categories", href: "/for-men" },
+      { label: "Browse Categories", href: "/categories" },
     ],
     footerLinkLabel: "Go to Registration",
     footerLinkHref: "/register-your-wedding",

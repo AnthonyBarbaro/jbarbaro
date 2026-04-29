@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
-import { FloatingCartBar } from "@/components/shop/FloatingCartBar";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { buildPrimaryNavigation } from "@/data/navigation";
@@ -9,8 +8,6 @@ import { siteSettings } from "@/data/site-settings";
 import { socialLinks } from "@/data/social";
 import { SITE_URL } from "@/lib/constants";
 import { getDefaultSiteMetadata } from "@/lib/seo";
-import { resolveCollectionNavItems } from "@/lib/shopify/collection-nav";
-import { resolveMenCategories } from "@/lib/shopify/men-categories";
 
 import "./globals.css";
 
@@ -29,14 +26,7 @@ const organizationJsonLd = {
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const categories = await resolveMenCategories(24, 1);
-  const collectionNavItems = await resolveCollectionNavItems(40);
-  const navItems = buildPrimaryNavigation(
-    categories.map((category) => ({
-      label: category.name,
-      href: category.href,
-    })),
-  );
+  const navItems = buildPrimaryNavigation();
 
   return (
     <html lang="en">
@@ -48,11 +38,10 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           Skip to content
         </a>
         <SeoJsonLd data={organizationJsonLd} />
-        <SiteHeader navItems={navItems} collectionItems={collectionNavItems} />
+        <SiteHeader navItems={navItems} />
         <main id="main-content" className="min-h-[60vh]">
           {children}
         </main>
-        <FloatingCartBar />
         <SiteFooter />
       </body>
     </html>

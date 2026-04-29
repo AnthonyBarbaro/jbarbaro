@@ -44,6 +44,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: "Cart session has expired." }, { status: 404 });
     }
 
+    if (cart.totalQuantity < 1) {
+      return NextResponse.json({ message: "Your cart is empty." }, { status: 400 });
+    }
+
     return NextResponse.json({
       configured: true,
       checkoutUrl: cart.checkoutUrl,

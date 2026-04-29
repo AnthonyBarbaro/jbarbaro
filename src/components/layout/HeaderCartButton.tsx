@@ -69,14 +69,14 @@ export function HeaderCartButton({ className, compact = false, onNavigate }: Hea
         href="/cart"
         onClick={onNavigate}
         className={cn(
-          "relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-ink/20 text-ink transition-all duration-300 hover:border-gold hover:text-gold sm:h-10 sm:w-10",
+          "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors duration-200 hover:border-ink/25 sm:h-10 sm:w-10",
           className,
         )}
         aria-label="Open shopping bag"
       >
         <ShoppingBag className="h-4 w-4" />
         {quantity && quantity > 0 ? (
-          <span className="absolute -top-1 -right-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-deep-teal px-1 text-[10px] font-semibold text-ivory">
+          <span className="absolute -top-1 -right-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-deep-teal px-1 text-[10px] font-semibold text-white">
             {quantity > 99 ? "99+" : quantity}
           </span>
         ) : null}
@@ -89,14 +89,14 @@ export function HeaderCartButton({ className, compact = false, onNavigate }: Hea
       href="/cart"
       onClick={onNavigate}
       className={cn(
-        "relative inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-ink/18 bg-ivory px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-all duration-300 hover:-translate-y-0.5 hover:border-gold hover:text-gold",
+        "relative inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-ink/18 bg-ivory px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors duration-200 hover:border-ink/30",
         className,
       )}
     >
       <ShoppingBag className="h-4 w-4" />
       <span>Bag</span>
       {quantity && quantity > 0 ? (
-        <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-deep-teal px-1.5 text-[10px] font-semibold text-ivory">
+        <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-deep-teal px-1.5 text-[10px] font-semibold text-white">
           {quantity > 99 ? "99+" : quantity}
         </span>
       ) : null}

@@ -36,3 +36,12 @@ export type WeddingRegistrationPayload = {
   ipAddress?: string | null;
   userAgent?: string | null;
 };
+
+export type NewsletterSignupPayload = {
+  reference: string;
+  submittedAt: Date;
+  email: string;
+  source: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+};

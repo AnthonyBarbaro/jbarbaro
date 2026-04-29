@@ -7,6 +7,12 @@ import { useRouter } from "next/navigation";
 
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { FieldLabel, Select } from "@/components/ui/Field";
+import {
+  FIT_PROFILE_STORAGE_KEY,
+  getProductFitMatches,
+  getVariantSizeValue,
+  parseFitProfile,
+} from "@/lib/fit-profile";
 import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
@@ -128,6 +134,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(buildInitialOptionState(initialVariant));
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [smartFitMatch, setSmartFitMatch] = useState<string | null>(null);
   const touchStartXRef = useRef<number | null>(null);
 
   const selectedVariant = findMatchingVariant(product, selectedOptions) ?? initialVariant;
@@ -140,6 +147,10 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const priceLabel = selectedVariant
     ? formatMoney(selectedVariant.price.amount, selectedVariant.price.currencyCode)
     : formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode);
+  const compareAtPrice =
+    selectedVariant?.compareAtPrice && Number(selectedVariant.compareAtPrice.amount) > Number(selectedVariant.price.amount)
+      ? formatMoney(selectedVariant.compareAtPrice.amount, selectedVariant.compareAtPrice.currencyCode)
+      : null;
   const availabilityLabel =
     availableVariantCount > 0
       ? `${availableVariantCount} purchasable option${availableVariantCount === 1 ? "" : "s"}`
@@ -147,6 +158,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const availabilityMessage = selectedVariant?.availableForSale ? "Available to order online" : "Currently unavailable";
   const metaLine = [product.vendor, primaryCollection?.title || product.productType].filter(Boolean).join(" / ");
   const shouldShowDescriptionSection = Boolean(descriptionMarkup.trim());
+  const shouldShowAppointmentCta =
+    Number(product.priceRange.minVariantPrice.amount) >= 250 ||
+    /suit|tuxedo|formal|sport|tailor/i.test([product.title, product.productType, primaryCollection?.title].filter(Boolean).join(" "));
   const visibleOptionGroups = optionGroups
     .map((group) => ({
       ...group,
@@ -242,6 +256,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   }
 
   function handleOptionChange(optionName: string, optionValue: string) {
+    setSmartFitMatch(null);
     setSelectedOptions((current) => {
       const nextVariant = findAvailableVariantForOption(product, optionName, optionValue, current);
 
@@ -252,6 +267,33 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
       return buildInitialOptionState(nextVariant);
     });
   }
+
+  useEffect(() => {
+    const profile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
+    const fitMatches = profile ? getProductFitMatches(product, profile.recommendedSizes) : [];
+
+    const matchingVariant = fitMatches.length > 0
+      ? (product.variants.find((variant) => {
+          const variantSize = getVariantSizeValue(variant);
+
+          return Boolean(variant.availableForSale && variantSize && fitMatches.includes(variantSize));
+        }) ?? null)
+      : null;
+
+    const frameId = window.requestAnimationFrame(() => {
+      if (!matchingVariant) {
+        setSmartFitMatch(null);
+        return;
+      }
+
+      setSelectedOptions(buildInitialOptionState(matchingVariant));
+      setSmartFitMatch(getVariantSizeValue(matchingVariant));
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [product]);
 
   useEffect(() => {
     if (!isLightboxOpen) {
@@ -424,7 +466,17 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         </div>
 
           <div className="pt-6">
-            <p className="text-[1.7rem] font-semibold text-ink sm:text-[1.9rem]">{priceLabel}</p>
+            <div className="flex flex-wrap items-baseline gap-3">
+              <p className="text-[1.7rem] font-semibold text-ink sm:text-[1.9rem]">{priceLabel}</p>
+              {compareAtPrice ? <p className="text-base font-medium text-smoke line-through">{compareAtPrice}</p> : null}
+            </div>
+
+          {smartFitMatch ? (
+            <div className="mt-4 rounded-xl border border-deep-teal/20 bg-deep-teal/8 px-4 py-3 text-sm leading-6 text-smoke">
+              <p className="font-semibold text-ink">Smart Fit found your saved size: {smartFitMatch}</p>
+              <p className="mt-1">We selected the closest available variant. You can still change the size before adding it to your bag.</p>
+            </div>
+          ) : null}
 
           {visibleOptionGroups.length > 0 ? (
             <div className="mt-6 space-y-5">
@@ -469,23 +521,34 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 {primaryCollection ? ` in ${primaryCollection.title}` : ""}.
               </p>
             </div>
+
+            {shouldShowDescriptionSection ? (
+              <details className="mt-5 rounded-xl border border-ink/10 bg-white px-4 py-4 open:bg-stone/25">
+                <summary className="cursor-pointer list-none text-sm font-semibold tracking-[0.12em] text-ink uppercase">
+                  Details
+                </summary>
+                <div className={`${shopifyRichTextClassName} mt-4`} dangerouslySetInnerHTML={{ __html: descriptionMarkup }} />
+              </details>
+            ) : null}
+
+            {shouldShowAppointmentCta ? (
+              <div className="mt-5 rounded-xl border border-gold/30 bg-gold/12 px-4 py-4">
+                <p className="text-sm font-semibold text-ink">Need help with fit?</p>
+                <p className="mt-2 text-sm leading-6 text-smoke">
+                  Book an appointment and we&apos;ll help with sizing, tailoring, and complete-the-look options.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => router.push("/schedule-appointment")}
+                  className="mt-4 inline-flex min-h-10 items-center justify-center rounded-full border border-deep-teal bg-deep-teal px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:bg-ink"
+                >
+                  Book Appointment
+                </button>
+              </div>
+            ) : null}
           </div>
         </section>
       </div>
-
-      {shouldShowDescriptionSection ? (
-        <section className="border-t border-ink/10 pt-8 lg:pt-10">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,14rem)_minmax(0,1fr)] lg:gap-8">
-            <div>
-              <h2 className="font-heading text-[1.55rem] text-ink sm:text-[1.9rem]">Description</h2>
-            </div>
-            <div
-              className={shopifyRichTextClassName}
-              dangerouslySetInnerHTML={{ __html: descriptionMarkup }}
-            />
-          </div>
-        </section>
-      ) : null}
 
       {isLightboxOpen && activeImage ? (
         <div className="fixed inset-0 z-[180] bg-ink/92 text-ivory" onClick={closeLightbox}>

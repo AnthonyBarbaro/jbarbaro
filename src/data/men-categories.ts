@@ -17,7 +17,7 @@ export const menCategoryByCollectionHandleMap = Object.fromEntries(
 );
 
 export function getMenCategoryHref(category: MenCategory) {
-  return `/for-men/${category.slug}`;
+  return `/categories/${category.slug}`;
 }
 
 export function getMenCategoryByHandle(handle: string) {

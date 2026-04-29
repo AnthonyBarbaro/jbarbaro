@@ -34,15 +34,23 @@ const defaultForMenChildren = menCategories.map((category): NavChild => ({
 
 export function buildPrimaryNavigation(forMenChildren: NavChild[] = defaultForMenChildren): NavItem[] {
   return navigation.primaryNavigation.map((item): NavItem => {
+    const liveChildren = forMenChildren.filter((child) => child.href && child.label);
+
+    if (item.label === "Shop") {
+      return {
+        ...item,
+        href: item.href || "/shop",
+        ...(liveChildren.length > 0 ? { children: item.children?.length ? item.children : liveChildren } : {}),
+      };
+    }
+
     if (item.label !== "Collections") {
       return item;
     }
 
-    const liveChildren = forMenChildren.filter((child) => child.href && child.label);
-
     return {
       ...item,
-      href: item.href || "/for-men",
+      href: item.href || "/categories",
       ...(liveChildren.length > 0 ? { children: liveChildren } : {}),
     };
   });

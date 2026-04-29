@@ -16,6 +16,7 @@ type RawProduct = {
   id: string;
   handle: string;
   title: string;
+  createdAt: string;
   description: string;
   descriptionHtml: string;
   vendor: string;
@@ -67,6 +68,10 @@ type RawProduct = {
         amount: string;
         currencyCode: string;
       };
+      compareAtPrice: {
+        amount: string;
+        currencyCode: string;
+      } | null;
       selectedOptions: { name: string; value: string }[];
     }>;
   };
@@ -148,6 +153,7 @@ const productFields = `
   id
   handle
   title
+  createdAt
   description
   descriptionHtml
   vendor
@@ -199,6 +205,10 @@ const productFields = `
         amount
         currencyCode
       }
+      compareAtPrice {
+        amount
+        currencyCode
+      }
       selectedOptions {
         name
         value
@@ -212,6 +222,7 @@ function normalizeProduct(product: RawProduct): ShopifyProduct {
     id: product.id,
     handle: product.handle,
     title: product.title,
+    createdAt: product.createdAt,
     description: product.description,
     descriptionHtml: product.descriptionHtml,
     vendor: product.vendor,
@@ -240,7 +251,7 @@ async function fetchShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductsResponse, { limit: number }>({
     query: `
       query ShopProducts($limit: Int!) {
-        products(first: $limit) {
+        products(first: $limit, sortKey: CREATED_AT, reverse: true) {
           nodes {
             ${productFields}
           }

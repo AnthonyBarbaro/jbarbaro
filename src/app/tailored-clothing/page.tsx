@@ -91,9 +91,9 @@ export default function TailoredClothingPage() {
       >
         <div className="mt-8 grid gap-3 sm:grid-cols-3">
           {tailoredPage.heroHighlights.map((highlight) => (
-            <div key={highlight.title} className="rounded-2xl border border-ivory/20 bg-ivory/7 px-4 py-3">
-              <p className="text-[11px] font-semibold tracking-[0.14em] text-ivory/72 uppercase">{highlight.title}</p>
-              <p className="mt-1 text-sm text-ivory/86">{highlight.copy}</p>
+            <div key={highlight.title} className="rounded-lg border border-ink/10 bg-white px-4 py-3 shadow-sm shadow-ink/[0.03]">
+              <p className="text-[11px] font-semibold tracking-[0.14em] text-smoke uppercase">{highlight.title}</p>
+              <p className="mt-1 text-sm leading-6 text-ink">{highlight.copy}</p>
             </div>
           ))}
         </div>

@@ -5,17 +5,20 @@
   --font-playfair: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
 
   --color-ink: #0b0f14;
-  --color-ivory: #faf7f2;
-  --color-stone: #e7ded3;
+  --color-ivory: #ffffff;
+  --color-stone: #f4f6f8;
   --color-gold: #c7a46a;
   --color-deep-teal: #0f5b5b;
   --color-smoke: #6b7280;
+  --page-gradient-start: #ffffff;
+  --page-gradient-end: #f8fafc;
 
   --wave-a: linear-gradient(90deg, rgba(199, 164, 106, 0.35), rgba(15, 91, 91, 0.35));
   --wave-b: linear-gradient(90deg, rgba(15, 91, 91, 0.3), rgba(11, 15, 20, 0.25));
-  --wave-c: linear-gradient(90deg, rgba(231, 222, 211, 1), rgba(250, 247, 242, 1));
+  --wave-c: linear-gradient(90deg, rgba(244, 246, 248, 1), rgba(255, 255, 255, 1));
 
   --shadow-luxe: 0 28px 60px -42px rgba(11, 15, 20, 0.38);
+  color-scheme: light;
 }
 
 @theme inline {
@@ -42,8 +45,7 @@ body {
 body {
   margin: 0;
   overflow-x: hidden;
-  background:
-    linear-gradient(180deg, rgba(250, 247, 242, 1) 0%, rgba(247, 242, 234, 1) 100%);
+  background: var(--color-ivory);
   color: var(--color-ink);
   font-family: var(--font-inter);
   text-rendering: optimizeLegibility;
@@ -63,10 +65,7 @@ summary::-webkit-details-marker {
 }
 
 .luxe-shell {
-  background-image:
-    radial-gradient(circle at 18% -8%, rgba(199, 164, 106, 0.1), transparent 34%),
-    radial-gradient(circle at 88% 2%, rgba(15, 91, 91, 0.06), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+  background: var(--color-ivory);
 }
 
 .wave-a {

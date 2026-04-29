@@ -1,6 +1,5 @@
 import type { ElementType, ReactNode } from "react";
 
-import { WaveDivider } from "@/components/ui/WaveDivider";
 import { cn } from "@/lib/utils";
 
 type WaveVariant = "A" | "B" | "C";
@@ -19,7 +18,7 @@ type WaveSectionProps = {
 const backgroundClass = {
   ivory: "bg-ivory text-ink",
   stone: "bg-stone text-ink",
-  ink: "bg-ink text-ivory",
+  ink: "bg-[#0b0f14] text-white",
   transparent: "text-ink",
 };
 
@@ -29,17 +28,13 @@ export function WaveSection({
   className,
   contentClassName,
   background = "ivory",
-  topWave,
-  bottomWave,
   padded = true,
 }: WaveSectionProps) {
   const Component = as;
 
   return (
     <Component className={cn("relative", backgroundClass[background], className)}>
-      {topWave ? <WaveDivider variant={topWave} /> : null}
-      <div className={cn(padded && "py-14 sm:py-18 lg:py-22", contentClassName)}>{children}</div>
-      {bottomWave ? <WaveDivider variant={bottomWave} flipped /> : null}
+      <div className={cn(padded && "py-12 sm:py-14 lg:py-16", contentClassName)}>{children}</div>
     </Component>
   );
 }

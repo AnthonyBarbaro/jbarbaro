@@ -12,15 +12,15 @@ type CardProps = {
 
 const toneClasses: Record<CardTone, string> = {
   ivory: "bg-ivory text-ink",
-  stone: "bg-[linear-gradient(180deg,rgba(245,239,231,0.95),rgba(231,222,211,0.95))] text-ink",
-  ink: "bg-ink text-ivory",
+  stone: "bg-stone text-ink",
+  ink: "bg-[#0b0f14] text-white",
 };
 
 export function Card({ children, className, tone = "ivory", ...props }: CardProps) {
   return (
     <article
       className={cn(
-        "luxe-shadow overflow-hidden rounded-[1.75rem] border border-ink/8",
+        "overflow-hidden rounded-lg border border-ink/10 shadow-sm shadow-ink/[0.03]",
         toneClasses[tone],
         className,
       )}

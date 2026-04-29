@@ -13,6 +13,10 @@ export const metadata = buildMetadata({
   description:
     "Upcoming sale events and limited-time offers from J. Barbaro Clothiers will be published here soon.",
   path: "/sale-coming-soon",
+  robots: {
+    index: false,
+    follow: true,
+  },
 });
 
 export default function SaleComingSoonPage() {

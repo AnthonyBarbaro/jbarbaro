@@ -11,7 +11,7 @@ export async function getSitemapRoutes() {
     "/about/our-history",
     "/services",
     "/reviews",
-    "/for-men",
+    "/categories",
     "/shop",
     "/designers",
     "/designers/featured-designers",
@@ -27,16 +27,15 @@ export async function getSitemapRoutes() {
     "/privacy-policy",
     "/terms-of-use",
     "/sitemap",
-    "/sale-coming-soon",
   ];
 
-  let menCategoryRoutes = ["/for-men"];
+  let menCategoryRoutes = ["/categories"];
 
   try {
-    menCategoryRoutes = Array.from(new Set(["/for-men", ...(await getMenCategoryRoutes(40))]));
+    menCategoryRoutes = Array.from(new Set(["/categories", ...(await getMenCategoryRoutes(40))]));
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown men category sitemap error.";
-    console.error(`Unable to build dynamic /for-men sitemap routes: ${message}`);
+    console.error(`Unable to build dynamic /categories sitemap routes: ${message}`);
   }
 
   let shopProductRoutes: string[] = [];
@@ -49,7 +48,7 @@ export async function getSitemapRoutes() {
   }
 
   const dynamicRoutes = [
-    ...menCategoryRoutes.filter((route) => route !== "/for-men"),
+    ...menCategoryRoutes.filter((route) => route !== "/categories"),
     ...shopProductRoutes,
     ...locations.map((location) => `/location/${location.slug}`),
     ...brands.map((brand) => `/collection-brand/${brand.slug}`),

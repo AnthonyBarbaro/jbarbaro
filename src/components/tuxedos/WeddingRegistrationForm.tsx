@@ -136,7 +136,7 @@ export function WeddingRegistrationForm({ locations }: WeddingRegistrationFormPr
             {submission.status === "success" ? (
               <p className="mt-3 text-sm text-deep-teal">{submission.message}</p>
             ) : null}
-            {submission.status === "error" ? <p className="mt-3 text-sm text-red-700">{submission.message}</p> : null}
+            {submission.status === "error" ? <p className="mt-3 text-sm text-ink">{submission.message}</p> : null}
           </div>
         </form>
       </CardContent>

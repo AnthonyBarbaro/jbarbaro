@@ -67,8 +67,28 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/for-men",
+        destination: "/categories",
+        permanent: true,
+      },
+      {
+        source: "/for-men/",
+        destination: "/categories",
+        permanent: true,
+      },
+      {
+        source: "/for-men/:categorySlug",
+        destination: "/categories/:categorySlug",
+        permanent: true,
+      },
+      {
         source: "/for-men/:categorySlug/",
-        destination: "/for-men/:categorySlug",
+        destination: "/categories/:categorySlug",
+        permanent: true,
+      },
+      {
+        source: "/categories/:categorySlug/",
+        destination: "/categories/:categorySlug",
         permanent: true,
       },
       {

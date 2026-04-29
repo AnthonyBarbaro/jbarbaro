@@ -9,8 +9,8 @@ import { buildMetadata } from "@/lib/seo";
 import { getShopifyConfigStatus } from "@/lib/shopify/config";
 
 export const metadata = buildMetadata({
-  title: "Cart",
-  description: "Shopping bag with live totals and secure checkout.",
+  title: "Shopping Bag",
+  description: "Review your J. Barbaro Clothiers shopping bag, change quantities and available sizes, and continue to secure checkout.",
   path: "/cart",
 });
 
@@ -33,7 +33,7 @@ export default function CartPlaceholderPage() {
               <h1 className="mt-3 font-heading text-4xl text-ink sm:text-5xl">Shopping Bag</h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-smoke">
                 {status.configured
-                  ? "Selected pieces, live totals, and a clean transition into secure checkout."
+                  ? "Selected pieces, live totals, available size changes, and a clean transition into secure checkout."
                   : "Online checkout is temporarily unavailable. You can still browse the shop or book an appointment for a prepared fitting."}
               </p>
             </div>
@@ -62,7 +62,7 @@ export default function CartPlaceholderPage() {
                       <ButtonLink href="/shop" className="w-full sm:w-auto">
                         Browse the Shop
                       </ButtonLink>
-                      <ButtonLink href="/for-men" variant="secondary" className="w-full sm:w-auto">
+                      <ButtonLink href="/categories" variant="secondary" className="w-full sm:w-auto">
                         Shop by Category
                       </ButtonLink>
                     </div>

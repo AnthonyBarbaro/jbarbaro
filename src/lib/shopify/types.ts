@@ -3,6 +3,11 @@ export type ShopifyMoney = {
   currencyCode: string;
 };
 
+export type ShopifyProductReviewSummary = {
+  ratingValue: number;
+  reviewCount: number;
+};
+
 export type ShopifyProductVariant = {
   id: string;
   title: string;
@@ -22,6 +27,7 @@ export type ShopifyProduct = {
   vendor: string;
   productType: string;
   tags: string[];
+  reviewSummary: ShopifyProductReviewSummary | null;
   featuredImage: {
     url: string;
     altText: string | null;

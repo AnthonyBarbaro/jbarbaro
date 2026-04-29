@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tuxedo icon for J. Barbaro Clothiers">
+  <rect width="512" height="512" rx="112" fill="#ffffff" />
+  <rect x="38" y="38" width="436" height="436" rx="86" fill="none" stroke="#c7a46a" stroke-width="24" />
+  <path d="M84 474V180c0-54 42-96 96-96h152c54 0 96 42 96 96v294H84Z" fill="#0b0f14" />
+  <path d="M194 90h124l-62 92-62-92Z" fill="#ffffff" />
+  <path d="M162 116 256 474 84 474V193c0-36 31-69 78-77Z" fill="#0b0f14" />
+  <path d="M350 116 256 474h172V193c0-36-31-69-78-77Z" fill="#0b0f14" />
+  <path d="M256 184 184 84h-22l48 232 46-132Z" fill="#ffffff" opacity="0.96" />
+  <path d="M256 184 328 84h22l-48 232-46-132Z" fill="#ffffff" opacity="0.96" />
+  <path d="M256 202 210 316l46 158 46-158-46-114Z" fill="#ffffff" />
+  <path d="M162 116 238 206 188 244 126 132l36-16Z" fill="#0b0f14" stroke="#ffffff" stroke-width="8" stroke-linejoin="round" />
+  <path d="M350 116 274 206 324 244 386 132l-36-16Z" fill="#0b0f14" stroke="#ffffff" stroke-width="8" stroke-linejoin="round" />
+  <path d="M164 474h184l-92-70-92 70Z" fill="#0b0f14" />
+  <path d="M210 210 256 238 210 266c-19-7-36-19-50-36 14-13 31-19 50-20Z" fill="#c7a46a" />
+  <path d="M302 210 256 238 302 266c19-7 36-19 50-36-14-13-31-19-50-20Z" fill="#c7a46a" />
+  <circle cx="256" cy="238" r="18" fill="#0b0f14" stroke="#c7a46a" stroke-width="8" />
+  <circle cx="256" cy="310" r="12" fill="#c7a46a" />
+  <circle cx="256" cy="358" r="12" fill="#c7a46a" />
+</svg>

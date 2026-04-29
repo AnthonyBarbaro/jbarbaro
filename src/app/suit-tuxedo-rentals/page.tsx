@@ -47,14 +47,18 @@ export default function SuitTuxedoRentalsPage() {
               {rentalsPage.hero.description}
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <ButtonLink href={rentalsPage.hero.ctaPrimary.href} size="lg" className="w-full sm:w-auto">
+              <ButtonLink
+                href={rentalsPage.hero.ctaPrimary.href}
+                size="lg"
+                className="w-full sm:w-auto"
+              >
                 {rentalsPage.hero.ctaPrimary.label}
               </ButtonLink>
               <ButtonLink
                 href={rentalsPage.hero.ctaSecondary.href}
                 variant="secondary"
                 size="lg"
-                className="w-full border-ivory/80 text-ivory hover:border-gold hover:text-gold sm:w-auto"
+                className="w-full border-ivory/80 bg-transparent text-ivory hover:border-gold hover:bg-gold/10 hover:text-gold sm:w-auto"
               >
                 {rentalsPage.hero.ctaSecondary.label}
               </ButtonLink>
@@ -70,7 +74,9 @@ export default function SuitTuxedoRentalsPage() {
               <Card key={catalog.id} className="h-full">
                 <CardContent>
                   <Badge variant="teal">Catalog</Badge>
-                  <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">{catalog.title}</h2>
+                  <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">
+                    {catalog.title}
+                  </h2>
                   <p className="mt-3 text-sm leading-7 text-smoke">{catalog.description}</p>
                   <div className="mt-5 flex flex-wrap gap-3">
                     <ButtonLink
@@ -80,7 +86,9 @@ export default function SuitTuxedoRentalsPage() {
                       variant="secondary"
                       className="w-full sm:w-auto"
                     >
-                      <span className="mr-2 inline-flex"><ExternalLink className="h-4 w-4" /></span>
+                      <span className="mr-2 inline-flex">
+                        <ExternalLink className="h-4 w-4" />
+                      </span>
                       Open Catalog
                     </ButtonLink>
                     <ButtonLink
@@ -90,7 +98,9 @@ export default function SuitTuxedoRentalsPage() {
                       variant="teal"
                       className="w-full sm:w-auto"
                     >
-                      <span className="mr-2 inline-flex"><Download className="h-4 w-4" /></span>
+                      <span className="mr-2 inline-flex">
+                        <Download className="h-4 w-4" />
+                      </span>
                       Download PDF
                     </ButtonLink>
                   </div>
@@ -146,10 +156,17 @@ export default function SuitTuxedoRentalsPage() {
           <Card className="bg-ivory text-ink">
             <CardContent>
               <h2 className="font-heading text-2xl sm:text-3xl">{rentalsPage.closingCard.title}</h2>
-              <p className="mt-3 text-sm leading-7 text-smoke">{rentalsPage.closingCard.description}</p>
+              <p className="mt-3 text-sm leading-7 text-smoke">
+                {rentalsPage.closingCard.description}
+              </p>
               <div className="mt-5 flex flex-wrap gap-3">
                 {rentalsPage.closingCard.buttons.map((button, index) => (
-                  <ButtonLink key={button.href} href={button.href} variant={index === 0 ? "primary" : "secondary"} className="w-full sm:w-auto">
+                  <ButtonLink
+                    key={button.href}
+                    href={button.href}
+                    variant={index === 0 ? "primary" : "secondary"}
+                    className="w-full sm:w-auto"
+                  >
                     {button.label}
                   </ButtonLink>
                 ))}

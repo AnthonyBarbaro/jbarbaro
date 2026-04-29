@@ -1,12 +1,29 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowLeft, ChevronLeft, ChevronRight, Search, X, ZoomIn, ZoomOut } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  PackageCheck,
+  Ruler,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Star,
+  Truck,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
-import { FieldLabel, Select } from "@/components/ui/Field";
+import { aggregateRating } from "@/data/testimonials";
 import {
   FIT_PROFILE_STORAGE_KEY,
   getProductFitMatches,
@@ -18,6 +35,11 @@ import { cn, formatMoney } from "@/lib/utils";
 
 type ProductDetailClientProps = {
   product: ShopifyProduct;
+  storeReviewSummary?: {
+    source: "google" | "fallback";
+    ratingValue: number;
+    reviewCount: number;
+  };
 };
 
 function getProductImages(product: ShopifyProduct) {
@@ -66,7 +88,9 @@ function findAvailableVariantForOption(
   const matchingVariants = product.variants.filter(
     (variant) =>
       variant.availableForSale &&
-      variant.selectedOptions.some((option) => option.name === optionName && option.value === optionValue),
+      variant.selectedOptions.some(
+        (option) => option.name === optionName && option.value === optionValue,
+      ),
   );
 
   if (matchingVariants.length === 0) {
@@ -75,7 +99,11 @@ function findAvailableVariantForOption(
 
   return (
     matchingVariants.find((variant) =>
-      variant.selectedOptions.every((option) => (option.name === optionName ? option.value === optionValue : selectedOptions[option.name] === option.value)),
+      variant.selectedOptions.every((option) =>
+        option.name === optionName
+          ? option.value === optionValue
+          : selectedOptions[option.name] === option.value,
+      ),
     ) ?? matchingVariants[0]
   );
 }
@@ -86,11 +114,15 @@ function getAvailableValuesForGroup(
   values: string[],
   selectedOptions: Record<string, string>,
 ) {
-  return values.filter((value) => findAvailableVariantForOption(product, groupName, value, selectedOptions));
+  return values.filter((value) =>
+    findAvailableVariantForOption(product, groupName, value, selectedOptions),
+  );
 }
 
 function buildInitialOptionState(variant: ShopifyProductVariant | undefined) {
-  return Object.fromEntries((variant?.selectedOptions ?? []).map((option) => [option.name, option.value]));
+  return Object.fromEntries(
+    (variant?.selectedOptions ?? []).map((option) => [option.name, option.value]),
+  );
 }
 
 function summarizeProductDescription(description: string) {
@@ -119,19 +151,180 @@ function getRichTextFallback(description: string) {
 }
 
 function getPrimaryCollection(product: ShopifyProduct) {
-  return product.collections.find((collection) => collection.title.trim().toLowerCase() !== "shop all") ?? product.collections[0] ?? null;
+  return (
+    product.collections.find(
+      (collection) => collection.title.trim().toLowerCase() !== "shop all",
+    ) ??
+    product.collections[0] ??
+    null
+  );
 }
 
 const shopifyRichTextClassName =
   "[&_a]:font-semibold [&_a]:text-deep-teal [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-ink [&_b]:font-semibold [&_b]:text-ink [&_blockquote]:border-l-2 [&_blockquote]:border-gold/60 [&_blockquote]:pl-4 [&_blockquote]:italic [&_em]:italic [&_h2]:mt-8 [&_h2]:font-heading [&_h2]:text-[1.35rem] [&_h2]:text-ink [&_h3]:mt-7 [&_h3]:font-heading [&_h3]:text-[1.15rem] [&_h3]:text-ink [&_li]:leading-8 [&_li]:marker:text-gold [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:text-[0.98rem] [&_p]:leading-8 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 max-w-none space-y-4 text-smoke";
 
-export function ProductDetailClient({ product }: ProductDetailClientProps) {
+function AssuranceItem({
+  icon,
+  title,
+  detail,
+  highlight = false,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-[5rem] gap-3 rounded-md border px-4 py-3",
+        highlight ? "border-deep-teal/18 bg-deep-teal/7" : "border-ink/10 bg-white",
+      )}
+    >
+      <div
+        className={cn(
+          "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border",
+          highlight
+            ? "border-deep-teal/20 bg-white text-deep-teal"
+            : "border-gold/25 bg-gold/10 text-ink",
+        )}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-ink">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-smoke">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function ReviewStars() {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-hidden="true">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Star key={index} className="h-4 w-4 fill-current text-gold" />
+      ))}
+    </span>
+  );
+}
+
+function getDescriptionSentences(description: string) {
+  return description
+    .replace(/\s+/g, " ")
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function pickDescriptionDetail(sentences: string[], pattern: RegExp, fallback: string) {
+  return sentences.find((sentence) => pattern.test(sentence)) ?? fallback;
+}
+
+function getProductNoun(product: ShopifyProduct) {
+  return product.productType || getPrimaryCollection(product)?.title || "piece";
+}
+
+function getProductDescriptionHighlights(product: ShopifyProduct) {
+  const productNoun = getProductNoun(product).toLowerCase();
+  const sentences = getDescriptionSentences(product.description);
+  const summary =
+    summarizeProductDescription(product.description) ||
+    `${product.title} is selected for a polished, professional wardrobe.`;
+
+  return [
+    {
+      title: "Design notes",
+      detail: summary,
+      icon: <Sparkles className="h-4 w-4" />,
+    },
+    {
+      title: "Material and finish",
+      detail: pickDescriptionDetail(
+        sentences,
+        /leather|suede|wool|cotton|linen|silk|cashmere|fabric|crafted|premium|durable|polished|finish/i,
+        `${product.vendor || "J. Barbaro"} selected this ${productNoun} for a refined finish and easy wardrobe versatility.`,
+      ),
+      icon: <ShieldCheck className="h-4 w-4" />,
+    },
+    {
+      title: "Fit and styling",
+      detail: pickDescriptionDetail(
+        sentences,
+        /fit|comfort|tailor|slim|classic|regular|relaxed|wear|pair|style|occasion|silhouette/i,
+        `Style it with tailored separates, denim, or occasion-ready layers depending on the setting.`,
+      ),
+      icon: <Ruler className="h-4 w-4" />,
+    },
+  ];
+}
+
+function DescriptionHighlight({
+  icon,
+  title,
+  detail,
+}: {
+  icon: ReactNode;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-md border border-ink/10 bg-stone/45 p-4">
+      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gold/25 bg-white text-deep-teal">
+          {icon}
+        </span>
+        {title}
+      </div>
+      <p className="mt-3 text-sm leading-7 text-smoke">{detail}</p>
+    </div>
+  );
+}
+
+function getProductReviewCard(
+  product: ShopifyProduct,
+  primaryCollectionTitle: string | null,
+  storeReviewSummary: ProductDetailClientProps["storeReviewSummary"],
+) {
+  if (product.reviewSummary) {
+    return {
+      heading: `${product.reviewSummary.ratingValue.toFixed(1)} / 5`,
+      body: `Based on ${new Intl.NumberFormat("en-US").format(product.reviewSummary.reviewCount)} product reviews`,
+      eyebrow: "Product reviews",
+    };
+  }
+
+  const productNoun = (
+    primaryCollectionTitle ||
+    product.productType ||
+    product.title
+  ).toLowerCase();
+  const ratingValue = storeReviewSummary?.ratingValue ?? aggregateRating.ratingValue;
+  const storeReviewCount = new Intl.NumberFormat("en-US").format(
+    storeReviewSummary?.reviewCount ?? aggregateRating.reviewCount,
+  );
+  const sourceLabel =
+    storeReviewSummary?.source === "google"
+      ? "Google store reviews"
+      : "J. Barbaro customer reviews";
+
+  return {
+    heading: `${ratingValue.toFixed(1)} / 5`,
+    body: `Product reviews for ${productNoun} are coming soon. Backed by ${storeReviewCount} ${sourceLabel}.`,
+    eyebrow: "Reviews coming soon",
+  };
+}
+
+export function ProductDetailClient({ product, storeReviewSummary }: ProductDetailClientProps) {
   const router = useRouter();
-  const initialVariant = product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
+  const initialVariant =
+    product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
   const images = getProductImages(product);
   const optionGroups = getOptionMap(product);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(buildInitialOptionState(initialVariant));
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
+    buildInitialOptionState(initialVariant),
+  );
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [smartFitMatch, setSmartFitMatch] = useState<string | null>(null);
@@ -139,28 +332,56 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
   const selectedVariant = findMatchingVariant(product, selectedOptions) ?? initialVariant;
   const activeImage = images[selectedImageIndex] ?? images[0] ?? null;
-  const availableVariantCount = product.variants.filter((variant) => variant.availableForSale).length;
+  const availableVariantCount = product.variants.filter(
+    (variant) => variant.availableForSale,
+  ).length;
   const hasMultipleImages = images.length > 1;
   const primaryCollection = getPrimaryCollection(product);
   const productSummary = summarizeProductDescription(product.description);
-  const descriptionMarkup = product.descriptionHtml?.trim() || getRichTextFallback(product.description);
+  const descriptionMarkup =
+    product.descriptionHtml?.trim() || getRichTextFallback(product.description);
   const priceLabel = selectedVariant
     ? formatMoney(selectedVariant.price.amount, selectedVariant.price.currencyCode)
-    : formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode);
+    : formatMoney(
+        product.priceRange.minVariantPrice.amount,
+        product.priceRange.minVariantPrice.currencyCode,
+      );
   const compareAtPrice =
-    selectedVariant?.compareAtPrice && Number(selectedVariant.compareAtPrice.amount) > Number(selectedVariant.price.amount)
-      ? formatMoney(selectedVariant.compareAtPrice.amount, selectedVariant.compareAtPrice.currencyCode)
+    selectedVariant?.compareAtPrice &&
+    Number(selectedVariant.compareAtPrice.amount) > Number(selectedVariant.price.amount)
+      ? formatMoney(
+          selectedVariant.compareAtPrice.amount,
+          selectedVariant.compareAtPrice.currencyCode,
+        )
       : null;
+  const selectedVariantIsAvailable = Boolean(selectedVariant?.availableForSale);
   const availabilityLabel =
     availableVariantCount > 0
-      ? `${availableVariantCount} purchasable option${availableVariantCount === 1 ? "" : "s"}`
-      : "Unavailable";
-  const availabilityMessage = selectedVariant?.availableForSale ? "Available to order online" : "Currently unavailable";
-  const metaLine = [product.vendor, primaryCollection?.title || product.productType].filter(Boolean).join(" / ");
-  const shouldShowDescriptionSection = Boolean(descriptionMarkup.trim());
+      ? `${availableVariantCount} available option${availableVariantCount === 1 ? "" : "s"}${primaryCollection ? ` in ${primaryCollection.title}` : ""}.`
+      : "This piece is currently sold out online.";
+  const availabilityMessage = selectedVariantIsAvailable ? "In stock, ready to ship" : "Sold out";
+  const shippingAssuranceDetail = selectedVariantIsAvailable
+    ? "Orders are prepared quickly and packed with care before they leave our shop."
+    : "Contact the shop and we can help find a similar ready-to-ship option.";
+  const statusAssuranceDetail = selectedVariantIsAvailable
+    ? "This selection is available online and ready for checkout."
+    : "Choose another available option or book an appointment for sourcing help.";
+  const metaLine = [product.vendor, primaryCollection?.title || product.productType]
+    .filter(Boolean)
+    .join(" / ");
+  const descriptionHighlights = getProductDescriptionHighlights(product);
+  const productReviewCard = getProductReviewCard(
+    product,
+    primaryCollection?.title ?? null,
+    storeReviewSummary,
+  );
+  const shouldShowDescriptionSection =
+    descriptionHighlights.length > 0 || Boolean(descriptionMarkup.trim());
   const shouldShowAppointmentCta =
     Number(product.priceRange.minVariantPrice.amount) >= 250 ||
-    /suit|tuxedo|formal|sport|tailor/i.test([product.title, product.productType, primaryCollection?.title].filter(Boolean).join(" "));
+    /suit|tuxedo|formal|sport|tailor/i.test(
+      [product.title, product.productType, primaryCollection?.title].filter(Boolean).join(" "),
+    );
   const visibleOptionGroups = optionGroups
     .map((group) => ({
       ...group,
@@ -272,13 +493,16 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     const profile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
     const fitMatches = profile ? getProductFitMatches(product, profile.recommendedSizes) : [];
 
-    const matchingVariant = fitMatches.length > 0
-      ? (product.variants.find((variant) => {
-          const variantSize = getVariantSizeValue(variant);
+    const matchingVariant =
+      fitMatches.length > 0
+        ? (product.variants.find((variant) => {
+            const variantSize = getVariantSizeValue(variant);
 
-          return Boolean(variant.availableForSale && variantSize && fitMatches.includes(variantSize));
-        }) ?? null)
-      : null;
+            return Boolean(
+              variant.availableForSale && variantSize && fitMatches.includes(variantSize),
+            );
+          }) ?? null)
+        : null;
 
     const frameId = window.requestAnimationFrame(() => {
       if (!matchingVariant) {
@@ -339,14 +563,14 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   }, [hasMultipleImages, images.length, isLightboxOpen]);
 
   return (
-    <div className="space-y-10 lg:space-y-12">
-      <div className="grid min-w-0 gap-8 lg:gap-12 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
-        <section className="min-w-0 space-y-3 sm:space-y-4">
+    <div className="space-y-10 lg:space-y-14">
+      <div className="grid min-w-0 gap-8 lg:gap-12 xl:grid-cols-[minmax(0,1.04fr)_minmax(24rem,0.96fr)]">
+        <section className="min-w-0 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={goBack}
-              className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white px-3.5 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-gold hover:text-gold"
+              className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white px-3.5 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase shadow-[0_12px_24px_-22px_rgba(11,15,20,0.35)] transition-colors hover:border-gold hover:text-gold"
               aria-label="Go back to previous page"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -354,193 +578,352 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             </button>
           </div>
 
-        <div className="relative overflow-hidden rounded-[1.4rem] border border-ink/8 bg-white shadow-[0_20px_42px_-34px_rgba(14,23,38,0.22)]">
-          <div
-            className="relative h-[clamp(18rem,78vw,30rem)] touch-pan-y bg-[#f7f7f5] sm:h-[clamp(24rem,72vw,38rem)] lg:h-[clamp(33rem,56vw,46rem)]"
-            onTouchStart={(event) => handleTouchStart(event.touches[0]?.clientX ?? 0)}
-            onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
-          >
+          <div className="relative overflow-hidden rounded-[1.35rem] border border-ink/8 bg-white shadow-[0_26px_56px_-42px_rgba(14,23,38,0.4)]">
+            <div
+              className="relative h-[clamp(18rem,78vw,30rem)] touch-pan-y bg-[#f8f7f4] sm:h-[clamp(24rem,72vw,38rem)] lg:h-[clamp(33rem,56vw,46rem)]"
+              onTouchStart={(event) => handleTouchStart(event.touches[0]?.clientX ?? 0)}
+              onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
+            >
+              {activeImage ? (
+                <button
+                  type="button"
+                  onClick={openLightbox}
+                  className="block h-full w-full"
+                  aria-label="Open product image viewer"
+                >
+                  <Image
+                    src={activeImage.url}
+                    alt={activeImage.altText || product.title}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 55vw"
+                    className="object-contain p-4 sm:p-6 lg:p-8"
+                  />
+                </button>
+              ) : (
+                <div className="flex h-full items-center justify-center px-6 text-sm text-smoke">
+                  Image coming soon
+                </div>
+              )}
+              <div className="pointer-events-none absolute top-4 left-4 rounded-full border border-ink/10 bg-white/88 px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase backdrop-blur">
+                J. Barbaro edit
+              </div>
+            </div>
+
+            {hasMultipleImages ? (
+              <>
+                <button
+                  type="button"
+                  onClick={showPreviousImage}
+                  className="absolute top-1/2 left-3 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:left-4"
+                  aria-label="Show previous product image"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={showNextImage}
+                  className="absolute top-1/2 right-3 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:right-4"
+                  aria-label="Show next product image"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                <div className="pointer-events-none absolute right-3 bottom-3 rounded-full border border-ink/10 bg-white/88 px-3 py-1 text-[10px] font-medium text-smoke backdrop-blur sm:right-4 sm:bottom-4">
+                  {selectedImageIndex + 1} / {images.length}
+                </div>
+              </>
+            ) : null}
+
             {activeImage ? (
-              <button type="button" onClick={openLightbox} className="block h-full w-full" aria-label="Open product image viewer">
-                <Image
-                  src={activeImage.url}
-                  alt={activeImage.altText || product.title}
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 55vw"
-                  className="object-contain p-3 sm:p-5 lg:p-7"
-                />
+              <button
+                type="button"
+                onClick={openLightbox}
+                className="absolute left-3 bottom-3 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/92 px-3 py-2 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:left-4 sm:bottom-4"
+                aria-label="Zoom product image"
+              >
+                <Search className="h-3.5 w-3.5" />
+                Zoom
               </button>
-            ) : (
-              <div className="flex h-full items-center justify-center px-6 text-sm text-smoke">Image coming soon</div>
-            )}
+            ) : null}
           </div>
 
           {hasMultipleImages ? (
-            <>
-              <button
-                type="button"
-                onClick={showPreviousImage}
-                className="absolute top-1/2 left-3 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:left-4"
-                aria-label="Show previous product image"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={showNextImage}
-                className="absolute top-1/2 right-3 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:right-4"
-                aria-label="Show next product image"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-              <div className="pointer-events-none absolute right-3 bottom-3 rounded-full border border-ink/10 bg-white/88 px-3 py-1 text-[10px] font-medium text-smoke backdrop-blur sm:right-4 sm:bottom-4">
-                {selectedImageIndex + 1} / {images.length}
+            <div className="overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex w-max gap-2 sm:gap-3">
+                {images.map((image, index) => (
+                  <button
+                    key={`${image.url}-${index}`}
+                    type="button"
+                    onClick={() => setSelectedImageIndex(index)}
+                    className={cn(
+                      "relative h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-white transition-all sm:h-24 sm:w-24 lg:h-24 lg:w-24",
+                      index === selectedImageIndex
+                        ? "border-ink shadow-[0_16px_30px_-26px_rgba(15,20,28,0.35)]"
+                        : "border-ink/10 hover:border-ink/35",
+                    )}
+                    aria-label={`View product image ${index + 1}`}
+                  >
+                    <Image
+                      src={image.url}
+                      alt={image.altText || product.title}
+                      fill
+                      sizes="112px"
+                      className="object-contain p-1.5 sm:p-2"
+                    />
+                  </button>
+                ))}
               </div>
-            </>
-          ) : null}
-
-          {activeImage ? (
-            <button
-              type="button"
-              onClick={openLightbox}
-              className="absolute left-3 bottom-3 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/92 px-3 py-2 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:left-4 sm:bottom-4"
-              aria-label="Zoom product image"
-            >
-              <Search className="h-3.5 w-3.5" />
-              Zoom
-            </button>
-          ) : null}
-        </div>
-
-        {hasMultipleImages ? (
-          <div className="overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max gap-2 sm:gap-3">
-              {images.map((image, index) => (
-                <button
-                  key={`${image.url}-${index}`}
-                  type="button"
-                  onClick={() => setSelectedImageIndex(index)}
-                  className={cn(
-                    "relative h-20 w-20 shrink-0 overflow-hidden rounded-[0.95rem] border bg-white transition-all sm:h-24 sm:w-24 lg:h-24 lg:w-24",
-                    index === selectedImageIndex
-                      ? "border-ink shadow-[0_16px_30px_-26px_rgba(15,20,28,0.35)]"
-                      : "border-ink/10 hover:border-ink/35",
-                  )}
-                  aria-label={`View product image ${index + 1}`}
-                >
-                  <Image
-                    src={image.url}
-                    alt={image.altText || product.title}
-                    fill
-                    sizes="112px"
-                    className="object-contain p-1.5 sm:p-2"
-                  />
-                </button>
-              ))}
             </div>
-          </div>
-        ) : null}
+          ) : null}
         </section>
 
-        <section className="min-w-0 lg:pt-9">
-          <div className="border-b border-ink/10 pb-7">
-            {metaLine ? <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">{metaLine}</p> : null}
+        <section className="min-w-0 lg:pt-5 xl:pt-8">
+          <div className="space-y-5">
+            <header className="border-b border-ink/10 pb-6">
+              {metaLine ? (
+                <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">
+                  {metaLine}
+                </p>
+              ) : null}
 
-          <h1 className="mt-3 text-balance font-heading text-[1.95rem] leading-[1.04] text-ink sm:text-[2.45rem] lg:text-[3rem]">
-            {product.title}
-          </h1>
+              <h1 className="mt-3 text-balance font-heading text-[2.05rem] leading-[1.04] text-ink sm:text-[2.65rem] lg:text-[3.15rem]">
+                {product.title}
+              </h1>
 
-          {productSummary ? (
-            <p className="mt-4 max-w-2xl text-[0.98rem] leading-8 text-smoke">
-              {productSummary}
-            </p>
-          ) : null}
+              {productSummary ? (
+                <p className="mt-4 max-w-2xl text-[0.98rem] leading-8 text-smoke">
+                  {productSummary}
+                </p>
+              ) : null}
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-smoke">
-            <span className="inline-flex items-center gap-2">
-              <span className={cn("h-2 w-2 rounded-full", selectedVariant?.availableForSale ? "bg-deep-teal" : "bg-[#b45309]")} />
-              {availabilityMessage}
-            </span>
-            {!selectedVariant?.availableForSale ? <span className="font-medium uppercase tracking-[0.12em]">Sold out</span> : null}
-          </div>
-        </div>
+              <Link
+                href="/reviews"
+                className="mt-5 flex items-center justify-between gap-3 rounded-md border border-ink/10 bg-white px-4 py-3 shadow-[0_18px_38px_-34px_rgba(14,23,38,0.42)] transition-colors hover:border-gold"
+                aria-label="Read customer reviews"
+              >
+                <span className="min-w-0">
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-ink">
+                    <ReviewStars />
+                    <span>{productReviewCard.heading}</span>
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-smoke">
+                    {productReviewCard.body}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[10px] font-semibold tracking-[0.14em] text-deep-teal uppercase">
+                  {productReviewCard.eyebrow}
+                </span>
+              </Link>
 
-          <div className="pt-6">
-            <div className="flex flex-wrap items-baseline gap-3">
-              <p className="text-[1.7rem] font-semibold text-ink sm:text-[1.9rem]">{priceLabel}</p>
-              {compareAtPrice ? <p className="text-base font-medium text-smoke line-through">{compareAtPrice}</p> : null}
-            </div>
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-smoke">
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "h-2.5 w-2.5 rounded-full",
+                      selectedVariantIsAvailable ? "bg-deep-teal" : "bg-[#b45309]",
+                    )}
+                  />
+                  {availabilityMessage}
+                </span>
+              </div>
+            </header>
 
-          {smartFitMatch ? (
-            <div className="mt-4 rounded-xl border border-deep-teal/20 bg-deep-teal/8 px-4 py-3 text-sm leading-6 text-smoke">
-              <p className="font-semibold text-ink">Smart Fit found your saved size: {smartFitMatch}</p>
-              <p className="mt-1">We selected the closest available variant. You can still change the size before adding it to your bag.</p>
-            </div>
-          ) : null}
-
-          {visibleOptionGroups.length > 0 ? (
-            <div className="mt-6 space-y-5">
-              {visibleOptionGroups.map((group) => (
-                <div key={group.name} className="min-w-0">
-                  <FieldLabel htmlFor={`product-option-${group.name.toLowerCase().replace(/\s+/g, "-")}`}>Select {group.name}</FieldLabel>
-                  <Select
-                    id={`product-option-${group.name.toLowerCase().replace(/\s+/g, "-")}`}
-                    value={selectedOptions[group.name] ?? ""}
-                    onChange={(event) => handleOptionChange(group.name, event.target.value)}
-                    className="mt-2 rounded-xl border-ink/12 bg-white py-3 text-sm shadow-none focus:border-ink focus:ring-2 focus:ring-ink/10"
-                  >
-                    {group.values.map((value) => {
-                      return (
-                        <option key={value} value={value}>
-                          {value}
-                        </option>
-                      );
-                    })}
-                  </Select>
+            <div className="rounded-[1.1rem] border border-ink/10 bg-white p-5 shadow-[0_24px_52px_-42px_rgba(14,23,38,0.42)] sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex flex-wrap items-baseline gap-3">
+                  <p className="text-[1.75rem] font-semibold text-ink sm:text-[2rem]">
+                    {priceLabel}
+                  </p>
+                  {compareAtPrice ? (
+                    <p className="text-base font-medium text-smoke line-through">
+                      {compareAtPrice}
+                    </p>
+                  ) : null}
                 </div>
-              ))}
-            </div>
-          ) : null}
+                <span
+                  className={cn(
+                    "inline-flex min-h-8 items-center rounded-full border px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase",
+                    selectedVariantIsAvailable
+                      ? "border-deep-teal/18 bg-deep-teal/8 text-deep-teal"
+                      : "border-[#b45309]/20 bg-[#b45309]/8 text-[#8a3a04]",
+                  )}
+                >
+                  {selectedVariantIsAvailable ? "Ready to ship" : "Sold out"}
+                </span>
+              </div>
 
-            <div className="mt-6">
-              {selectedVariant ? (
-                <AddToCartButton
-                  merchandiseId={selectedVariant.id}
-                  availableForSale={selectedVariant.availableForSale}
-                  className="h-12 w-full rounded-xl text-sm tracking-[0.08em]"
-                  label="Add to Bag"
-                />
-              ) : (
-                <p className="text-sm text-smoke">This product does not have an available variant yet.</p>
-              )}
+              {smartFitMatch ? (
+                <div className="mt-4 rounded-md border border-deep-teal/20 bg-deep-teal/8 px-4 py-3 text-sm leading-6 text-smoke">
+                  <p className="font-semibold text-ink">
+                    Smart Fit found your saved size: {smartFitMatch}
+                  </p>
+                  <p className="mt-1">
+                    We selected the closest available variant. You can still change the size before
+                    adding it to your bag.
+                  </p>
+                </div>
+              ) : null}
+
+              {visibleOptionGroups.length > 0 ? (
+                <div className="mt-6 space-y-5">
+                  {visibleOptionGroups.map((group) => {
+                    const labelId = `product-option-${group.name.toLowerCase().replace(/\s+/g, "-")}`;
+                    const selectedValue = selectedOptions[group.name] ?? "";
+
+                    return (
+                      <div key={group.name} className="min-w-0">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <p id={labelId} className="text-sm font-medium text-ink/90">
+                            Select {group.name}
+                          </p>
+                          {selectedValue ? (
+                            <p className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
+                              {selectedValue}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div
+                          role="radiogroup"
+                          aria-labelledby={labelId}
+                          className="mt-3 flex flex-wrap gap-2"
+                        >
+                          {group.values.map((value) => {
+                            const isSelected = selectedValue === value;
+
+                            return (
+                              <button
+                                key={value}
+                                type="button"
+                                role="radio"
+                                aria-checked={isSelected}
+                                onClick={() => handleOptionChange(group.name, value)}
+                                className={cn(
+                                  "inline-flex min-h-11 min-w-12 items-center justify-center rounded-md border px-4 py-2 text-center text-sm font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30",
+                                  isSelected
+                                    ? "border-ink bg-ink text-white shadow-[0_16px_30px_-26px_rgba(11,15,20,0.7)]"
+                                    : "border-ink/12 bg-white text-ink hover:border-gold hover:bg-gold/10",
+                                )}
+                              >
+                                {value}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className="mt-6">
+                {selectedVariant ? (
+                  <AddToCartButton
+                    merchandiseId={selectedVariant.id}
+                    availableForSale={selectedVariant.availableForSale}
+                    className="min-h-[3.25rem] w-full rounded-md border-ink bg-ink text-sm tracking-[0.08em] !text-white hover:border-deep-teal hover:bg-deep-teal"
+                    label="Add to Bag"
+                  />
+                ) : (
+                  <p className="text-sm text-smoke">
+                    This product does not have an available variant yet.
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-4 flex items-start gap-3 rounded-md bg-stone/65 px-4 py-3 text-sm leading-6 text-smoke">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-deep-teal" />
+                <p>
+                  <span className="font-semibold text-ink">Fast shipping.</span>{" "}
+                  {shippingAssuranceDetail}
+                </p>
+              </div>
+
+              <p className="mt-3 text-xs leading-5 text-smoke">{availabilityLabel}</p>
             </div>
 
-            <div className="mt-4 rounded-xl border border-ink/10 bg-stone/40 px-4 py-3 text-sm text-smoke">
-              <p>
-                {availabilityLabel}
-                {primaryCollection ? ` in ${primaryCollection.title}` : ""}.
-              </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <AssuranceItem
+                icon={<PackageCheck className="h-4 w-4" />}
+                title="Expertly packaged"
+                detail="Each order is protected and presented with boutique-level care."
+              />
+              <AssuranceItem
+                icon={<ShieldCheck className="h-4 w-4" />}
+                title="Authenticity guaranteed"
+                detail="Designer merchandise is sourced through trusted brand channels."
+              />
+              <AssuranceItem
+                icon={<CreditCard className="h-4 w-4" />}
+                title="Secure payments"
+                detail="Checkout runs through encrypted Shopify payment processing."
+              />
+              <AssuranceItem
+                icon={
+                  selectedVariantIsAvailable ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )
+                }
+                title={
+                  selectedVariantIsAvailable ? "In stock, ready to ship" : "Availability support"
+                }
+                detail={statusAssuranceDetail}
+                highlight={selectedVariantIsAvailable}
+              />
             </div>
 
             {shouldShowDescriptionSection ? (
-              <details className="mt-5 rounded-xl border border-ink/10 bg-white px-4 py-4 open:bg-stone/25">
-                <summary className="cursor-pointer list-none text-sm font-semibold tracking-[0.12em] text-ink uppercase">
-                  Details
-                </summary>
-                <div className={`${shopifyRichTextClassName} mt-4`} dangerouslySetInnerHTML={{ __html: descriptionMarkup }} />
-              </details>
+              <section className="rounded-[1.1rem] border border-ink/10 bg-white p-5 shadow-[0_22px_48px_-42px_rgba(14,23,38,0.38)] sm:p-6">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[11px] font-semibold tracking-[0.16em] text-deep-teal uppercase">
+                      Editor&apos;s notes
+                    </p>
+                    <h2 className="mt-2 font-heading text-2xl leading-tight text-ink">
+                      Details that make it work
+                    </h2>
+                  </div>
+                  <span className="hidden rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase sm:inline-flex">
+                    Curated
+                  </span>
+                </div>
+
+                <div className="mt-5 grid gap-3">
+                  {descriptionHighlights.map((highlight) => (
+                    <DescriptionHighlight
+                      key={highlight.title}
+                      icon={highlight.icon}
+                      title={highlight.title}
+                      detail={highlight.detail}
+                    />
+                  ))}
+                </div>
+
+                {descriptionMarkup.trim() ? (
+                  <div className="mt-6 border-t border-ink/10 pt-5">
+                    <p className="text-sm font-semibold tracking-[0.12em] text-ink uppercase">
+                      Full description
+                    </p>
+                    <div
+                      className={`${shopifyRichTextClassName} mt-4`}
+                      dangerouslySetInnerHTML={{ __html: descriptionMarkup }}
+                    />
+                  </div>
+                ) : null}
+              </section>
             ) : null}
 
             {shouldShowAppointmentCta ? (
-              <div className="mt-5 rounded-xl border border-gold/30 bg-gold/12 px-4 py-4">
+              <div className="rounded-[1.1rem] border border-gold/30 bg-gold/12 px-5 py-5">
                 <p className="text-sm font-semibold text-ink">Need help with fit?</p>
                 <p className="mt-2 text-sm leading-6 text-smoke">
-                  Book an appointment and we&apos;ll help with sizing, tailoring, and complete-the-look options.
+                  Book an appointment and we&apos;ll help with sizing, tailoring, and
+                  complete-the-look options.
                 </p>
                 <button
                   type="button"
                   onClick={() => router.push("/schedule-appointment")}
-                  className="mt-4 inline-flex min-h-10 items-center justify-center rounded-full border border-deep-teal bg-deep-teal px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:bg-ink"
+                  className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-deep-teal bg-deep-teal px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:bg-ink"
                 >
                   Book Appointment
                 </button>
@@ -553,7 +936,10 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
       {isLightboxOpen && activeImage ? (
         <div className="fixed inset-0 z-[180] bg-ink/92 text-ivory" onClick={closeLightbox}>
           <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6" onClick={(event) => event.stopPropagation()}>
+            <div
+              className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6"
+              onClick={(event) => event.stopPropagation()}
+            >
               <button
                 type="button"
                 onClick={closeLightbox}

@@ -9,6 +9,7 @@ import type {
   ShopifyCollectionPreview,
   ShopifyProduct,
   ShopifyProductPreview,
+  ShopifyProductReviewSummary,
   ShopifyProductSearchResult,
 } from "@/lib/shopify/types";
 
@@ -22,6 +23,12 @@ type RawProduct = {
   vendor: string;
   productType: string;
   tags: string[];
+  reviewRating: {
+    value: string;
+  } | null;
+  reviewCount: {
+    value: string;
+  } | null;
   featuredImage: {
     url: string;
     altText: string | null;
@@ -159,6 +166,12 @@ const productFields = `
   vendor
   productType
   tags
+  reviewRating: metafield(namespace: "reviews", key: "rating") {
+    value
+  }
+  reviewCount: metafield(namespace: "reviews", key: "rating_count") {
+    value
+  }
   featuredImage {
     url
     altText
@@ -217,6 +230,49 @@ const productFields = `
   }
 `;
 
+function parseReviewRatingValue(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as { value?: string | number } | string | number;
+    const candidate =
+      typeof parsed === "object" && parsed !== null && "value" in parsed ? parsed.value : parsed;
+    const rating = Number(candidate);
+
+    return Number.isFinite(rating) && rating > 0 ? rating : null;
+  } catch {
+    const rating = Number(value);
+
+    return Number.isFinite(rating) && rating > 0 ? rating : null;
+  }
+}
+
+function parseReviewCountValue(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const count = Number(value);
+
+  return Number.isInteger(count) && count > 0 ? count : null;
+}
+
+function normalizeReviewSummary(product: RawProduct): ShopifyProductReviewSummary | null {
+  const ratingValue = parseReviewRatingValue(product.reviewRating?.value);
+  const reviewCount = parseReviewCountValue(product.reviewCount?.value);
+
+  if (!ratingValue || !reviewCount) {
+    return null;
+  }
+
+  return {
+    ratingValue,
+    reviewCount,
+  };
+}
+
 function normalizeProduct(product: RawProduct): ShopifyProduct {
   return {
     id: product.id,
@@ -228,6 +284,7 @@ function normalizeProduct(product: RawProduct): ShopifyProduct {
     vendor: product.vendor,
     productType: product.productType,
     tags: product.tags,
+    reviewSummary: normalizeReviewSummary(product),
     featuredImage: product.featuredImage,
     images: product.images.nodes,
     collections: product.collections.nodes,
@@ -293,9 +350,13 @@ async function fetchBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
   return data.products.nodes.map(normalizeProduct);
 }
 
-const getBestSellingProductsCached = unstable_cache(fetchBestSellingProducts, ["shopify-best-selling-products"], {
-  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
-});
+const getBestSellingProductsCached = unstable_cache(
+  fetchBestSellingProducts,
+  ["shopify-best-selling-products"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
 
 export async function getBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
   return getBestSellingProductsCached(limit);
@@ -370,7 +431,10 @@ const getShopCollectionCached = unstable_cache(fetchShopCollection, ["shopify-co
   revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
 });
 
-export async function getShopCollection(handle: string, limit = 12): Promise<ShopifyCollection | null> {
+export async function getShopCollection(
+  handle: string,
+  limit = 12,
+): Promise<ShopifyCollection | null> {
   return getShopCollectionCached(handle, limit);
 }
 
@@ -409,8 +473,14 @@ export async function getShopCollections(limit = 8): Promise<ShopifyCollectionPr
   return getShopCollectionsCached(limit);
 }
 
-async function fetchShopCollectionsWithProducts(limit = 8, productLimit = 4): Promise<ShopifyCollection[]> {
-  const data = await storefrontRequest<CollectionsWithProductsResponse, { limit: number; productLimit: number }>({
+async function fetchShopCollectionsWithProducts(
+  limit = 8,
+  productLimit = 4,
+): Promise<ShopifyCollection[]> {
+  const data = await storefrontRequest<
+    CollectionsWithProductsResponse,
+    { limit: number; productLimit: number }
+  >({
     query: `
       query ShopCollectionsWithProducts($limit: Int!, $productLimit: Int!) {
         collections(first: $limit) {
@@ -443,11 +513,18 @@ async function fetchShopCollectionsWithProducts(limit = 8, productLimit = 4): Pr
   return data.collections.nodes.map(normalizeCollection);
 }
 
-const getShopCollectionsWithProductsCached = unstable_cache(fetchShopCollectionsWithProducts, ["shopify-collections-products"], {
-  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
-});
+const getShopCollectionsWithProductsCached = unstable_cache(
+  fetchShopCollectionsWithProducts,
+  ["shopify-collections-products"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
 
-export async function getShopCollectionsWithProducts(limit = 8, productLimit = 4): Promise<ShopifyCollection[]> {
+export async function getShopCollectionsWithProducts(
+  limit = 8,
+  productLimit = 4,
+): Promise<ShopifyCollection[]> {
   return getShopCollectionsWithProductsCached(limit, productLimit);
 }
 
@@ -472,15 +549,23 @@ async function fetchShopProductPreviews(limit = 100): Promise<ShopifyProductPrev
   return data.products.nodes;
 }
 
-const getShopProductPreviewsCached = unstable_cache(fetchShopProductPreviews, ["shopify-product-previews"], {
-  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
-});
+const getShopProductPreviewsCached = unstable_cache(
+  fetchShopProductPreviews,
+  ["shopify-product-previews"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
 
 export async function getShopProductPreviews(limit = 100): Promise<ShopifyProductPreview[]> {
   return getShopProductPreviewsCached(limit);
 }
 
-async function fetchRecommendedProducts(productId: string, excludeHandle: string, limit = 4): Promise<ShopifyProduct[]> {
+async function fetchRecommendedProducts(
+  productId: string,
+  excludeHandle: string,
+  limit = 4,
+): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductRecommendationsResponse, { productId: string }>({
     query: `
       query ProductRecommendations($productId: ID!) {
@@ -500,15 +585,26 @@ async function fetchRecommendedProducts(productId: string, excludeHandle: string
     .slice(0, limit);
 }
 
-const getRecommendedProductsCached = unstable_cache(fetchRecommendedProducts, ["shopify-product-recommendations"], {
-  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
-});
+const getRecommendedProductsCached = unstable_cache(
+  fetchRecommendedProducts,
+  ["shopify-product-recommendations"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
 
-export async function getRecommendedProducts(productId: string, excludeHandle: string, limit = 4): Promise<ShopifyProduct[]> {
+export async function getRecommendedProducts(
+  productId: string,
+  excludeHandle: string,
+  limit = 4,
+): Promise<ShopifyProduct[]> {
   return getRecommendedProductsCached(productId, excludeHandle, limit);
 }
 
-export async function searchShopProducts(query: string, limit = 6): Promise<ShopifyProductSearchResult[]> {
+export async function searchShopProducts(
+  query: string,
+  limit = 6,
+): Promise<ShopifyProductSearchResult[]> {
   const normalizedQuery = query.trim();
 
   if (normalizedQuery.length < 2) {

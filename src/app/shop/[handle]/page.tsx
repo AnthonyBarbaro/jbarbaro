@@ -6,8 +6,14 @@ import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
+import { getStoreReviewSnapshot } from "@/lib/google-reviews";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
-import { getRecommendedProducts, getShopProduct, getShopProductPreviews, getShopProducts } from "@/lib/shopify/products";
+import {
+  getRecommendedProducts,
+  getShopProduct,
+  getShopProductPreviews,
+  getShopProducts,
+} from "@/lib/shopify/products";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 
 type ShopProductPageProps = {
@@ -97,10 +103,15 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
       <WaveSection topWave="A" background="ivory" contentClassName="py-8 sm:py-12 lg:py-16">
         <Container>
           <div className="rounded-[2rem] border border-ink/10 bg-white/88 p-6 sm:p-8">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">Product temporarily unavailable</p>
-            <h1 className="mt-3 font-heading text-3xl text-ink sm:text-4xl">This product page is temporarily unavailable.</h1>
+            <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
+              Product temporarily unavailable
+            </p>
+            <h1 className="mt-3 font-heading text-3xl text-ink sm:text-4xl">
+              This product page is temporarily unavailable.
+            </h1>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-smoke sm:text-base sm:leading-8">
-              Please check back shortly, or continue shopping and book an appointment if you&apos;d like us to prepare options for you in person.
+              Please check back shortly, or continue shopping and book an appointment if you&apos;d
+              like us to prepare options for you in person.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <ButtonLink href="/shop">Back to Shop</ButtonLink>
@@ -119,12 +130,15 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
   }
 
   let relatedProducts: ShopifyProduct[] = [];
+  const storeReviewSnapshot = await getStoreReviewSnapshot();
 
   try {
     relatedProducts = await getRecommendedProducts(product.id, product.handle, 4);
 
     if (relatedProducts.length === 0) {
-      relatedProducts = (await getShopProducts(8)).filter((item) => item.handle !== product.handle).slice(0, 4);
+      relatedProducts = (await getShopProducts(8))
+        .filter((item) => item.handle !== product.handle)
+        .slice(0, 4);
     }
   } catch (error) {
     console.error(`Unable to load related Shopify products for "${product.handle}".`, error);
@@ -153,6 +167,13 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
         }
       : undefined,
     category: product.productType || undefined,
+    aggregateRating: product.reviewSummary
+      ? {
+          "@type": "AggregateRating",
+          ratingValue: product.reviewSummary.ratingValue,
+          reviewCount: product.reviewSummary.reviewCount,
+        }
+      : undefined,
     offers: hasPriceRange
       ? {
           "@type": "AggregateOffer",
@@ -178,25 +199,57 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
 
   return (
     <div className="overflow-x-clip">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }} />
-      <WaveSection topWave="A" background="ivory" className="overflow-x-clip" contentClassName="py-6 sm:py-10 lg:py-14">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <WaveSection
+        topWave="A"
+        background="ivory"
+        className="overflow-x-clip"
+        contentClassName="py-7 sm:py-11 lg:py-16"
+      >
         <Container>
-          <ProductDetailClient key={product.id} product={product} />
+          <ProductDetailClient
+            key={product.id}
+            product={product}
+            storeReviewSummary={{
+              source: storeReviewSnapshot.source,
+              ratingValue: storeReviewSnapshot.ratingValue,
+              reviewCount: storeReviewSnapshot.reviewCount,
+            }}
+          />
         </Container>
       </WaveSection>
 
       {relatedProducts.length > 0 ? (
         <WaveSection topWave="C" background="stone" className="overflow-x-clip">
           <Container className="overflow-x-clip">
-            <div className="flex flex-col gap-3">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">More to Explore</p>
-              <h2 className="font-heading text-[2rem] text-ink sm:text-4xl">Complete the Look</h2>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+              <div className="max-w-2xl">
+                <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
+                  More to Explore
+                </p>
+                <h2 className="mt-3 font-heading text-[2rem] text-ink sm:text-4xl">
+                  Complete the Look
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-smoke">
+                  Curated companion pieces selected to keep the outfit polished, refined, and easy
+                  to finish.
+                </p>
+              </div>
+              <ButtonLink href="/shop" variant="secondary" size="sm" className="w-fit">
+                Shop All
+              </ButtonLink>
             </div>
             <div className="mt-8 md:hidden">
               <div className="overflow-x-hidden">
                 <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-0.5 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {relatedProducts.map((relatedProduct) => (
-                    <div key={relatedProduct.id} className="min-w-[74vw] max-w-[74vw] snap-start sm:min-w-[19rem] sm:max-w-[19rem]">
+                    <div
+                      key={relatedProduct.id}
+                      className="min-w-[74vw] max-w-[74vw] snap-start sm:min-w-[19rem] sm:max-w-[19rem]"
+                    >
                       <ShopProductCard product={relatedProduct} columns={2} />
                     </div>
                   ))}

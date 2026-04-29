@@ -87,7 +87,12 @@ export default function AccountPage() {
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               {accountUrl ? (
-                <ButtonLink href={accountUrl} className="w-full sm:w-auto">
+                <ButtonLink
+                  href={accountUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full sm:w-auto"
+                >
                   Sign In / Create Account
                   <ArrowRight className="h-4 w-4" />
                 </ButtonLink>

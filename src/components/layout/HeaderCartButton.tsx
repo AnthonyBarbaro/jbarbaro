@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { SHOPIFY_CART_CHANGED_EVENT } from "@/lib/shopify/cart-events";
+import { SHOPIFY_CART_CHANGED_EVENT, openShopifyCartDrawer } from "@/lib/shopify/cart-events";
 import type { ShopifyCartSnapshot } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils";
 
@@ -63,11 +63,22 @@ export function HeaderCartButton({ className, compact = false, onNavigate }: Hea
     return null;
   }
 
+  function handleCartClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      onNavigate?.();
+      return;
+    }
+
+    event.preventDefault();
+    onNavigate?.();
+    openShopifyCartDrawer();
+  }
+
   if (compact) {
     return (
       <Link
         href="/cart"
-        onClick={onNavigate}
+        onClick={handleCartClick}
         className={cn(
           "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors duration-200 hover:border-ink/25 sm:h-10 sm:w-10",
           className,
@@ -87,7 +98,7 @@ export function HeaderCartButton({ className, compact = false, onNavigate }: Hea
   return (
     <Link
       href="/cart"
-      onClick={onNavigate}
+      onClick={handleCartClick}
       className={cn(
         "relative inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-ink/18 bg-ivory px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors duration-200 hover:border-ink/30",
         className,

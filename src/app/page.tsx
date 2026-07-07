@@ -5,7 +5,6 @@ import { ArrowRight, MapPin, Phone } from "lucide-react";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { LocationOpenBadge } from "@/components/locations/LocationOpenBadge";
 import { NewsletterSignup } from "@/components/marketing/NewsletterSignup";
-import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
@@ -14,7 +13,6 @@ import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { brands } from "@/data/brands";
 import { locations } from "@/data/locations";
-import { siteSettings } from "@/data/site-settings";
 import { pageContent } from "@/lib/site-content";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMenCategories } from "@/lib/shopify/men-categories";
@@ -139,17 +137,8 @@ export default async function HomePage() {
 
   newArrivals = uniqueProducts(newArrivals.filter((product) => !bestSellers.some((item) => item.id === product.id))).slice(0, 4);
 
-  const websiteJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    name: siteSettings.siteName,
-    url: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
-  };
-
   return (
     <>
-      <SeoJsonLd data={websiteJsonLd} />
-
       <HeroCarousel
         slides={homePage.heroSlides}
         badges={homePage.heroBadges}
@@ -211,7 +200,7 @@ export default async function HomePage() {
           {bestSellers.length > 0 ? (
             <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {bestSellers.map((product) => (
-                <ShopProductCard key={product.id} product={product} columns={2} />
+                <ShopProductCard key={product.id} product={product} />
               ))}
             </div>
           ) : (
@@ -244,7 +233,7 @@ export default async function HomePage() {
               </div>
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {newArrivals.map((product) => (
-                  <ShopProductCard key={product.id} product={product} columns={2} />
+                  <ShopProductCard key={product.id} product={product} />
                 ))}
               </div>
             </>

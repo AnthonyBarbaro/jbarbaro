@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { ProductDetailClient } from "@/components/shop/ProductDetailClient";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
+import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
@@ -203,6 +204,13 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
+      <Breadcrumbs
+        items={[
+          { name: "Home", href: "/" },
+          { name: "Shop", href: "/shop" },
+          { name: product.title, href: `/shop/${product.handle}` },
+        ]}
+      />
       <WaveSection
         topWave="A"
         background="ivory"
@@ -250,7 +258,7 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
                       key={relatedProduct.id}
                       className="min-w-[74vw] max-w-[74vw] snap-start sm:min-w-[19rem] sm:max-w-[19rem]"
                     >
-                      <ShopProductCard product={relatedProduct} columns={2} />
+                      <ShopProductCard product={relatedProduct} />
                     </div>
                   ))}
                 </div>
@@ -258,7 +266,7 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
             </div>
             <div className="mt-8 hidden gap-5 md:grid md:grid-cols-2 xl:grid-cols-4">
               {relatedProducts.map((relatedProduct) => (
-                <ShopProductCard key={relatedProduct.id} product={relatedProduct} columns={2} />
+                <ShopProductCard key={relatedProduct.id} product={relatedProduct} />
               ))}
             </div>
           </Container>

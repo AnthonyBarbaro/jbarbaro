@@ -98,8 +98,8 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
               target={item.external ? "_blank" : undefined}
               rel={item.external ? "noopener noreferrer" : undefined}
               className={cn(
-                "inline-flex h-10 items-center gap-1.5 text-[12px] font-semibold tracking-[0.12em] text-smoke uppercase transition-colors hover:text-ink",
-                active && "text-ink",
+                "inline-flex h-9 items-center gap-1 border-b-2 border-transparent text-sm font-medium text-ink/75 transition-colors hover:border-gold hover:text-ink",
+                active && "border-gold font-semibold text-ink",
               )}
             >
               <span>{item.label}</span>
@@ -172,8 +172,8 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
           target={item.external ? "_blank" : undefined}
           rel={item.external ? "noopener noreferrer" : undefined}
           className={cn(
-            "inline-flex h-10 items-center text-[12px] font-semibold tracking-[0.12em] text-smoke uppercase transition-colors hover:text-ink",
-            active && "text-ink",
+            "inline-flex h-9 items-center border-b-2 border-transparent text-sm font-medium text-ink/75 transition-colors hover:border-gold hover:text-ink",
+            active && "border-gold font-semibold text-ink",
           )}
         >
           {item.label}
@@ -238,9 +238,21 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
 
   return (
     <>
+      <div className="bg-ink text-white">
+        <div className="mx-auto flex max-w-[84rem] items-center justify-center gap-2 px-4 py-2 text-center text-[11px] font-medium tracking-[0.08em] sm:text-xs">
+          <span className="hidden sm:inline">Personal styling and expert tailoring at two Metro Detroit locations.</span>
+          <span className="sm:hidden">Expert tailoring, two Metro Detroit stores.</span>
+          <Link
+            href="/schedule-appointment"
+            className="shrink-0 font-semibold text-gold underline-offset-4 transition-colors hover:text-white hover:underline"
+          >
+            Book a Fitting
+          </Link>
+        </div>
+      </div>
       <header className="sticky top-0 z-[96] border-b border-ink/10 bg-ivory/96 backdrop-blur-xl">
         <div className="mx-auto max-w-[84rem] px-4 sm:px-6 lg:px-8">
-          <div className="flex min-h-16 items-center gap-3 lg:min-h-[4.5rem]">
+          <div className="flex min-h-16 items-center gap-3 lg:min-h-[4.25rem] lg:gap-6">
             <button
               type="button"
               onClick={() => setIsOpen(true)}
@@ -262,22 +274,19 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
               />
             </Link>
 
-            <nav className="hidden items-center gap-5 lg:flex xl:gap-6" aria-label="Primary">
-              {renderDesktopNav(desktopNavItems)}
-            </nav>
-
-            <div className="ml-auto hidden w-full max-w-[24rem] xl:block">
-              <HeaderProductSearch />
+            <div className="hidden min-w-0 flex-1 justify-center lg:flex">
+              <HeaderProductSearch className="max-w-2xl" />
             </div>
 
-            <div className="ml-auto flex items-center gap-2 xl:ml-0">
-              <div className="hidden w-[17rem] lg:block xl:hidden">
-                <HeaderProductSearch />
-              </div>
+            <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
               <HeaderAccountButton compact className="h-10 w-10 rounded-md bg-ivory" />
               <HeaderCartButton compact className="h-10 w-10 rounded-md bg-ivory" />
             </div>
           </div>
+
+          <nav className="hidden items-center justify-center gap-6 pb-2.5 lg:flex xl:gap-8" aria-label="Primary">
+            {renderDesktopNav(desktopNavItems)}
+          </nav>
 
           <div className="pb-3 lg:hidden">
             <HeaderProductSearch />

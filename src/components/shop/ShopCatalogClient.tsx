@@ -1,8 +1,10 @@
 "use client";
 
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
-import { Footprints, Ruler, Search, Shirt, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ChevronDown, Footprints, LayoutGrid, Ruler, Search, Shirt, SlidersHorizontal, Sparkles, Square, X } from "lucide-react";
+import Link from "next/link";
 
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { Badge } from "@/components/ui/Badge";
@@ -19,11 +21,15 @@ import {
   type FitProfileInput,
 } from "@/lib/fit-profile";
 import type { ShopifyProduct } from "@/lib/shopify/types";
-import { cn } from "@/lib/utils";
+import { cn, formatMoney } from "@/lib/utils";
 
 type ShopCatalogClientProps = {
   products: ShopifyProduct[];
+  bestSellers?: ShopifyProduct[];
 };
+
+type FacetKey = "availability" | "price" | "brand" | "size" | "color";
+type FacetPill = { key: FacetKey; label: string; activeCount: number };
 
 type SortOption = "featured" | "newest" | "price-low" | "price-high" | "title-asc";
 type AvailabilityOption = "all" | "in-stock" | "sold-out";
@@ -161,21 +167,20 @@ function pluralize(count: number, singular: string, plural = `${singular}s`) {
   return count === 1 ? singular : plural;
 }
 
-function readQueryFromLocation() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return new URLSearchParams(window.location.search).get("q")?.trim() || "";
-}
-
 function isFitBuildValue(value: FitDraftInput["build"]): value is FitBuild {
   return fitBuildOptions.some((option) => option.value === value);
 }
 
-export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
+export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogClientProps) {
+  const searchParams = useSearchParams();
+  const urlQuery = searchParams.get("q")?.trim() || "";
   const [isPending, startTransition] = useTransition();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [mobileLayout, setMobileLayout] = useState<"grid" | "single">("grid");
+  const [openFacet, setOpenFacet] = useState<FacetKey | null>(null);
+  const [activeTopPicksId, setActiveTopPicksId] = useState<string | null>(null);
+  const pillBarRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOption>("featured");
   const [availability, setAvailability] = useState<AvailabilityOption>(DEFAULT_AVAILABILITY);
@@ -211,17 +216,34 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
   const searchableQuery = deferredQuery.trim().toLowerCase();
 
   useEffect(() => {
-    function syncQueryFromLocation() {
-      setQuery(readQueryFromLocation());
+    setQuery(urlQuery);
+  }, [urlQuery]);
+
+  useEffect(() => {
+    if (!openFacet) {
+      return;
     }
 
-    syncQueryFromLocation();
-    window.addEventListener("popstate", syncQueryFromLocation);
+    function handlePointerDown(event: MouseEvent) {
+      if (pillBarRef.current && !pillBarRef.current.contains(event.target as Node)) {
+        setOpenFacet(null);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenFacet(null);
+      }
+    }
+
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener("popstate", syncQueryFromLocation);
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
-  }, []);
+  }, [openFacet]);
 
   useEffect(() => {
     if (hasLoadedFitProfileRef.current) {
@@ -305,7 +327,7 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
   }
 
   function toggleValue(list: string[], value: string, setter: (next: string[]) => void) {
-    shouldScrollToResultsRef.current = !isMobileFiltersOpen;
+    shouldScrollToResultsRef.current = false;
 
     startTransition(() => {
       setter(list.includes(value) ? list.filter((item) => item !== value) : [...list, value]);
@@ -313,7 +335,7 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
   }
 
   function toggleSize(size: string) {
-    shouldScrollToResultsRef.current = !isMobileFiltersOpen;
+    shouldScrollToResultsRef.current = false;
     setSmartFitEnabled(false);
 
     startTransition(() => {
@@ -402,6 +424,19 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
       knownWaistSize: input.knownWaistSize?.trim() || undefined,
       shoeSize: input.shoeSize?.trim() || undefined,
     };
+  }
+
+  function clearSearch() {
+    startTransition(() => {
+      setQuery("");
+    });
+
+    const url = new URL(window.location.href);
+
+    if (url.searchParams.has("q")) {
+      url.searchParams.delete("q");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    }
   }
 
   function clearFilters() {
@@ -529,7 +564,9 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
       >
         <CardContent className={cn((variant === "mobile" || variant === "desktop") && "flex min-h-0 flex-1 flex-col")}>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold tracking-[0.22em] text-smoke uppercase sm:text-sm">Filter & Sort</p>
+            <p className="text-xs font-semibold tracking-[0.22em] text-smoke uppercase sm:text-sm">
+              {variant === "mobile" ? "Filter & Sort" : "Filters"}
+            </p>
             <div className="flex items-center gap-3">
               {hasActiveFilters ? (
                 <button
@@ -560,44 +597,48 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
                 "min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]",
             )}
           >
-            <div>
-              <FieldLabel htmlFor={searchId}>Search</FieldLabel>
-              <div className="relative mt-2">
-                <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-smoke" />
-                <Input
-                  id={searchId}
-                  value={query}
-                  onChange={(event) => {
-                    shouldScrollToResultsRef.current = variant === "desktop";
-                    setQuery(event.target.value);
-                  }}
-                  placeholder="Search products"
-                  className="mt-0 pl-11 transition-all duration-200"
-                />
-              </div>
-            </div>
+            {variant === "mobile" ? (
+              <>
+                <div>
+                  <FieldLabel htmlFor={searchId}>Search</FieldLabel>
+                  <div className="relative mt-2">
+                    <Search className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-smoke" />
+                    <Input
+                      id={searchId}
+                      value={query}
+                      onChange={(event) => {
+                        shouldScrollToResultsRef.current = false;
+                        setQuery(event.target.value);
+                      }}
+                      placeholder="Search products"
+                      className="mt-0 pl-11 transition-all duration-200"
+                    />
+                  </div>
+                </div>
 
-            <div>
-              <FieldLabel htmlFor={sortId}>Sort by</FieldLabel>
-              <Select
-                id={sortId}
-                value={sort}
-                onChange={(event) => {
-                  shouldScrollToResultsRef.current = variant === "desktop";
+                <div>
+                  <FieldLabel htmlFor={sortId}>Sort by</FieldLabel>
+                  <Select
+                    id={sortId}
+                    value={sort}
+                    onChange={(event) => {
+                      shouldScrollToResultsRef.current = false;
 
-                  startTransition(() => {
-                    setSort(event.target.value as SortOption);
-                  });
-                }}
-                className="mt-2 transition-all duration-200"
-              >
-                <option value="featured">Featured / Popular</option>
-                <option value="newest">Newest</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="title-asc">Alphabetical</option>
-              </Select>
-            </div>
+                      startTransition(() => {
+                        setSort(event.target.value as SortOption);
+                      });
+                    }}
+                    className="mt-2 transition-all duration-200"
+                  >
+                    <option value="featured">Featured / Popular</option>
+                    <option value="newest">Newest</option>
+                    <option value="price-low">Price: Low to High</option>
+                    <option value="price-high">Price: High to Low</option>
+                    <option value="title-asc">Alphabetical</option>
+                  </Select>
+                </div>
+              </>
+            ) : null}
 
             <div>
               <p className="text-sm font-medium text-ink/90">Availability</p>
@@ -616,7 +657,7 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
                       name={`${variant}-availability`}
                       checked={availability === option.value}
                       onChange={() => {
-                        shouldScrollToResultsRef.current = variant === "desktop";
+                        shouldScrollToResultsRef.current = false;
 
                         startTransition(() => {
                           setAvailability(option.value as AvailabilityOption);
@@ -649,7 +690,7 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
                       name={`${variant}-price-range`}
                       checked={priceFilter === option.value}
                       onChange={() => {
-                        shouldScrollToResultsRef.current = variant === "desktop";
+                        shouldScrollToResultsRef.current = false;
 
                         startTransition(() => {
                           setPriceFilter(option.value as PriceOption);
@@ -1185,60 +1226,268 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
   }
 
   function renderFitProfileLauncher() {
-    const normalizedFitDraft = normalizeFitInput(fitDraft);
-    const previewProfile = normalizedFitDraft ? buildFitProfile(normalizedFitDraft) : null;
-    const previewEstimate = fitProfile?.estimate ?? previewProfile?.estimate ?? getEmptyFitEstimate(fitDraft);
-    const selectedBuildLabel = fitDraft.build ? fitBuildOptions.find((option) => option.value === fitDraft.build)?.label ?? "Average" : "";
-    const buildSummary = fitProfile && selectedBuildLabel ? `${selectedBuildLabel} build saved` : "No measurements saved";
-    const launcherTitle = fitProfile ? "Size profile saved" : "Create a size profile";
+    const estimate = fitProfile?.estimate;
+    const savedSizeSummary = estimate
+      ? [
+          { label: "Suit", value: getFitDisplayValue(estimate.suit, "") },
+          { label: "Top", value: getFitDisplayValue(estimate.alpha, "") },
+          { label: "Waist", value: getFitDisplayValue(estimate.waist, "") },
+          { label: "Shoe", value: getFitDisplayValue(estimate.shoe, "") },
+        ]
+          .filter((item) => item.value)
+          .map((item) => `${item.label} ${item.value}`)
+          .join(" · ")
+      : "";
+    const launcherTitle = fitProfile ? "Smart Fit profile saved" : "Find your size with Smart Fit";
+    const launcherSubtitle = fitProfile
+      ? savedSizeSummary || "Tap to review your saved measurements."
+      : "Save your measurements once and we'll flag pieces in your size.";
     const launcherAction = fitProfile ? "Review" : "Set Up";
-    const summaryItems = [
-      { label: "Suit", value: getFitDisplayValue(previewEstimate.suit) },
-      { label: "Top", value: getFitDisplayValue(previewEstimate.alpha) },
-      { label: "Shirt", value: getFitDisplayValue(previewEstimate.dressShirt) },
-      { label: "Waist", value: getFitDisplayValue(previewEstimate.waist) },
-      { label: "Shoe", value: getFitDisplayValue(previewEstimate.shoe) },
-    ];
 
     return (
       <button
         type="button"
         onClick={() => setIsFitDrawerOpen(true)}
-        className="mb-4 block w-full rounded-lg border border-ink/10 bg-white p-4 text-left shadow-sm shadow-ink/[0.03] transition-colors hover:border-deep-teal/30 hover:bg-[#fbfcfc]"
+        className="mb-4 flex w-full items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white px-3.5 py-2.5 text-left shadow-sm shadow-ink/[0.03] transition-colors hover:border-deep-teal/30 hover:bg-[#fbfcfc]"
         aria-controls="smart-fit-panel"
         aria-expanded={isFitDrawerOpen}
       >
-        <span className="flex items-center justify-between gap-3">
-          <span className="flex min-w-0 items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-deep-teal/15 bg-deep-teal/8 text-deep-teal">
-              <Ruler className="h-5 w-5" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[10px] font-semibold tracking-[0.16em] text-deep-teal uppercase">Smart Fit</span>
-              <span className="mt-1 block truncate text-sm font-semibold text-ink">{launcherTitle}</span>
-              <span className="mt-0.5 block truncate text-xs text-smoke">{buildSummary}</span>
-            </span>
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-deep-teal/15 bg-deep-teal/8 text-deep-teal">
+            <Ruler className="h-4 w-4" />
           </span>
-
-          <span className="shrink-0 rounded-md border border-gold/90 bg-gold px-3 py-2 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase">
-            {launcherAction}
+          <span className="min-w-0">
+            <span className="block truncate text-sm font-semibold text-ink">{launcherTitle}</span>
+            <span className="mt-0.5 block truncate text-xs text-smoke">{launcherSubtitle}</span>
           </span>
         </span>
 
-        <span className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {summaryItems.map((item) => (
-            <span key={item.label} className="min-h-14 rounded-md border border-ink/8 bg-[#f8faf9] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
-              <span className="block text-[9px] font-semibold tracking-[0.14em] text-smoke uppercase">{item.label}</span>
-              <span className="mt-1 block text-sm leading-5 font-semibold text-ink">{item.value}</span>
-            </span>
-          ))}
+        <span className="shrink-0 rounded-md border border-gold/90 bg-gold px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase">
+          {launcherAction}
         </span>
       </button>
     );
   }
 
+  const topPickTabs = [
+    { id: "best", label: "Best Sellers", items: bestSellers.slice(0, 10) },
+    { id: "new", label: "New Arrivals", items: products.slice(0, 10) },
+    {
+      id: "under-100",
+      label: "Under $100",
+      items: products.filter((product) => getProductPrice(product) < 100).slice(0, 10),
+    },
+  ].filter((tab) => tab.items.length > 0);
+  const activeTopPicksTab = topPickTabs.find((tab) => tab.id === activeTopPicksId) ?? topPickTabs[0];
+
+  function renderTopPicks() {
+    if (bestSellers.length === 0 || !activeTopPicksTab) {
+      return null;
+    }
+
+    return (
+      <section className="mb-6" aria-label="Top picks">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-semibold tracking-[-0.01em] text-ink sm:text-xl">Top Picks</h2>
+        </div>
+
+        <div className="mt-2 flex gap-5 overflow-x-auto border-b border-ink/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {topPickTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTopPicksId(tab.id)}
+              className={cn(
+                "-mb-px shrink-0 border-b-2 pb-2 text-sm transition-colors",
+                tab.id === activeTopPicksTab.id
+                  ? "border-ink font-semibold text-ink"
+                  : "border-transparent font-medium text-smoke hover:text-ink",
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {activeTopPicksTab.items.map((product) => {
+            const isOnSale =
+              Boolean(product.variants[0]?.compareAtPrice) &&
+              Number(product.variants[0].compareAtPrice?.amount) > Number(product.variants[0].price.amount);
+
+            return (
+              <Link
+                key={`${activeTopPicksTab.id}-${product.id}`}
+                href={`/shop/${product.handle}`}
+                className="group w-36 shrink-0 snap-start sm:w-44"
+              >
+                <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-ink/10 bg-white">
+                  {product.featuredImage ? (
+                    <Image
+                      src={product.featuredImage.url}
+                      alt={product.featuredImage.altText || product.title}
+                      fill
+                      sizes="176px"
+                      className="object-contain p-3 transition-transform duration-500 group-hover:scale-[1.05]"
+                    />
+                  ) : null}
+                </div>
+                {product.vendor ? (
+                  <p className="mt-2 truncate text-[10px] font-semibold tracking-[0.14em] text-smoke uppercase">
+                    {product.vendor}
+                  </p>
+                ) : null}
+                <p className="mt-0.5 truncate text-sm font-medium text-ink transition-colors group-hover:text-deep-teal">
+                  {product.title}
+                </p>
+                <p className={cn("mt-0.5 text-sm font-bold", isOnSale ? "text-[#8f2632]" : "text-ink")}>
+                  {formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode)}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+    );
+  }
+
+  const facetPillOptions: FacetPill[] = [
+    { key: "availability", label: "Availability", activeCount: availability !== DEFAULT_AVAILABILITY ? 1 : 0 },
+    { key: "price", label: "Price", activeCount: priceFilter !== "all" ? 1 : 0 },
+    { key: "brand", label: "Brand", activeCount: selectedVendors.length },
+    { key: "size", label: "Size", activeCount: selectedSizes.length },
+    { key: "color", label: "Color", activeCount: selectedColors.length },
+  ];
+  const facetPills = facetPillOptions.filter((pill) => {
+    if (pill.key === "brand") return vendors.length > 0;
+    if (pill.key === "size") return sizes.length > 0;
+    if (pill.key === "color") return colors.length > 0;
+    return true;
+  });
+
+  function clearFacet(key: FacetKey) {
+    startTransition(() => {
+      if (key === "availability") setAvailability(DEFAULT_AVAILABILITY);
+      if (key === "price") setPriceFilter("all");
+      if (key === "brand") setSelectedVendors([]);
+      if (key === "color") setSelectedColors([]);
+
+      if (key === "size") {
+        setSelectedSizes([]);
+        setSmartFitEnabled(false);
+      }
+    });
+  }
+
+  function renderFacetPopoverContent(key: FacetKey) {
+    if (key === "availability") {
+      return (
+        <div className="space-y-1">
+          {[
+            { label: "All items", value: "all" },
+            { label: "In stock", value: "in-stock" },
+            { label: "Sold out", value: "sold-out" },
+          ].map((option) => (
+            <label
+              key={option.value}
+              className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-ink transition-colors hover:bg-stone/60"
+            >
+              <input
+                type="radio"
+                name="pill-availability"
+                checked={availability === option.value}
+                onChange={() => {
+                  shouldScrollToResultsRef.current = false;
+                  startTransition(() => setAvailability(option.value as AvailabilityOption));
+                }}
+                className="h-4 w-4 accent-deep-teal"
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      );
+    }
+
+    if (key === "price") {
+      return (
+        <div className="space-y-1">
+          {[
+            { label: "All prices", value: "all" },
+            { label: "Under $100", value: "under-100" },
+            { label: "$100 to $250", value: "100-250" },
+            { label: "$250 to $500", value: "250-500" },
+            { label: "$500 and up", value: "500-plus" },
+          ].map((option) => (
+            <label
+              key={option.value}
+              className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-ink transition-colors hover:bg-stone/60"
+            >
+              <input
+                type="radio"
+                name="pill-price"
+                checked={priceFilter === option.value}
+                onChange={() => {
+                  shouldScrollToResultsRef.current = false;
+                  startTransition(() => setPriceFilter(option.value as PriceOption));
+                }}
+                className="h-4 w-4 accent-deep-teal"
+              />
+              <span>{option.label}</span>
+            </label>
+          ))}
+        </div>
+      );
+    }
+
+    if (key === "brand") {
+      return (
+        <div className="max-h-64 space-y-1 overflow-y-auto pr-1 [scrollbar-width:thin]">
+          {vendors.map((vendor) => (
+            <label
+              key={vendor}
+              className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-ink transition-colors hover:bg-stone/60"
+            >
+              <input
+                type="checkbox"
+                checked={selectedVendors.includes(vendor)}
+                onChange={() => toggleValue(selectedVendors, vendor, setSelectedVendors)}
+                className="h-4 w-4 rounded border-ink/30 accent-deep-teal"
+              />
+              <span>{vendor}</span>
+            </label>
+          ))}
+        </div>
+      );
+    }
+
+    const values = key === "size" ? sizes : colors;
+    const selected = key === "size" ? selectedSizes : selectedColors;
+
+    return (
+      <div className="flex max-h-64 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
+        {values.map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => (key === "size" ? toggleSize(value) : toggleValue(selectedColors, value, setSelectedColors))}
+            className={cn(
+              "min-h-9 rounded-full border px-3.5 text-xs font-semibold tracking-[0.08em] uppercase transition-colors",
+              selected.includes(value)
+                ? "border-deep-teal bg-deep-teal text-white"
+                : "border-ink/15 bg-white text-ink hover:border-ink/40",
+            )}
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-[84rem] px-4 sm:px-5 lg:px-6 xl:px-8">
+      {renderTopPicks()}
       {renderFitProfileLauncher()}
 
       {isFitDrawerOpen ? (
@@ -1257,28 +1506,27 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
         </>
       ) : null}
 
-      <div className="rounded-lg border border-ink/10 bg-white p-4 shadow-sm shadow-ink/[0.03] sm:p-5">
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_14rem_auto] lg:items-end">
-          <div>
-            <FieldLabel htmlFor="shop-search">Search products</FieldLabel>
-            <div className="relative mt-2">
-              <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-smoke" />
-              <Input
-                id="shop-search"
-                value={query}
-                onChange={(event) => {
-                  shouldScrollToResultsRef.current = false;
-                  setQuery(event.target.value);
-                }}
-                placeholder="Search by product, brand, size, or color"
-                className="mt-0 pl-10"
-              />
-            </div>
-          </div>
+      <div ref={pillBarRef} className="relative">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <button
+            type="button"
+            onClick={() => setIsMobileFiltersOpen(true)}
+            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-ink/15 bg-white px-4 text-sm font-medium text-ink transition-colors hover:border-ink/40 lg:hidden"
+            aria-expanded={isMobileFiltersOpen}
+            aria-controls="shop-filters"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            All Filters
+            {activeFilterCount > 0 ? (
+              <span className="rounded-full bg-deep-teal px-2 py-0.5 text-[10px] font-semibold text-white">{activeFilterCount}</span>
+            ) : null}
+          </button>
 
-          <div>
-            <FieldLabel htmlFor="shop-sort">Sort by</FieldLabel>
-            <Select
+          <div className="relative shrink-0">
+            <label htmlFor="shop-sort" className="sr-only">
+              Sort by
+            </label>
+            <select
               id="shop-sort"
               value={sort}
               onChange={(event) => {
@@ -1287,54 +1535,155 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
                   setSort(event.target.value as SortOption);
                 });
               }}
-              className="mt-2"
+              className="h-10 appearance-none rounded-full border border-ink/15 bg-white pr-9 pl-4 text-sm font-medium text-ink outline-none transition-colors hover:border-ink/40 focus:border-deep-teal"
             >
-              <option value="featured">Featured</option>
-              <option value="newest">Newest</option>
+              <option value="featured">Sort: Featured</option>
+              <option value="newest">Sort: Newest</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
               <option value="title-asc">Alphabetical</option>
-            </Select>
+            </select>
+            <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-smoke" />
           </div>
 
-          <button
-            type="button"
-            onClick={() => setIsMobileFiltersOpen(true)}
-            className="inline-flex min-h-11 items-center justify-center rounded-md border border-ink/15 bg-ivory px-4 py-2.5 text-xs font-semibold tracking-[0.14em] text-ink uppercase transition-colors duration-200 hover:border-ink/30"
-            aria-expanded={isMobileFiltersOpen}
-            aria-controls="shop-filters"
-          >
-            <SlidersHorizontal className="mr-2 h-4 w-4" />
-            Filters
-            {activeFilterCount > 0 ? <span className="ml-2 rounded-full bg-deep-teal px-2 py-0.5 text-[10px] text-white">{activeFilterCount}</span> : null}
-          </button>
+          {facetPills.map((pill) => (
+            <button
+              key={pill.key}
+              type="button"
+              onClick={() => setOpenFacet((current) => (current === pill.key ? null : pill.key))}
+              aria-expanded={openFacet === pill.key}
+              className={cn(
+                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors lg:hidden",
+                pill.activeCount > 0 || openFacet === pill.key
+                  ? "border-ink bg-ink text-white"
+                  : "border-ink/15 bg-white text-ink hover:border-ink/40",
+              )}
+            >
+              {pill.label}
+              {pill.activeCount > 0 ? (
+                <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold">{pill.activeCount}</span>
+              ) : null}
+              <ChevronDown className={cn("h-4 w-4 transition-transform", openFacet === pill.key && "rotate-180")} />
+            </button>
+          ))}
+
+          {isSearchOpen ? (
+            <div className="relative hidden shrink-0 lg:block">
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-smoke" />
+              <Input
+                autoFocus
+                value={query}
+                onChange={(event) => {
+                  shouldScrollToResultsRef.current = false;
+                  setQuery(event.target.value);
+                }}
+                placeholder="Search products"
+                aria-label="Search products"
+                className="mt-0 h-10 w-56 rounded-full py-0 pr-9 pl-10 text-sm xl:w-64"
+              />
+              <button
+                type="button"
+                onClick={() => setIsSearchOpen(false)}
+                className="absolute top-1/2 right-1.5 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-smoke transition-colors hover:text-ink"
+                aria-label="Close search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIsSearchOpen(true)}
+              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/15 bg-white text-ink transition-colors hover:border-ink/40 lg:inline-flex"
+              aria-label="Search products"
+            >
+              <Search className="h-4 w-4" />
+            </button>
+          )}
+
+          <div className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full border border-ink/15 bg-white p-1 sm:hidden" role="group" aria-label="Product layout">
+            <button
+              type="button"
+              onClick={() => setMobileLayout("grid")}
+              aria-pressed={mobileLayout === "grid"}
+              aria-label="Two column grid"
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                mobileLayout === "grid" ? "bg-ink text-white" : "text-smoke hover:text-ink",
+              )}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileLayout("single")}
+              aria-pressed={mobileLayout === "single"}
+              aria-label="Single column view"
+              className={cn(
+                "inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                mobileLayout === "single" ? "bg-ink text-white" : "text-smoke hover:text-ink",
+              )}
+            >
+              <Square className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 border-t border-ink/8 pt-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className={cn("text-sm text-smoke", isFiltering && "text-deep-teal")}>
-            {filteredProducts.length} {pluralize(filteredProducts.length, "item")} shown
-            {filteredProducts.length !== products.length ? ` of ${products.length}` : ""}
-            {activeFilterCount > 0 ? ` • ${activeFilterCount} ${pluralize(activeFilterCount, "filter")}` : ""}
-            {isFiltering ? " • Updating" : ""}
-          </p>
+        {openFacet ? (
+          <div className="absolute top-full left-0 z-[60] mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-ink/10 bg-white p-4 shadow-[0_30px_70px_-40px_rgba(11,15,20,0.5)] lg:hidden">
+            {renderFacetPopoverContent(openFacet)}
+            <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-3">
+              <button
+                type="button"
+                onClick={() => clearFacet(openFacet)}
+                className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase transition-colors hover:text-ink"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpenFacet(null)}
+                className="inline-flex min-h-9 items-center justify-center rounded-full border border-ink bg-ink px-4 text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:bg-deep-teal"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
+      <p className={cn("mt-3 text-sm text-smoke", isFiltering && "text-deep-teal")}>
+        {filteredProducts.length === products.length
+          ? `${products.length} ${pluralize(products.length, "product")}`
+          : `Showing ${filteredProducts.length} of ${products.length} ${pluralize(products.length, "product")}`}
+        {isFiltering ? " · Updating" : ""}
+      </p>
+
+      {hasActiveFilters || isFiltering ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          {query.trim() ? (
+            <button
+              type="button"
+              onClick={clearSearch}
+              className="inline-flex items-center gap-1.5 rounded-full border border-deep-teal/25 bg-deep-teal/8 px-3 py-1.5 text-xs font-semibold text-deep-teal transition-colors hover:border-deep-teal/50"
+              aria-label={`Clear search for ${query.trim()}`}
+            >
+              &ldquo;{query.trim()}&rdquo;
+              <X className="h-3 w-3" />
+            </button>
+          ) : null}
+          {renderActiveFilterBadges()}
           {hasActiveFilters ? (
             <button
               type="button"
               onClick={clearFilters}
-              className="text-left text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors hover:text-ink sm:text-right"
+              className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors hover:text-ink"
             >
               Clear all
             </button>
           ) : null}
         </div>
-
-        {hasActiveFilters || isFiltering ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {renderActiveFilterBadges()}
-          </div>
-        ) : null}
-      </div>
+      ) : null}
 
       {isMobileFiltersOpen ? (
         <>
@@ -1352,42 +1701,49 @@ export function ShopCatalogClient({ products }: ShopCatalogClientProps) {
         </>
       ) : null}
 
-      <div ref={resultsAnchorRef} className="h-px" />
+      <div className="lg:mt-6 lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-5 xl:grid-cols-[18rem_minmax(0,1fr)]">
+        <aside className="hidden lg:sticky lg:top-24 lg:block">{renderFilterPanel("desktop")}</aside>
 
-      {filteredProducts.length > 0 ? (
-        <div
-          aria-busy={isFiltering}
-          className={cn(
-            "mt-6 grid grid-cols-1 gap-3 transition-[opacity,transform,filter] duration-300 ease-out sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 xl:gap-4",
-            isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
-          )}
-        >
-          {filteredProducts.map((product) => (
-            <ShopProductCard key={product.id} product={product} columns={2} fitSizes={smartFitEnabled ? smartFitSizes : []} />
-          ))}
-        </div>
-      ) : (
-        <Card
-          className={cn(
-            "mt-8 transition-[opacity,transform,filter] duration-300 ease-out",
-            isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
-          )}
-        >
-          <CardContent>
-            <h3 className="text-2xl font-semibold tracking-[-0.02em] text-ink">No products match your filters</h3>
-            <p className="mt-3 text-sm leading-7 text-smoke">
-              Try a broader search or clear filters to bring more products back into view.
-            </p>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="mt-5 inline-flex min-h-11 items-center justify-center rounded-md border border-deep-teal bg-deep-teal px-5 py-2.5 text-xs font-semibold tracking-[0.16em] text-white uppercase transition-colors duration-200 hover:bg-[#136868]"
+        <div className="min-w-0">
+          <div ref={resultsAnchorRef} className="h-px" />
+
+          {filteredProducts.length > 0 ? (
+            <div
+              aria-busy={isFiltering}
+              className={cn(
+                "mt-6 grid gap-3 transition-[opacity,transform,filter] duration-300 ease-out sm:grid-cols-2 md:grid-cols-3 lg:mt-0 lg:grid-cols-2 xl:grid-cols-3 xl:gap-4",
+                mobileLayout === "grid" ? "grid-cols-2" : "grid-cols-1",
+                isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
+              )}
             >
-              Reset Filters
-            </button>
-          </CardContent>
-        </Card>
-      )}
+              {filteredProducts.map((product) => (
+                <ShopProductCard key={product.id} product={product} fitSizes={smartFitEnabled ? smartFitSizes : []} />
+              ))}
+            </div>
+          ) : (
+            <Card
+              className={cn(
+                "mt-8 transition-[opacity,transform,filter] duration-300 ease-out lg:mt-0",
+                isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
+              )}
+            >
+              <CardContent>
+                <h3 className="text-2xl font-semibold tracking-[-0.02em] text-ink">No products match your filters</h3>
+                <p className="mt-3 text-sm leading-7 text-smoke">
+                  Try a broader search or clear filters to bring more products back into view.
+                </p>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="mt-5 inline-flex min-h-11 items-center justify-center rounded-md border border-deep-teal bg-deep-teal px-5 py-2.5 text-xs font-semibold tracking-[0.16em] text-white uppercase transition-colors duration-200 hover:bg-[#136868]"
+                >
+                  Reset Filters
+                </button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

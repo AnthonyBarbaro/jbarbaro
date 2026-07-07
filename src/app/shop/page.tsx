@@ -1,9 +1,11 @@
+import { Suspense } from "react";
+
 import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { ShopCatalogClient } from "@/components/shop/ShopCatalogClient";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
-import { getShopProducts } from "@/lib/shopify/products";
+import { getBestSellingProducts, getShopProducts } from "@/lib/shopify/products";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
@@ -17,13 +19,22 @@ export const revalidate = 300;
 
 export default async function ShopPage() {
   let products: ShopifyProduct[] = [];
+  let bestSellers: ShopifyProduct[] = [];
   let storefrontAvailable = true;
 
   try {
-    products = await getShopProducts(24);
+    products = await getShopProducts(60);
   } catch (error) {
     storefrontAvailable = false;
     console.error("Unable to load Shopify storefront for /shop.", error);
+  }
+
+  try {
+    bestSellers = (await getBestSellingProducts(10)).filter((product) =>
+      product.variants.some((variant) => variant.availableForSale),
+    );
+  } catch (error) {
+    console.error("Unable to load best sellers for /shop.", error);
   }
 
   const availableProducts = products.filter((product) => product.variants.some((variant) => variant.availableForSale));
@@ -68,13 +79,18 @@ export default async function ShopPage() {
               </p>
             </div>
 
+            <ButtonLink href="/shop/brands" variant="secondary" size="sm" className="w-fit">
+              Shop by Brand
+            </ButtonLink>
           </div>
         </Container>
       </section>
 
       <section className="bg-ivory py-5 sm:py-6 lg:py-8">
         {storefrontAvailable ? (
-          <ShopCatalogClient products={products} />
+          <Suspense fallback={null}>
+            <ShopCatalogClient products={products} bestSellers={bestSellers} />
+          </Suspense>
         ) : (
           <Container>
             <Card className="border-ink/10 bg-white">

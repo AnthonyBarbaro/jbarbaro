@@ -4,7 +4,7 @@ import { Check, LoaderCircle, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
-import { notifyShopifyCartChanged } from "@/lib/shopify/cart-events";
+import { notifyShopifyCartChanged, openShopifyCartDrawer } from "@/lib/shopify/cart-events";
 import { cn } from "@/lib/utils";
 
 type AddToCartButtonProps = {
@@ -66,6 +66,7 @@ export function AddToCartButton({
 
       setHasAdded(true);
       notifyShopifyCartChanged();
+      openShopifyCartDrawer();
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to add this item to the cart.");
     } finally {

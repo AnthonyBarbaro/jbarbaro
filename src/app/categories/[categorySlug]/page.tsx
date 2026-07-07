@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { CalendarDays, ShoppingBag } from "lucide-react";
 
 import { ShopCatalogClient } from "@/components/shop/ShopCatalogClient";
@@ -117,7 +118,9 @@ export default async function MenCategoryPage({ params }: { params: Promise<{ ca
 
       <section className="bg-stone/45 py-8 sm:py-10 lg:py-12">
         {products.length > 0 ? (
-          <ShopCatalogClient products={products} />
+          <Suspense fallback={null}>
+            <ShopCatalogClient products={products} />
+          </Suspense>
         ) : (
           <Container>
             <Card>

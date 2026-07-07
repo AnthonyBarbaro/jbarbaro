@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { aggregateRating } from "@/data/testimonials";
+import { brandSlug } from "@/lib/shopify/brand-slug";
 import {
   FIT_PROFILE_STORAGE_KEY,
   getProductFitMatches,
@@ -199,12 +200,24 @@ function AssuranceItem({
   );
 }
 
-function ReviewStars() {
+function ReviewStars({ rating }: { rating: number }) {
+  const fillPercentage = (Math.max(0, Math.min(5, rating)) / 5) * 100;
+
   return (
-    <span className="inline-flex items-center gap-0.5" aria-hidden="true">
-      {Array.from({ length: 5 }).map((_, index) => (
-        <Star key={index} className="h-4 w-4 fill-current text-gold" />
-      ))}
+    <span className="relative inline-flex items-center" aria-hidden="true">
+      <span className="flex gap-0.5 text-ink/15">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Star key={index} className="h-4 w-4 shrink-0 fill-current" />
+        ))}
+      </span>
+      <span
+        className="absolute inset-y-0 left-0 flex gap-0.5 overflow-hidden text-gold"
+        style={{ width: `${fillPercentage}%` }}
+      >
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Star key={index} className="h-4 w-4 shrink-0 fill-current" />
+        ))}
+      </span>
     </span>
   );
 }
@@ -328,7 +341,9 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [smartFitMatch, setSmartFitMatch] = useState<string | null>(null);
+  const [isBuyBoxInView, setIsBuyBoxInView] = useState(true);
   const touchStartXRef = useRef<number | null>(null);
+  const buyBoxRef = useRef<HTMLDivElement | null>(null);
 
   const selectedVariant = findMatchingVariant(product, selectedOptions) ?? initialVariant;
   const activeImage = images[selectedImageIndex] ?? images[0] ?? null;
@@ -346,14 +361,27 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
         product.priceRange.minVariantPrice.amount,
         product.priceRange.minVariantPrice.currencyCode,
       );
+  const isOnSale =
+    Boolean(selectedVariant?.compareAtPrice) &&
+    Number(selectedVariant.compareAtPrice?.amount) > Number(selectedVariant.price.amount);
   const compareAtPrice =
-    selectedVariant?.compareAtPrice &&
-    Number(selectedVariant.compareAtPrice.amount) > Number(selectedVariant.price.amount)
+    isOnSale && selectedVariant.compareAtPrice
       ? formatMoney(
           selectedVariant.compareAtPrice.amount,
           selectedVariant.compareAtPrice.currencyCode,
         )
       : null;
+  const salePercent =
+    isOnSale && selectedVariant.compareAtPrice
+      ? Math.round(
+          (1 - Number(selectedVariant.price.amount) / Number(selectedVariant.compareAtPrice.amount)) *
+            100,
+        )
+      : null;
+  const displayRating =
+    product.reviewSummary?.ratingValue ??
+    storeReviewSummary?.ratingValue ??
+    aggregateRating.ratingValue;
   const selectedVariantIsAvailable = Boolean(selectedVariant?.availableForSale);
   const availabilityLabel =
     availableVariantCount > 0
@@ -366,9 +394,7 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
   const statusAssuranceDetail = selectedVariantIsAvailable
     ? "This selection is available online and ready for checkout."
     : "Choose another available option or book an appointment for sourcing help.";
-  const metaLine = [product.vendor, primaryCollection?.title || product.productType]
-    .filter(Boolean)
-    .join(" / ");
+  const metaCategoryLabel = primaryCollection?.title || product.productType;
   const descriptionHighlights = getProductDescriptionHighlights(product);
   const productReviewCard = getProductReviewCard(
     product,
@@ -518,6 +544,27 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
       window.cancelAnimationFrame(frameId);
     };
   }, [product]);
+
+  useEffect(() => {
+    const node = buyBoxRef.current;
+
+    if (!node || typeof IntersectionObserver === "undefined") {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsBuyBoxInView(entry.isIntersecting);
+      },
+      { rootMargin: "-72px 0px 0px 0px" },
+    );
+
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     if (!isLightboxOpen) {
@@ -679,9 +726,18 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
         <section className="min-w-0 lg:pt-5 xl:pt-8">
           <div className="space-y-5">
             <header className="border-b border-ink/10 pb-6">
-              {metaLine ? (
+              {product.vendor || metaCategoryLabel ? (
                 <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">
-                  {metaLine}
+                  {product.vendor ? (
+                    <Link
+                      href={`/shop/brands/${brandSlug(product.vendor)}`}
+                      className="transition-colors hover:text-deep-teal"
+                    >
+                      {product.vendor}
+                    </Link>
+                  ) : null}
+                  {product.vendor && metaCategoryLabel ? " / " : null}
+                  {metaCategoryLabel}
                 </p>
               ) : null}
 
@@ -702,7 +758,7 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
               >
                 <span className="min-w-0">
                   <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-ink">
-                    <ReviewStars />
+                    <ReviewStars rating={displayRating} />
                     <span>{productReviewCard.heading}</span>
                   </span>
                   <span className="mt-1 block text-xs leading-5 text-smoke">
@@ -727,16 +783,29 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
               </div>
             </header>
 
-            <div className="rounded-[1.1rem] border border-ink/10 bg-white p-5 shadow-[0_24px_52px_-42px_rgba(14,23,38,0.42)] sm:p-6">
+            <div
+              ref={buyBoxRef}
+              className="rounded-[1.1rem] border border-ink/10 bg-white p-5 shadow-[0_24px_52px_-42px_rgba(14,23,38,0.42)] sm:p-6"
+            >
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="flex flex-wrap items-baseline gap-3">
-                  <p className="text-[1.75rem] font-semibold text-ink sm:text-[2rem]">
+                  <p
+                    className={cn(
+                      "text-[1.75rem] font-semibold sm:text-[2rem]",
+                      compareAtPrice ? "text-[#8f2632]" : "text-ink",
+                    )}
+                  >
                     {priceLabel}
                   </p>
                   {compareAtPrice ? (
                     <p className="text-base font-medium text-smoke line-through">
                       {compareAtPrice}
                     </p>
+                  ) : null}
+                  {salePercent ? (
+                    <span className="rounded-full bg-[#8f2632] px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-white uppercase">
+                      Save {salePercent}%
+                    </span>
                   ) : null}
                 </div>
                 <span
@@ -932,6 +1001,29 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
           </div>
         </section>
       </div>
+
+      {!isBuyBoxInView && !isLightboxOpen && selectedVariant ? (
+        <div className="fixed inset-x-0 bottom-0 z-[120] border-t border-ink/10 bg-white/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-18px_40px_-32px_rgba(11,15,20,0.4)] backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-2xl items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-semibold text-smoke">{product.title}</p>
+              <div className="flex items-baseline gap-2">
+                <p className={cn("text-base font-bold", compareAtPrice ? "text-[#8f2632]" : "text-ink")}>{priceLabel}</p>
+                {compareAtPrice ? (
+                  <p className="text-xs font-medium text-smoke line-through">{compareAtPrice}</p>
+                ) : null}
+              </div>
+            </div>
+            <AddToCartButton
+              merchandiseId={selectedVariant.id}
+              availableForSale={selectedVariant.availableForSale}
+              className="min-h-11 shrink-0 rounded-md border-ink bg-ink px-5 text-xs !text-white hover:border-deep-teal hover:bg-deep-teal"
+              label="Add to Bag"
+              ariaLabel={`Add ${product.title} to bag`}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {isLightboxOpen && activeImage ? (
         <div className="fixed inset-0 z-[180] bg-ink/92 text-ivory" onClick={closeLightbox}>

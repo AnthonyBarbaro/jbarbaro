@@ -1,6 +1,7 @@
 import { brands } from "@/data/brands";
 import { locations } from "@/data/locations";
 import { getCollection } from "@/lib/content";
+import { getShopBrands } from "@/lib/shopify/brands";
 import { getMenCategoryRoutes } from "@/lib/shopify/men-categories";
 import { getShopProductPreviews } from "@/lib/shopify/products";
 
@@ -13,6 +14,7 @@ export async function getSitemapRoutes() {
     "/reviews",
     "/categories",
     "/shop",
+    "/shop/brands",
     "/account",
     "/designers",
     "/designers/featured-designers",
@@ -51,9 +53,20 @@ export async function getSitemapRoutes() {
     console.error(`Unable to build dynamic /shop sitemap routes: ${message}`);
   }
 
+  let shopBrandRoutes: string[] = [];
+
+  try {
+    shopBrandRoutes = (await getShopBrands()).map((brand) => `/shop/brands/${brand.slug}`);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Unknown Shopify brand sitemap error.";
+    console.error(`Unable to build dynamic /shop/brands sitemap routes: ${message}`);
+  }
+
   const dynamicRoutes = [
     ...menCategoryRoutes.filter((route) => route !== "/categories"),
     ...shopProductRoutes,
+    ...shopBrandRoutes,
     ...locations.map((location) => `/location/${location.slug}`),
     ...brands.map((brand) => `/collection-brand/${brand.slug}`),
     ...getCollection("blog").map((post) => `/blog/${post.slug}`),

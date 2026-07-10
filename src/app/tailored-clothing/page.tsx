@@ -1,7 +1,8 @@
 import Image from "next/image";
-import { ArrowRight, CheckCircle2, DraftingCompass, Ruler, Scissors } from "lucide-react";
+import { CheckCircle2, DraftingCompass, Ruler, Scissors } from "lucide-react";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
+import { TailoringSwatchGrid } from "@/components/tailoring/TailoringSwatchGrid";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -20,7 +21,6 @@ export const metadata = buildMetadata({
   title: tailoredPage.metaTitle,
   description: tailoredPage.metaDescription,
   path: "/tailored-clothing",
-  image: tailoredPage.heroImage,
   keywords: [
     "tailored clothing Detroit",
     "made to measure suits Michigan",
@@ -242,31 +242,7 @@ export default function TailoredClothingPage() {
             align="center"
           />
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
-            {tailoredSwatches.map((swatch) => (
-              <a
-                key={swatch.sku}
-                href={swatch.full}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group overflow-hidden rounded-2xl border border-ink/12 bg-ivory transition-all hover:-translate-y-1 hover:border-gold"
-              >
-                <div className="relative aspect-[4/3]">
-                  <Image
-                    src={swatch.thumb}
-                    alt={`Tailoring cloth swatch ${swatch.sku}`}
-                    fill
-                    sizes="(max-width: 768px) 50vw, (max-width: 1280px) 25vw, 16vw"
-                    className="object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <div className="flex items-center justify-between gap-2 px-3 py-2">
-                  <span className="text-[11px] font-semibold tracking-[0.12em] text-ink uppercase">{swatch.sku}</span>
-                  <ArrowRight className="h-3.5 w-3.5 text-deep-teal" aria-hidden />
-                </div>
-              </a>
-            ))}
-          </div>
+          <TailoringSwatchGrid swatches={tailoredSwatches} />
         </Container>
       </WaveSection>
 

@@ -109,7 +109,7 @@ export default function AboutPage() {
                 <div className="mt-6 flex flex-wrap gap-3">
                   {aboutPage.founderSpotlight.buttons.map((button, index) => (
                     <ButtonLink
-                      key={button.href}
+                      key={`${button.href}-${index}`}
                       href={button.href}
                       target="_blank"
                       rel="noopener noreferrer"

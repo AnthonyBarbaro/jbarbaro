@@ -59,7 +59,7 @@ const fitBuildOptions: Array<{ label: string; value: FitBuild }> = [
   { label: "Broad", value: "broad" },
   { label: "Full", value: "full" },
 ];
-const FIT_WIDGET_IMAGE = "/images/hero-suits-299.jpg";
+const FIT_WIDGET_IMAGE = "/images/campaign/showroom-hero-v2.webp";
 
 function getEmptyFitEstimate(input: FitDraftInput): FitEstimate {
   return {
@@ -1717,7 +1717,16 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               )}
             >
               {filteredProducts.map((product) => (
-                <ShopProductCard key={product.id} product={product} fitSizes={smartFitEnabled ? smartFitSizes : []} />
+                <ShopProductCard
+                  key={product.id}
+                  product={product}
+                  fitSizes={smartFitEnabled ? smartFitSizes : []}
+                  imageSizes={
+                    mobileLayout === "grid"
+                      ? "(max-width: 640px) 50vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                      : undefined
+                  }
+                />
               ))}
             </div>
           ) : (

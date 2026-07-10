@@ -9,13 +9,18 @@ import { cn, formatMoney } from "@/lib/utils";
 type ShopProductCardProps = {
   product: ShopifyProduct;
   fitSizes?: string[];
+  imageSizes?: string;
 };
 
 function getSecondaryImage(product: ShopifyProduct) {
   return product.images.find((image) => image.url !== product.featuredImage?.url) ?? product.images[1] ?? null;
 }
 
-export function ShopProductCard({ product, fitSizes = [] }: ShopProductCardProps) {
+export function ShopProductCard({
+  product,
+  fitSizes = [],
+  imageSizes = "(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw",
+}: ShopProductCardProps) {
   const availableVariants = product.variants.filter((variant) => variant.availableForSale);
   const primaryVariant = availableVariants[0] ?? product.variants[0];
   const hasPriceRange = product.priceRange.minVariantPrice.amount !== product.priceRange.maxVariantPrice.amount;
@@ -39,8 +44,6 @@ export function ShopProductCard({ product, fitSizes = [] }: ShopProductCardProps
   const secondaryImage = getSecondaryImage(product);
   const fitMatches = getProductFitMatches(product, fitSizes);
   const fitMatchLabel = fitMatches.length > 0 ? fitMatches.slice(0, 2).join(", ") : null;
-  const imageSizes = "(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw";
-
   return (
     <Card className="group flex h-full flex-col overflow-hidden rounded-lg border-ink/10 bg-white transition-colors duration-200 hover:border-ink/25">
       <Link href={`/shop/${product.handle}`} className="flex h-full flex-col">

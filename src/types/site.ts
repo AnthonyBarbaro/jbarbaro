@@ -14,6 +14,8 @@ export type Location = {
   name: string;
   brand: string;
   photo: string;
+  photoAlt: string;
+  photoLabel: string;
   address: string;
   phone: string;
   latitude: number;
@@ -54,6 +56,8 @@ export type HeroSlide = {
   caption: string;
   href: string;
   image: string;
+  imageAlt: string;
+  mobileFocalPoint?: "center" | "left" | "right-quarter" | "right";
   external?: boolean;
 };
 

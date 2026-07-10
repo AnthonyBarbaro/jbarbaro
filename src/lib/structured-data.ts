@@ -103,7 +103,7 @@ export function clothingStoreJsonLd(location: Location) {
     name: `${location.brand || SITE_NAME} - ${location.name}`,
     url: absoluteUrl(`/location/${location.slug}`),
     telephone: location.phone,
-    image: location.photo ? absoluteUrl(location.photo) : undefined,
+    image: location.photo && location.photoLabel === "Storefront" ? absoluteUrl(location.photo) : undefined,
     address: {
       "@type": "PostalAddress",
       addressCountry: "US",

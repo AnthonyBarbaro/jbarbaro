@@ -45,6 +45,7 @@ export function buildMetadata({
 }: SeoOptions): Metadata {
   const canonicalUrl = absoluteUrl(path);
   const ogImage = absoluteUrl(image || DEFAULT_OG_IMAGE);
+  const isDefaultOgImage = !image || image === DEFAULT_OG_IMAGE;
 
   return {
     title,
@@ -63,9 +64,8 @@ export function buildMetadata({
       images: [
         {
           url: ogImage,
-          width: 1200,
-          height: 630,
           alt: title,
+          ...(isDefaultOgImage ? { width: 1200, height: 630 } : {}),
         },
       ],
     },

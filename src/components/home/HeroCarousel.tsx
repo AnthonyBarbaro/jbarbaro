@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
@@ -39,11 +39,40 @@ function getPrimaryCtaLabel(slide: HeroSlide) {
   return "Shop Now";
 }
 
+function getImagePosition(slide: HeroSlide) {
+  switch (slide.mobileFocalPoint) {
+    case "left":
+      return "object-left sm:object-center";
+    case "right":
+      return "object-right sm:object-center";
+    case "right-quarter":
+      return "object-[78%_center] sm:object-center";
+    default:
+      return "object-center";
+  }
+}
+
 export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isInteractionPaused, setIsInteractionPaused] = useState(false);
 
   useEffect(() => {
-    if (slides.length < 2) {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMotionPreference = () => {
+      if (reducedMotion.matches) {
+        setIsPaused(true);
+      }
+    };
+
+    syncMotionPreference();
+    reducedMotion.addEventListener("change", syncMotionPreference);
+
+    return () => reducedMotion.removeEventListener("change", syncMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    if (slides.length < 2 || isPaused || isInteractionPaused) {
       return;
     }
 
@@ -52,40 +81,53 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
     }, 6500);
 
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [isInteractionPaused, isPaused, slides.length]);
 
   if (!slides.length) {
     return null;
   }
 
   const activeSlide = slides[activeIndex];
+  const nextSlide = slides.length > 1 ? slides[(activeIndex + 1) % slides.length] : null;
+  const renderedSlides = nextSlide ? [activeSlide, nextSlide] : [activeSlide];
   const slideCounter = `${String(activeIndex + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`;
   const fallbackSecondaryCta = secondaryCta ?? { label: "Book Appointment", href: "/schedule-appointment" };
 
   return (
-    <section className="relative overflow-hidden bg-[#0b0f14] text-white">
-      {slides.map((slide, index) => {
-        const isActive = index === activeIndex;
+    <section
+      className="relative overflow-hidden bg-[#0b0f14] text-white"
+      onMouseEnter={() => setIsInteractionPaused(true)}
+      onMouseLeave={() => setIsInteractionPaused(false)}
+      onFocusCapture={() => setIsInteractionPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsInteractionPaused(false);
+        }
+      }}
+    >
+      {renderedSlides.map((slide, index) => {
+        const isActive = index === 0;
 
         return (
           <article
             key={slide.id}
             aria-hidden={!isActive}
             className={cn(
-              "absolute inset-0 transition-opacity duration-700",
-              isActive ? "opacity-100" : "pointer-events-none opacity-0",
+              "absolute inset-0 transition-opacity duration-500",
+              isActive ? "hero-slide-enter opacity-100" : "pointer-events-none opacity-0",
             )}
           >
             <Image
               src={slide.image}
-              alt={slide.title}
+              alt={isActive ? slide.imageAlt : ""}
               fill
-              priority={index === 0}
+              priority={activeIndex === 0 && isActive}
+              quality={92}
               sizes="100vw"
-              className="object-cover"
+              className={cn("object-cover", getImagePosition(slide))}
             />
-            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(11,15,20,0.88),rgba(11,15,20,0.64)_48%,rgba(11,15,20,0.2))]" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,20,0.04),rgba(11,15,20,0.56))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(11,15,20,0.9),rgba(11,15,20,0.66)_48%,rgba(11,15,20,0.22))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,20,0.04),rgba(11,15,20,0.58))]" />
           </article>
         );
       })}
@@ -95,7 +137,7 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
           <button
             type="button"
             onClick={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)}
-            className="absolute top-1/2 left-3 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md border border-white/20 bg-[#0b0f14]/72 text-white transition-colors hover:border-gold hover:text-gold sm:left-5 sm:h-11 sm:w-11"
+            className="absolute top-1/2 left-5 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md border border-white/20 bg-[#0b0f14]/72 text-white transition-colors hover:border-gold hover:text-gold 2xl:inline-flex"
             aria-label="Previous slide"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -104,7 +146,7 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
           <button
             type="button"
             onClick={() => setActiveIndex((current) => (current + 1) % slides.length)}
-            className="absolute top-1/2 right-3 z-20 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-md border border-white/20 bg-[#0b0f14]/72 text-white transition-colors hover:border-gold hover:text-gold sm:right-5 sm:h-11 sm:w-11"
+            className="absolute top-1/2 right-5 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md border border-white/20 bg-[#0b0f14]/72 text-white transition-colors hover:border-gold hover:text-gold 2xl:inline-flex"
             aria-label="Next slide"
           >
             <ChevronRight className="h-5 w-5" />
@@ -168,19 +210,33 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
           </div>
 
           {slides.length > 1 ? (
-            <div className="mt-9 flex flex-wrap gap-2">
+            <div className="mt-7 flex flex-wrap sm:mt-9">
               {slides.map((slide, index) => (
                 <button
                   key={slide.id}
                   type="button"
                   onClick={() => setActiveIndex(index)}
                   aria-label={`Show ${slide.title}`}
-                  className={cn(
-                    "h-1.5 w-10 rounded-full transition-colors",
-                    index === activeIndex ? "bg-gold" : "bg-white/35 hover:bg-white/65",
-                  )}
-                />
+                  aria-current={index === activeIndex ? "true" : undefined}
+                  className="group inline-flex h-11 w-11 items-center justify-center"
+                >
+                  <span
+                    className={cn(
+                      "h-1.5 w-9 rounded-full transition-colors",
+                      index === activeIndex ? "bg-gold" : "bg-white/35 group-hover:bg-white/65",
+                    )}
+                  />
+                </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setIsPaused((paused) => !paused)}
+                className="ml-1 inline-flex h-11 items-center justify-center gap-2 rounded-md border border-white/25 bg-ink/45 px-3 text-[10px] font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:border-gold hover:text-gold"
+                aria-label={isPaused ? "Play slideshow" : "Pause slideshow"}
+              >
+                {isPaused ? <Play className="h-3.5 w-3.5" aria-hidden /> : <Pause className="h-3.5 w-3.5" aria-hidden />}
+                {isPaused ? "Play" : "Pause"}
+              </button>
             </div>
           ) : null}
         </div>

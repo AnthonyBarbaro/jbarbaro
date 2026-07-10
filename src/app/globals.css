@@ -52,10 +52,6 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-a {
-  color: inherit;
-}
-
 summary::-webkit-details-marker {
   display: none;
 }
@@ -79,6 +75,27 @@ summary::-webkit-details-marker {
 
 .wave-c {
   background-image: var(--wave-c);
+}
+
+@keyframes hero-slide-enter {
+  from {
+    opacity: 0.45;
+    transform: scale(1.006);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hero-slide-enter {
+  animation: hero-slide-enter 600ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-slide-enter {
+    animation: none;
+  }
 }
 
 .luxe-shadow {

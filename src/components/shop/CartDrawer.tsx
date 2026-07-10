@@ -236,14 +236,14 @@ export function CartDrawer() {
 
                 return (
                   <li key={line.id} className={cn("flex gap-4 py-4 transition-opacity", isLineMutating && "opacity-60")}>
-                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-md border border-ink/8 bg-stone">
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-md border border-ink/8 bg-white">
                       {line.image ? (
                         <Image
                           src={line.image.url}
                           alt={line.image.altText || line.productTitle || "Bag item"}
                           fill
                           sizes="80px"
-                          className="object-cover"
+                          className="object-contain p-1.5"
                         />
                       ) : null}
                     </div>

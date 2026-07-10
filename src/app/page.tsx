@@ -26,7 +26,6 @@ export const metadata = buildMetadata({
   title: homePage.metaTitle,
   description: homePage.metaDescription,
   path: "/",
-  image: homePage.heroImage,
 });
 export const revalidate = 300;
 
@@ -37,7 +36,7 @@ const storefrontCategories = [
     label: "Suits",
     href: "/categories/suits-sports-coats",
     matches: ["suits", "suits sports coats", "suits-sports-coats"],
-    image: "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h3_lg.jpg",
+    image: "/images/remote/www.jasonbarbaro.com/assets/media/2020/05/t002.jpg",
     description: "Shop tailored suits, sport coats, and polished separates.",
   },
   {
@@ -65,7 +64,7 @@ const storefrontCategories = [
     label: "Formalwear",
     href: "/categories/formalwear",
     matches: ["formalwear", "tuxedo", "tuxedos"],
-    image: "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h4_lg.jpg",
+    image: "/images/campaign/formalwear-nav-v2.webp",
     description: "Explore tuxedos, event dressing, and formal accessories.",
   },
 ] as const;

@@ -10,7 +10,7 @@ import { locations } from "@/data/locations";
 import { siteSettings } from "@/data/site-settings";
 import { socialLinks } from "@/data/social";
 import { SITE_URL } from "@/lib/constants";
-import { getDefaultSiteMetadata } from "@/lib/seo";
+import { absoluteUrl, getDefaultSiteMetadata } from "@/lib/seo";
 import { clothingStoreJsonLd, websiteJsonLd } from "@/lib/structured-data";
 
 import "./globals.css";
@@ -38,7 +38,7 @@ const organizationJsonLd = {
   description: siteSettings.siteDescription,
   founder: siteSettings.siteOwner,
   sameAs: socialLinks.map((link) => link.href),
-  logo: siteSettings.logoUrl,
+  logo: absoluteUrl(siteSettings.logoUrl),
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

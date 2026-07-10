@@ -51,7 +51,7 @@ async function gatherMdxImageUrls() {
       const fullPath = path.join(absDir, entry.name);
       const raw = await fs.readFile(fullPath, "utf8");
       const parsed = matter(raw);
-      const image = parsed.data.image;
+      const image = parsed.data.coverImage;
 
       if (typeof image === "string" && image.startsWith("http")) {
         urls.push(image);
@@ -70,11 +70,15 @@ async function gatherAllImageUrls() {
   }
 
   for (const slide of heroSlides) {
-    urls.add(slide.image);
+    if (slide.image.startsWith("http")) {
+      urls.add(slide.image);
+    }
   }
 
   for (const tile of ctaTiles) {
-    urls.add(tile.image);
+    if (tile.image.startsWith("http")) {
+      urls.add(tile.image);
+    }
   }
 
   for (const brand of brands) {

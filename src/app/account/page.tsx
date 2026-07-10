@@ -110,7 +110,7 @@ export default function AccountPage() {
 
           <div className="relative min-h-[20rem] overflow-hidden rounded-lg border border-ink/10 bg-stone shadow-sm shadow-ink/[0.03]">
             <Image
-              src="/images/hero-suits-299.jpg"
+              src="/images/campaign/showroom-hero-v2.webp"
               alt="Tailored clothing fitting room at J. Barbaro Clothiers"
               fill
               sizes="(min-width: 1024px) 24rem, 100vw"

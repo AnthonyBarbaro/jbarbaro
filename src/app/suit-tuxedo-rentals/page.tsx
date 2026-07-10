@@ -16,7 +16,6 @@ export const metadata = buildMetadata({
   title: rentalsPage.metaTitle,
   description: rentalsPage.metaDescription,
   path: "/suit-tuxedo-rentals",
-  image: rentalsPage.heroImage,
 });
 
 export default function SuitTuxedoRentalsPage() {
@@ -111,7 +110,7 @@ export default function SuitTuxedoRentalsPage() {
         </Container>
       </WaveSection>
 
-      <WaveSection topWave="C" bottomWave="A" background="ivory">
+      <WaveSection topWave="C" bottomWave="A" background="ivory" className="hidden md:block">
         <Container>
           <div className="grid gap-4 lg:grid-cols-2">
             <Card className="overflow-hidden">

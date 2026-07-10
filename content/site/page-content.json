@@ -2,7 +2,7 @@
   "homePage": {
     "metaTitle": "J. Barbaro Clothiers | Luxury Menswear & Perfect Fit",
     "metaDescription": "Shop suits, shirts, shoes, accessories, and formalwear from premium menswear brands, or book a fitting appointment in Metro Detroit.",
-    "heroImage": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h3_lg.jpg",
+    "heroImage": "/images/campaign/showroom-hero-v2.webp",
     "heroTitle": "Luxury Menswear. Perfect Fit.",
     "heroDescription": "Shop suits, shirts, shoes, accessories, and formalwear from premium menswear brands.",
     "heroBadges": [
@@ -32,35 +32,27 @@
         "title": "Luxury Menswear. Perfect Fit.",
         "caption": "Shop suits, shirts, shoes, accessories, and formalwear from premium menswear brands.",
         "href": "/shop",
-        "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h3_lg.jpg"
+        "image": "/images/campaign/showroom-hero-v2.webp",
+        "imageAlt": "Client selecting a tailored suit in a menswear showroom",
+        "mobileFocalPoint": "center"
       },
       {
         "id": "slide-2",
         "title": "Suits from $299",
         "caption": "An easy starting point for event dressing, office rotation, or a clean wardrobe refresh.",
         "href": "/shop",
-        "image": "/images/hero-suits-299.jpg"
+        "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h3_lg.jpg",
+        "imageAlt": "Man wearing a refined light gray tailored suit",
+        "mobileFocalPoint": "right-quarter"
       },
       {
         "id": "slide-3",
         "title": "Tuxedo Rentals for the Whole Party",
         "caption": "Explore tuxedo and suit rentals for weddings, galas, proms, and black-tie events.",
         "href": "/suit-tuxedo-rentals",
-        "image": "/images/remote/www.barbaroformalwear.com/wp-content/uploads/2024/02/h3lg.jpg"
-      },
-      {
-        "id": "slide-4",
-        "title": "Register Your Wedding Party",
-        "caption": "Coordinate groomsmen, fittings, dates, and formalwear details before the rush.",
-        "href": "/register-your-wedding",
-        "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h4_lg.jpg"
-      },
-      {
-        "id": "slide-5",
-        "title": "New Arrivals Now Available",
-        "caption": "Browse fresh products online, then book an appointment when you want fit help in store.",
-        "href": "/shop",
-        "image": "/images/remote/www.jasonbarbaro.com/assets/media/2021/01/fw2020.jpg"
+        "image": "/images/remote/www.barbaroformalwear.com/wp-content/uploads/2024/02/h3lg.jpg",
+        "imageAlt": "Coordinated wedding party in light gray formalwear",
+        "mobileFocalPoint": "center"
       }
     ],
     "ctaTiles": [
@@ -556,7 +548,7 @@
         "copy": "Final fitting and styling guidance before pickup or event day."
       }
     ],
-    "heroImage": "/images/remote/www.jasonbarbaro.com/assets/media/2020/05/t002.jpg",
+    "heroImage": "/images/campaign/tailoring-fitting-v2.webp",
     "insetImage": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h3_lg.jpg",
     "fitSection": {
       "badge": "Best Fit Standard",
@@ -654,8 +646,8 @@
     },
     "swatchSection": {
       "eyebrow": "Tailored Swatches",
-      "title": "Explore a Sample of Available Cloth Patterns",
-      "description": "Preview selected swatches below. During your appointment, we can review a broader swatch book and recommend the right weights and weaves."
+      "title": "Explore Cloth Patterns and Textures",
+      "description": "Preview cloth inspiration below. During your appointment, we can review the current swatch books and recommend the right weights and weaves."
     },
     "faqSection": {
       "eyebrow": "Tailoring FAQ",

@@ -3,6 +3,8 @@ import path from "node:path";
 
 import matter from "gray-matter";
 
+import { DEFAULT_OG_IMAGE } from "@/lib/constants";
+
 export type ContentType = "blog" | "style-guide";
 
 export type ContentPost = {
@@ -37,7 +39,7 @@ function parsePostFile(type: ContentType, filename: string): ContentPost {
     publishedAt: String(data.publishedAt),
     updatedAt: data.updatedAt ? String(data.updatedAt) : undefined,
     author: String(data.author || "J. Barbaro Editorial Team"),
-    coverImage: String(data.coverImage || "/images/og-default.svg"),
+    coverImage: String(data.coverImage || DEFAULT_OG_IMAGE),
     tags: Array.isArray(data.tags) ? data.tags.map((tag) => String(tag)) : [],
     body: content,
     type,

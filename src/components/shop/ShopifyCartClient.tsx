@@ -348,14 +348,14 @@ export function ShopifyCartClient() {
               <article key={line.id} className="overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm">
                 <div className="grid gap-5 p-5 sm:p-6 lg:grid-cols-[minmax(0,2.05fr)_100px_148px_108px] lg:items-start lg:gap-4">
                   <div className="flex gap-5">
-                    <div className="relative h-32 w-24 shrink-0 overflow-hidden rounded-md bg-stone sm:h-36 sm:w-28">
+                    <div className="relative h-32 w-24 shrink-0 overflow-hidden rounded-md bg-white sm:h-36 sm:w-28">
                       {line.image ? (
                         <Image
                           src={line.image.url}
                           alt={line.image.altText || line.productTitle || "Cart item"}
                           fill
                           sizes="112px"
-                          className="object-cover"
+                          className="object-contain p-2"
                         />
                       ) : null}
                     </div>

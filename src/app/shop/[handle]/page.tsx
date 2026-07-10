@@ -258,7 +258,10 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
                       key={relatedProduct.id}
                       className="min-w-[74vw] max-w-[74vw] snap-start sm:min-w-[19rem] sm:max-w-[19rem]"
                     >
-                      <ShopProductCard product={relatedProduct} />
+                      <ShopProductCard
+                        product={relatedProduct}
+                        imageSizes="(max-width: 768px) 74vw, 19rem"
+                      />
                     </div>
                   ))}
                 </div>

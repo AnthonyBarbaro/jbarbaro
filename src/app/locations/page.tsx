@@ -11,6 +11,7 @@ import { WaveSection } from "@/components/ui/WaveSection";
 import { locations } from "@/data/locations";
 import { aggregateRating } from "@/data/testimonials";
 import { buildGoogleMapsEmbedUrl } from "@/lib/maps";
+import { SITE_URL } from "@/lib/constants";
 import { pageContent } from "@/lib/site-content";
 import { buildMetadata } from "@/lib/seo";
 import { formatPhone } from "@/lib/utils";
@@ -24,8 +25,6 @@ export const metadata = buildMetadata({
 });
 
 export default function LocationsPage() {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-
   const locationSchemas = locations.map((location) => ({
     "@context": "https://schema.org",
     "@type": "ClothingStore",
@@ -36,7 +35,7 @@ export default function LocationsPage() {
       addressCountry: "US",
     },
     telephone: location.phone,
-    image: location.photo,
+    image: location.photoLabel === "Storefront" ? location.photo : undefined,
     geo: {
       "@type": "GeoCoordinates",
       latitude: location.latitude,
@@ -47,7 +46,7 @@ export default function LocationsPage() {
       ratingValue: aggregateRating.ratingValue,
       reviewCount: aggregateRating.reviewCount,
     },
-    url: `${baseUrl}/location/${location.slug}`,
+    url: `${SITE_URL}/location/${location.slug}`,
   }));
 
   const itemListSchema = {
@@ -58,7 +57,7 @@ export default function LocationsPage() {
       "@type": "ListItem",
       position: index + 1,
       name: location.name,
-      url: `${baseUrl}/location/${location.slug}`,
+      url: `${SITE_URL}/location/${location.slug}`,
     })),
   };
 
@@ -75,20 +74,21 @@ export default function LocationsPage() {
       <WaveSection topWave="A" bottomWave="C" background="stone">
         <Container>
           <div className="grid gap-5 lg:grid-cols-2">
-            {locations.map((location) => (
+            {locations.map((location, index) => (
               <Card key={location.slug} className="h-full overflow-hidden">
                 <div className="relative aspect-[16/10]">
                   <Image
                     src={location.photo}
-                    alt={`${location.name} storefront`}
+                    alt={location.photoAlt}
                     fill
+                    priority={index === 0}
                     sizes="(max-width: 1024px) 100vw, 50vw"
                     className="object-cover"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/20 to-transparent" />
                   <div className="absolute right-3 bottom-3 left-3">
                     <p className="rounded-xl border border-white/30 bg-white/88 px-3 py-2 text-center text-xs font-semibold tracking-[0.12em] text-ink uppercase backdrop-blur-sm">
-                      {location.brand}
+                      {location.photoLabel}
                     </p>
                   </div>
                 </div>
@@ -182,7 +182,7 @@ export default function LocationsPage() {
                     key={button.href}
                     href={button.href}
                     variant={index === 0 ? "primary" : "secondary"}
-                    className={`w-full sm:w-auto ${index === 0 ? "" : "border-ivory/80 text-ivory hover:border-gold hover:text-gold"}`}
+                    className={`w-full sm:w-auto ${index === 0 ? "" : "!border-ivory/70 bg-transparent text-ivory hover:!border-gold hover:bg-transparent hover:text-gold"}`}
                   >
                     {button.label}
                   </ButtonLink>

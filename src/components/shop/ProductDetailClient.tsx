@@ -4,31 +4,39 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
-  CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
-  PackageCheck,
-  Ruler,
-  Search,
+  HelpCircle,
+  Maximize2,
+  Minus,
+  Plus,
   ShieldCheck,
-  Sparkles,
-  Star,
   Truck,
   X,
-  ZoomIn,
-  ZoomOut,
 } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
+  type WheelEvent as ReactWheelEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
-import { aggregateRating } from "@/data/testimonials";
+import { ProductSmartFitDrawer } from "@/components/shop/ProductSmartFitDrawer";
 import { brandSlug } from "@/lib/shopify/brand-slug";
 import {
+  findProductSuitVariant,
   FIT_PROFILE_STORAGE_KEY,
   getProductFitMatches,
   getVariantSizeValue,
+  isSuitSizingProduct,
+  normalizeJacketLength,
+  parseSuitSize,
   parseFitProfile,
 } from "@/lib/fit-profile";
 import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
@@ -36,12 +44,12 @@ import { cn, formatMoney } from "@/lib/utils";
 
 type ProductDetailClientProps = {
   product: ShopifyProduct;
-  storeReviewSummary?: {
-    source: "google" | "fallback";
-    ratingValue: number;
-    reviewCount: number;
-  };
 };
+
+const MIN_IMAGE_ZOOM = 1;
+const MAX_IMAGE_ZOOM = 5;
+const IMAGE_ZOOM_STEP = 0.5;
+const DOUBLE_TAP_IMAGE_ZOOM = 2.5;
 
 function getProductImages(product: ShopifyProduct) {
   if (product.images.length > 0) {
@@ -54,7 +62,7 @@ function getProductImages(product: ShopifyProduct) {
 function getOptionMap(product: ShopifyProduct) {
   const optionMap = new Map<string, string[]>();
 
-  for (const variant of product.variants.filter((item) => item.availableForSale)) {
+  for (const variant of product.variants) {
     for (const option of variant.selectedOptions) {
       const existingValues = optionMap.get(option.name) ?? [];
 
@@ -70,6 +78,16 @@ function getOptionMap(product: ShopifyProduct) {
       values: values.filter((value) => value.trim().toLowerCase() !== "default title"),
     }))
     .filter((group) => group.name.trim().toLowerCase() !== "title" && group.values.length > 1);
+}
+
+function getProductOptionLabel(product: ShopifyProduct, name: string, values: string[]) {
+  const isJacketLength =
+    isSuitSizingProduct(product) &&
+    !name.toLowerCase().includes("size") &&
+    values.length > 0 &&
+    values.every((value) => Boolean(normalizeJacketLength(value)));
+
+  return isJacketLength ? "Length" : name;
 }
 
 function findMatchingVariant(product: ShopifyProduct, selectedOptions: Record<string, string>) {
@@ -109,37 +127,10 @@ function findAvailableVariantForOption(
   );
 }
 
-function getAvailableValuesForGroup(
-  product: ShopifyProduct,
-  groupName: string,
-  values: string[],
-  selectedOptions: Record<string, string>,
-) {
-  return values.filter((value) =>
-    findAvailableVariantForOption(product, groupName, value, selectedOptions),
-  );
-}
-
 function buildInitialOptionState(variant: ShopifyProductVariant | undefined) {
   return Object.fromEntries(
     (variant?.selectedOptions ?? []).map((option) => [option.name, option.value]),
   );
-}
-
-function summarizeProductDescription(description: string) {
-  const trimmed = description.replace(/\s+/g, " ").trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  const firstSentence = trimmed.split(/(?<=[.!?])\s+/)[0]?.trim() || trimmed;
-
-  if (firstSentence.length <= 180) {
-    return firstSentence;
-  }
-
-  return `${firstSentence.slice(0, 177).trimEnd()}...`;
 }
 
 function getRichTextFallback(description: string) {
@@ -164,171 +155,7 @@ function getPrimaryCollection(product: ShopifyProduct) {
 const shopifyRichTextClassName =
   "[&_a]:font-semibold [&_a]:text-deep-teal [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-ink [&_b]:font-semibold [&_b]:text-ink [&_blockquote]:border-l-2 [&_blockquote]:border-gold/60 [&_blockquote]:pl-4 [&_blockquote]:italic [&_em]:italic [&_h2]:mt-8 [&_h2]:font-heading [&_h2]:text-[1.35rem] [&_h2]:text-ink [&_h3]:mt-7 [&_h3]:font-heading [&_h3]:text-[1.15rem] [&_h3]:text-ink [&_li]:leading-8 [&_li]:marker:text-gold [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:text-[0.98rem] [&_p]:leading-8 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 max-w-none space-y-4 text-smoke";
 
-function AssuranceItem({
-  icon,
-  title,
-  detail,
-  highlight = false,
-}: {
-  icon: ReactNode;
-  title: string;
-  detail: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex min-h-[5rem] gap-3 rounded-md border px-4 py-3",
-        highlight ? "border-deep-teal/18 bg-deep-teal/7" : "border-ink/10 bg-white",
-      )}
-    >
-      <div
-        className={cn(
-          "mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border",
-          highlight
-            ? "border-deep-teal/20 bg-white text-deep-teal"
-            : "border-gold/25 bg-gold/10 text-ink",
-        )}
-      >
-        {icon}
-      </div>
-      <div className="min-w-0">
-        <p className="text-sm font-semibold text-ink">{title}</p>
-        <p className="mt-1 text-xs leading-5 text-smoke">{detail}</p>
-      </div>
-    </div>
-  );
-}
-
-function ReviewStars({ rating }: { rating: number }) {
-  const fillPercentage = (Math.max(0, Math.min(5, rating)) / 5) * 100;
-
-  return (
-    <span className="relative inline-flex items-center" aria-hidden="true">
-      <span className="flex gap-0.5 text-ink/15">
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Star key={index} className="h-4 w-4 shrink-0 fill-current" />
-        ))}
-      </span>
-      <span
-        className="absolute inset-y-0 left-0 flex gap-0.5 overflow-hidden text-gold"
-        style={{ width: `${fillPercentage}%` }}
-      >
-        {Array.from({ length: 5 }).map((_, index) => (
-          <Star key={index} className="h-4 w-4 shrink-0 fill-current" />
-        ))}
-      </span>
-    </span>
-  );
-}
-
-function getDescriptionSentences(description: string) {
-  return description
-    .replace(/\s+/g, " ")
-    .split(/(?<=[.!?])\s+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-}
-
-function pickDescriptionDetail(sentences: string[], pattern: RegExp, fallback: string) {
-  return sentences.find((sentence) => pattern.test(sentence)) ?? fallback;
-}
-
-function getProductNoun(product: ShopifyProduct) {
-  return product.productType || getPrimaryCollection(product)?.title || "piece";
-}
-
-function getProductDescriptionHighlights(product: ShopifyProduct) {
-  const productNoun = getProductNoun(product).toLowerCase();
-  const sentences = getDescriptionSentences(product.description);
-  const summary =
-    summarizeProductDescription(product.description) ||
-    `${product.title} is selected for a polished, professional wardrobe.`;
-
-  return [
-    {
-      title: "Design notes",
-      detail: summary,
-      icon: <Sparkles className="h-4 w-4" />,
-    },
-    {
-      title: "Material and finish",
-      detail: pickDescriptionDetail(
-        sentences,
-        /leather|suede|wool|cotton|linen|silk|cashmere|fabric|crafted|premium|durable|polished|finish/i,
-        `${product.vendor || "J. Barbaro"} selected this ${productNoun} for a refined finish and easy wardrobe versatility.`,
-      ),
-      icon: <ShieldCheck className="h-4 w-4" />,
-    },
-    {
-      title: "Fit and styling",
-      detail: pickDescriptionDetail(
-        sentences,
-        /fit|comfort|tailor|slim|classic|regular|relaxed|wear|pair|style|occasion|silhouette/i,
-        `Style it with tailored separates, denim, or occasion-ready layers depending on the setting.`,
-      ),
-      icon: <Ruler className="h-4 w-4" />,
-    },
-  ];
-}
-
-function DescriptionHighlight({
-  icon,
-  title,
-  detail,
-}: {
-  icon: ReactNode;
-  title: string;
-  detail: string;
-}) {
-  return (
-    <div className="rounded-md border border-ink/10 bg-stone/45 p-4">
-      <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gold/25 bg-white text-deep-teal">
-          {icon}
-        </span>
-        {title}
-      </div>
-      <p className="mt-3 text-sm leading-7 text-smoke">{detail}</p>
-    </div>
-  );
-}
-
-function getProductReviewCard(
-  product: ShopifyProduct,
-  primaryCollectionTitle: string | null,
-  storeReviewSummary: ProductDetailClientProps["storeReviewSummary"],
-) {
-  if (product.reviewSummary) {
-    return {
-      heading: `${product.reviewSummary.ratingValue.toFixed(1)} / 5`,
-      body: `Based on ${new Intl.NumberFormat("en-US").format(product.reviewSummary.reviewCount)} product reviews`,
-      eyebrow: "Product reviews",
-    };
-  }
-
-  const productNoun = (
-    primaryCollectionTitle ||
-    product.productType ||
-    product.title
-  ).toLowerCase();
-  const ratingValue = storeReviewSummary?.ratingValue ?? aggregateRating.ratingValue;
-  const storeReviewCount = new Intl.NumberFormat("en-US").format(
-    storeReviewSummary?.reviewCount ?? aggregateRating.reviewCount,
-  );
-  const sourceLabel =
-    storeReviewSummary?.source === "google"
-      ? "Google store reviews"
-      : "J. Barbaro customer reviews";
-
-  return {
-    heading: `${ratingValue.toFixed(1)} / 5`,
-    body: `Product reviews for ${productNoun} are coming soon. Backed by ${storeReviewCount} ${sourceLabel}.`,
-    eyebrow: "Reviews coming soon",
-  };
-}
-
-export function ProductDetailClient({ product, storeReviewSummary }: ProductDetailClientProps) {
+export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const router = useRouter();
   const initialVariant =
     product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
@@ -340,19 +167,29 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
   );
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [smartFitMatch, setSmartFitMatch] = useState<string | null>(null);
+  const [smartFitUnavailable, setSmartFitUnavailable] = useState(false);
+  const [isSmartFitOpen, setIsSmartFitOpen] = useState(false);
   const [isBuyBoxInView, setIsBuyBoxInView] = useState(true);
-  const touchStartXRef = useRef<number | null>(null);
+  const galleryTouchStartXRef = useRef<number | null>(null);
   const buyBoxRef = useRef<HTMLDivElement | null>(null);
+  const lightboxStageRef = useRef<HTMLDivElement | null>(null);
+  const lightboxTouchRef = useRef({
+    startX: 0,
+    startY: 0,
+    lastX: 0,
+    lastY: 0,
+    pinchDistance: null as number | null,
+    moved: false,
+    lastTap: 0,
+  });
+  const mouseDragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
   const selectedVariant = findMatchingVariant(product, selectedOptions) ?? initialVariant;
   const activeImage = images[selectedImageIndex] ?? images[0] ?? null;
-  const availableVariantCount = product.variants.filter(
-    (variant) => variant.availableForSale,
-  ).length;
   const hasMultipleImages = images.length > 1;
   const primaryCollection = getPrimaryCollection(product);
-  const productSummary = summarizeProductDescription(product.description);
   const descriptionMarkup =
     product.descriptionHtml?.trim() || getRichTextFallback(product.description);
   const priceLabel = selectedVariant
@@ -374,46 +211,15 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
   const salePercent =
     isOnSale && selectedVariant.compareAtPrice
       ? Math.round(
-          (1 - Number(selectedVariant.price.amount) / Number(selectedVariant.compareAtPrice.amount)) *
+          (1 -
+            Number(selectedVariant.price.amount) / Number(selectedVariant.compareAtPrice.amount)) *
             100,
         )
       : null;
-  const displayRating =
-    product.reviewSummary?.ratingValue ??
-    storeReviewSummary?.ratingValue ??
-    aggregateRating.ratingValue;
   const selectedVariantIsAvailable = Boolean(selectedVariant?.availableForSale);
-  const availabilityLabel =
-    availableVariantCount > 0
-      ? `${availableVariantCount} available option${availableVariantCount === 1 ? "" : "s"}${primaryCollection ? ` in ${primaryCollection.title}` : ""}.`
-      : "This piece is currently sold out online.";
   const availabilityMessage = selectedVariantIsAvailable ? "In stock, ready to ship" : "Sold out";
-  const shippingAssuranceDetail = selectedVariantIsAvailable
-    ? "Orders are prepared quickly and packed with care before they leave our shop."
-    : "Contact the shop and we can help find a similar ready-to-ship option.";
-  const statusAssuranceDetail = selectedVariantIsAvailable
-    ? "This selection is available online and ready for checkout."
-    : "Choose another available option or book an appointment for sourcing help.";
   const metaCategoryLabel = primaryCollection?.title || product.productType;
-  const descriptionHighlights = getProductDescriptionHighlights(product);
-  const productReviewCard = getProductReviewCard(
-    product,
-    primaryCollection?.title ?? null,
-    storeReviewSummary,
-  );
-  const shouldShowDescriptionSection =
-    descriptionHighlights.length > 0 || Boolean(descriptionMarkup.trim());
-  const shouldShowAppointmentCta =
-    Number(product.priceRange.minVariantPrice.amount) >= 250 ||
-    /suit|tuxedo|formal|sport|tailor/i.test(
-      [product.title, product.productType, primaryCollection?.title].filter(Boolean).join(" "),
-    );
-  const visibleOptionGroups = optionGroups
-    .map((group) => ({
-      ...group,
-      values: getAvailableValuesForGroup(product, group.name, group.values, selectedOptions),
-    }))
-    .filter((group) => group.values.length > 0);
+  const visibleOptionGroups = optionGroups;
 
   function showPreviousImage() {
     if (!hasMultipleImages) {
@@ -421,6 +227,7 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
     }
 
     setSelectedImageIndex((current) => (current - 1 + images.length) % images.length);
+    resetViewer();
   }
 
   function showNextImage() {
@@ -429,19 +236,25 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
     }
 
     setSelectedImageIndex((current) => (current + 1) % images.length);
+    resetViewer();
   }
 
-  function handleTouchStart(clientX: number) {
-    touchStartXRef.current = clientX;
+  function selectImage(index: number) {
+    setSelectedImageIndex(index);
+    resetViewer();
   }
 
-  function handleTouchEnd(clientX: number) {
-    if (touchStartXRef.current === null) {
+  function handleGalleryTouchStart(clientX: number) {
+    galleryTouchStartXRef.current = clientX;
+  }
+
+  function handleGalleryTouchEnd(clientX: number) {
+    if (galleryTouchStartXRef.current === null) {
       return;
     }
 
-    const deltaX = clientX - touchStartXRef.current;
-    touchStartXRef.current = null;
+    const deltaX = clientX - galleryTouchStartXRef.current;
+    galleryTouchStartXRef.current = null;
 
     if (Math.abs(deltaX) < 36) {
       return;
@@ -461,20 +274,213 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
     }
 
     setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
     setIsLightboxOpen(true);
   }
 
   function closeLightbox() {
     setIsLightboxOpen(false);
+    resetViewer();
+  }
+
+  function resetViewer() {
     setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
   }
 
-  function zoomIn() {
-    setZoomLevel((current) => Math.min(current + 0.35, 3));
+  function clampPan(offset: { x: number; y: number }, scale: number) {
+    const stage = lightboxStageRef.current;
+    const stageWidth = stage?.clientWidth ?? 0;
+    const stageHeight = stage?.clientHeight ?? 0;
+    const maxX = Math.max(0, ((scale - 1) * stageWidth) / 2);
+    const maxY = Math.max(0, ((scale - 1) * stageHeight) / 2);
+
+    return {
+      x: Math.max(-maxX, Math.min(maxX, offset.x)),
+      y: Math.max(-maxY, Math.min(maxY, offset.y)),
+    };
   }
 
-  function zoomOut() {
-    setZoomLevel((current) => Math.max(current - 0.35, 1));
+  function changeZoom(amount: number) {
+    setZoomLevel((current) => {
+      const next = Math.max(MIN_IMAGE_ZOOM, Math.min(MAX_IMAGE_ZOOM, current + amount));
+      setPanOffset((offset) => (next === MIN_IMAGE_ZOOM ? { x: 0, y: 0 } : clampPan(offset, next)));
+      return next;
+    });
+  }
+
+  function toggleZoom() {
+    setZoomLevel((current) => {
+      const next = current > MIN_IMAGE_ZOOM ? MIN_IMAGE_ZOOM : DOUBLE_TAP_IMAGE_ZOOM;
+      setPanOffset({ x: 0, y: 0 });
+      return next;
+    });
+  }
+
+  function getTouchDistance(touches: ReactTouchEvent<HTMLDivElement>["touches"]) {
+    const first = touches[0];
+    const second = touches[1];
+
+    if (!first || !second) {
+      return null;
+    }
+
+    return Math.hypot(second.clientX - first.clientX, second.clientY - first.clientY);
+  }
+
+  function handleLightboxTouchStart(event: ReactTouchEvent<HTMLDivElement>) {
+    const interaction = lightboxTouchRef.current;
+
+    if (event.touches.length === 2) {
+      interaction.pinchDistance = getTouchDistance(event.touches);
+      interaction.moved = true;
+      return;
+    }
+
+    const touch = event.touches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    interaction.startX = touch.clientX;
+    interaction.startY = touch.clientY;
+    interaction.lastX = touch.clientX;
+    interaction.lastY = touch.clientY;
+    interaction.moved = false;
+  }
+
+  function handleLightboxTouchMove(event: ReactTouchEvent<HTMLDivElement>) {
+    const interaction = lightboxTouchRef.current;
+
+    if (event.touches.length === 2) {
+      const distance = getTouchDistance(event.touches);
+
+      if (distance && interaction.pinchDistance) {
+        event.preventDefault();
+        const ratio = distance / interaction.pinchDistance;
+        setZoomLevel((current) => {
+          const next = Math.max(MIN_IMAGE_ZOOM, Math.min(MAX_IMAGE_ZOOM, current * ratio));
+          setPanOffset((offset) =>
+            next === MIN_IMAGE_ZOOM ? { x: 0, y: 0 } : clampPan(offset, next),
+          );
+          return next;
+        });
+      }
+
+      interaction.pinchDistance = distance;
+      interaction.moved = true;
+      return;
+    }
+
+    const touch = event.touches[0];
+
+    if (!touch) {
+      return;
+    }
+
+    if (zoomLevel > MIN_IMAGE_ZOOM) {
+      event.preventDefault();
+      const deltaX = touch.clientX - interaction.lastX;
+      const deltaY = touch.clientY - interaction.lastY;
+
+      setPanOffset((offset) => clampPan({ x: offset.x + deltaX, y: offset.y + deltaY }, zoomLevel));
+      interaction.moved = true;
+    }
+
+    interaction.lastX = touch.clientX;
+    interaction.lastY = touch.clientY;
+  }
+
+  function handleLightboxTouchEnd(event: ReactTouchEvent<HTMLDivElement>) {
+    const interaction = lightboxTouchRef.current;
+
+    if (event.touches.length > 0) {
+      const remainingTouch = event.touches[0];
+
+      if (remainingTouch) {
+        interaction.lastX = remainingTouch.clientX;
+        interaction.lastY = remainingTouch.clientY;
+      }
+
+      interaction.pinchDistance = null;
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+
+    if (!touch) {
+      interaction.pinchDistance = null;
+      return;
+    }
+
+    const deltaX = touch.clientX - interaction.startX;
+    const deltaY = touch.clientY - interaction.startY;
+
+    if (
+      zoomLevel === MIN_IMAGE_ZOOM &&
+      Math.abs(deltaX) > 44 &&
+      Math.abs(deltaX) > Math.abs(deltaY)
+    ) {
+      if (deltaX < 0) {
+        showNextImage();
+      } else {
+        showPreviousImage();
+      }
+    } else if (!interaction.moved && Math.max(Math.abs(deltaX), Math.abs(deltaY)) < 12) {
+      const now = event.timeStamp;
+
+      if (now - interaction.lastTap < 320) {
+        toggleZoom();
+        interaction.lastTap = 0;
+      } else {
+        interaction.lastTap = now;
+      }
+    }
+
+    interaction.pinchDistance = null;
+    interaction.moved = false;
+  }
+
+  function handleMouseDragStart(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.pointerType !== "mouse" || zoomLevel <= MIN_IMAGE_ZOOM) {
+      return;
+    }
+
+    mouseDragRef.current = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handleMouseDragMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = mouseDragRef.current;
+
+    if (!drag || drag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const deltaX = event.clientX - drag.x;
+    const deltaY = event.clientY - drag.y;
+    drag.x = event.clientX;
+    drag.y = event.clientY;
+    setPanOffset((offset) => clampPan({ x: offset.x + deltaX, y: offset.y + deltaY }, zoomLevel));
+  }
+
+  function handleMouseDragEnd(event: ReactPointerEvent<HTMLDivElement>) {
+    if (mouseDragRef.current?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    mouseDragRef.current = null;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function handleLightboxWheel(event: ReactWheelEvent<HTMLDivElement>) {
+    event.preventDefault();
+    changeZoom(event.deltaY < 0 ? IMAGE_ZOOM_STEP : -IMAGE_ZOOM_STEP);
   }
 
   function goBack() {
@@ -504,6 +510,7 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
 
   function handleOptionChange(optionName: string, optionValue: string) {
     setSmartFitMatch(null);
+    setSmartFitUnavailable(false);
     setSelectedOptions((current) => {
       const nextVariant = findAvailableVariantForOption(product, optionName, optionValue, current);
 
@@ -515,12 +522,29 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
     });
   }
 
+  function handleFitRecommendation(recommendation: { label: string; variantId: string }) {
+    const matchingVariant = product.variants.find(
+      (variant) => variant.availableForSale && variant.id === recommendation.variantId,
+    );
+
+    if (matchingVariant) {
+      setSelectedOptions(buildInitialOptionState(matchingVariant));
+      setSmartFitMatch(recommendation.label);
+      setSmartFitUnavailable(false);
+    }
+
+    setIsSmartFitOpen(false);
+  }
+
   useEffect(() => {
     const profile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
     const fitMatches = profile ? getProductFitMatches(product, profile.recommendedSizes) : [];
+    const suitSize =
+      profile && isSuitSizingProduct(product) ? parseSuitSize(profile.estimate.suit) : null;
 
-    const matchingVariant =
-      fitMatches.length > 0
+    const matchingVariant = suitSize
+      ? findProductSuitVariant(product, suitSize.label)
+      : fitMatches.length > 0
         ? (product.variants.find((variant) => {
             const variantSize = getVariantSizeValue(variant);
 
@@ -532,12 +556,14 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
 
     const frameId = window.requestAnimationFrame(() => {
       if (!matchingVariant) {
-        setSmartFitMatch(null);
+        setSmartFitMatch(suitSize?.label ?? null);
+        setSmartFitUnavailable(Boolean(suitSize));
         return;
       }
 
       setSelectedOptions(buildInitialOptionState(matchingVariant));
-      setSmartFitMatch(getVariantSizeValue(matchingVariant));
+      setSmartFitMatch(suitSize?.label ?? getVariantSizeValue(matchingVariant));
+      setSmartFitUnavailable(false);
     });
 
     return () => {
@@ -577,6 +603,7 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
       if (event.key === "Escape") {
         setIsLightboxOpen(false);
         setZoomLevel(1);
+        setPanOffset({ x: 0, y: 0 });
       }
 
       if (event.key === "ArrowLeft") {
@@ -587,6 +614,8 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
 
           return (current - 1 + images.length) % images.length;
         });
+        setZoomLevel(1);
+        setPanOffset({ x: 0, y: 0 });
       }
 
       if (event.key === "ArrowRight") {
@@ -597,6 +626,8 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
 
           return (current + 1) % images.length;
         });
+        setZoomLevel(1);
+        setPanOffset({ x: 0, y: 0 });
       }
     }
 
@@ -610,40 +641,42 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
   }, [hasMultipleImages, images.length, isLightboxOpen]);
 
   return (
-    <div className="space-y-10 lg:space-y-14">
-      <div className="grid min-w-0 gap-8 lg:gap-12 xl:grid-cols-[minmax(0,1.04fr)_minmax(24rem,0.96fr)]">
+    <div className="pb-4">
+      <div className="grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:gap-10 xl:grid-cols-[minmax(0,1.2fr)_minmax(25rem,0.8fr)] xl:gap-14">
         <section className="min-w-0 space-y-4">
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={goBack}
-              className="inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white px-3.5 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase shadow-[0_12px_24px_-22px_rgba(11,15,20,0.35)] transition-colors hover:border-gold hover:text-gold"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-ink/10 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30 hover:bg-stone/50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
               aria-label="Go back to previous page"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              Back to shop
             </button>
           </div>
 
-          <div className="relative overflow-hidden rounded-[1.35rem] border border-ink/8 bg-white shadow-[0_26px_56px_-42px_rgba(14,23,38,0.4)]">
+          <div className="relative overflow-hidden rounded-[1rem] border border-ink/8 bg-[#f3f1ed]">
             <div
-              className="relative h-[clamp(18rem,78vw,30rem)] touch-pan-y bg-[#f8f7f4] sm:h-[clamp(24rem,72vw,38rem)] lg:h-[clamp(33rem,56vw,46rem)]"
-              onTouchStart={(event) => handleTouchStart(event.touches[0]?.clientX ?? 0)}
-              onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
+              className="relative aspect-[4/5] touch-pan-y sm:aspect-[5/4] lg:aspect-[4/5]"
+              onTouchStart={(event) => handleGalleryTouchStart(event.touches[0]?.clientX ?? 0)}
+              onTouchEnd={(event) => handleGalleryTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
             >
               {activeImage ? (
                 <button
                   type="button"
                   onClick={openLightbox}
-                  className="block h-full w-full"
+                  className="group block h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-gold/40"
                   aria-label="Open product image viewer"
                 >
                   <Image
                     src={activeImage.url}
                     alt={activeImage.altText || product.title}
                     fill
-                    sizes="(max-width: 1024px) 100vw, 55vw"
-                    className="object-contain p-4 sm:p-6 lg:p-8"
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 60vw"
+                    quality={92}
+                    className="object-contain p-2 transition-transform duration-300 group-hover:scale-[1.01] sm:p-3 lg:p-4"
                   />
                 </button>
               ) : (
@@ -651,8 +684,8 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                   Image coming soon
                 </div>
               )}
-              <div className="pointer-events-none absolute top-4 left-4 rounded-full border border-ink/10 bg-white/88 px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase backdrop-blur">
-                J. Barbaro edit
+              <div className="pointer-events-none absolute top-3 right-3 rounded-full border border-ink/10 bg-white/90 px-3 py-1.5 text-[10px] font-medium text-ink backdrop-blur sm:top-4 sm:right-4">
+                {selectedImageIndex + 1} / {Math.max(images.length, 1)}
               </div>
             </div>
 
@@ -661,7 +694,7 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                 <button
                   type="button"
                   onClick={showPreviousImage}
-                  className="absolute top-1/2 left-3 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:left-4"
+                  className="absolute top-1/2 left-3 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 sm:left-4"
                   aria-label="Show previous product image"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -669,14 +702,11 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                 <button
                   type="button"
                   onClick={showNextImage}
-                  className="absolute top-1/2 right-3 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:right-4"
+                  className="absolute top-1/2 right-3 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 sm:right-4"
                   aria-label="Show next product image"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
-                <div className="pointer-events-none absolute right-3 bottom-3 rounded-full border border-ink/10 bg-white/88 px-3 py-1 text-[10px] font-medium text-smoke backdrop-blur sm:right-4 sm:bottom-4">
-                  {selectedImageIndex + 1} / {images.length}
-                </div>
               </>
             ) : null}
 
@@ -684,11 +714,11 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
               <button
                 type="button"
                 onClick={openLightbox}
-                className="absolute left-3 bottom-3 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/92 px-3 py-2 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase shadow-[0_14px_30px_-20px_rgba(14,23,38,0.42)] backdrop-blur transition-colors hover:border-gold hover:text-gold sm:left-4 sm:bottom-4"
+                className="absolute bottom-3 left-1/2 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-full border border-ink/10 bg-white/92 px-4 py-2 text-[10px] font-semibold tracking-[0.12em] whitespace-nowrap text-ink uppercase shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 sm:bottom-4"
                 aria-label="Zoom product image"
               >
-                <Search className="h-3.5 w-3.5" />
-                Zoom
+                <Maximize2 className="h-3.5 w-3.5" />
+                Tap to zoom
               </button>
             ) : null}
           </div>
@@ -700,11 +730,11 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                   <button
                     key={`${image.url}-${index}`}
                     type="button"
-                    onClick={() => setSelectedImageIndex(index)}
+                    onClick={() => selectImage(index)}
                     className={cn(
-                      "relative h-20 w-20 shrink-0 overflow-hidden rounded-md border bg-white transition-all sm:h-24 sm:w-24 lg:h-24 lg:w-24",
+                      "relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-md border bg-[#f3f1ed] transition-all sm:h-20 sm:w-20",
                       index === selectedImageIndex
-                        ? "border-ink shadow-[0_16px_30px_-26px_rgba(15,20,28,0.35)]"
+                        ? "border-ink ring-1 ring-ink"
                         : "border-ink/10 hover:border-ink/35",
                     )}
                     aria-label={`View product image ${index + 1}`}
@@ -723,9 +753,9 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
           ) : null}
         </section>
 
-        <section className="min-w-0 lg:pt-5 xl:pt-8">
-          <div className="space-y-5">
-            <header className="border-b border-ink/10 pb-6">
+        <section className="min-w-0 lg:pt-[3.75rem]">
+          <div className="space-y-5 lg:sticky lg:top-28">
+            <header>
               {product.vendor || metaCategoryLabel ? (
                 <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">
                   {product.vendor ? (
@@ -741,36 +771,11 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                 </p>
               ) : null}
 
-              <h1 className="mt-3 text-balance font-heading text-[2.05rem] leading-[1.04] text-ink sm:text-[2.65rem] lg:text-[3.15rem]">
+              <h1 className="mt-3 text-balance font-heading text-[2rem] leading-[1.08] text-ink sm:text-[2.55rem] lg:text-[2.8rem]">
                 {product.title}
               </h1>
 
-              {productSummary ? (
-                <p className="mt-4 max-w-2xl text-[0.98rem] leading-8 text-smoke">
-                  {productSummary}
-                </p>
-              ) : null}
-
-              <Link
-                href="/reviews"
-                className="mt-5 flex items-center justify-between gap-3 rounded-md border border-ink/10 bg-white px-4 py-3 shadow-[0_18px_38px_-34px_rgba(14,23,38,0.42)] transition-colors hover:border-gold"
-                aria-label="Read customer reviews"
-              >
-                <span className="min-w-0">
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-ink">
-                    <ReviewStars rating={displayRating} />
-                    <span>{productReviewCard.heading}</span>
-                  </span>
-                  <span className="mt-1 block text-xs leading-5 text-smoke">
-                    {productReviewCard.body}
-                  </span>
-                </span>
-                <span className="shrink-0 text-[10px] font-semibold tracking-[0.14em] text-deep-teal uppercase">
-                  {productReviewCard.eyebrow}
-                </span>
-              </Link>
-
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-smoke">
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-smoke">
                 <span className="inline-flex items-center gap-2">
                   <span
                     className={cn(
@@ -783,11 +788,8 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
               </div>
             </header>
 
-            <div
-              ref={buyBoxRef}
-              className="rounded-[1.1rem] border border-ink/10 bg-white p-5 shadow-[0_24px_52px_-42px_rgba(14,23,38,0.42)] sm:p-6"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-3">
+            <div ref={buyBoxRef} className="border-t border-ink/10 pt-5">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="flex flex-wrap items-baseline gap-3">
                   <p
                     className={cn(
@@ -808,26 +810,24 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                     </span>
                   ) : null}
                 </div>
-                <span
-                  className={cn(
-                    "inline-flex min-h-8 items-center rounded-full border px-3 py-1 text-[10px] font-semibold tracking-[0.14em] uppercase",
-                    selectedVariantIsAvailable
-                      ? "border-deep-teal/18 bg-deep-teal/8 text-deep-teal"
-                      : "border-[#b45309]/20 bg-[#b45309]/8 text-[#8a3a04]",
-                  )}
-                >
-                  {selectedVariantIsAvailable ? "Ready to ship" : "Sold out"}
-                </span>
               </div>
 
               {smartFitMatch ? (
-                <div className="mt-4 rounded-md border border-deep-teal/20 bg-deep-teal/8 px-4 py-3 text-sm leading-6 text-smoke">
+                <div
+                  className={cn(
+                    "mt-4 rounded-md border px-4 py-3 text-sm leading-6 text-smoke",
+                    smartFitUnavailable
+                      ? "border-gold/35 bg-gold/10"
+                      : "border-deep-teal/20 bg-deep-teal/8",
+                  )}
+                >
                   <p className="font-semibold text-ink">
                     Smart Fit found your saved size: {smartFitMatch}
                   </p>
                   <p className="mt-1">
-                    We selected the closest available variant. You can still change the size before
-                    adding it to your bag.
+                    {smartFitUnavailable
+                      ? "That exact size and jacket length is not currently available online. Choose another option or ask a fit expert."
+                      : "We selected the exact available size and length. You can still change it before adding it to your bag."}
                   </p>
                 </div>
               ) : null}
@@ -837,18 +837,37 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                   {visibleOptionGroups.map((group) => {
                     const labelId = `product-option-${group.name.toLowerCase().replace(/\s+/g, "-")}`;
                     const selectedValue = selectedOptions[group.name] ?? "";
+                    const displayGroupName = getProductOptionLabel(
+                      product,
+                      group.name,
+                      group.values,
+                    );
 
                     return (
                       <div key={group.name} className="min-w-0">
                         <div className="flex items-baseline justify-between gap-3">
-                          <p id={labelId} className="text-sm font-medium text-ink/90">
-                            Select {group.name}
+                          <p id={labelId} className="text-sm font-semibold text-ink">
+                            Select {displayGroupName}
                           </p>
-                          {selectedValue ? (
-                            <p className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
-                              {selectedValue}
-                            </p>
-                          ) : null}
+                          <div className="flex items-center gap-3">
+                            {/size/i.test(group.name) ? (
+                              <button
+                                type="button"
+                                onClick={() => setIsSmartFitOpen(true)}
+                                className="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-deep-teal underline-offset-4 hover:underline"
+                                aria-controls="product-smart-fit"
+                                aria-expanded={isSmartFitOpen}
+                              >
+                                <HelpCircle className="h-3.5 w-3.5" />
+                                Fit help
+                              </button>
+                            ) : null}
+                            {selectedValue ? (
+                              <p className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
+                                {selectedValue}
+                              </p>
+                            ) : null}
+                          </div>
                         </div>
                         <div
                           role="radiogroup"
@@ -857,6 +876,14 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                         >
                           {group.values.map((value) => {
                             const isSelected = selectedValue === value;
+                            const isAvailable = Boolean(
+                              findAvailableVariantForOption(
+                                product,
+                                group.name,
+                                value,
+                                selectedOptions,
+                              ),
+                            );
 
                             return (
                               <button
@@ -864,12 +891,16 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                                 type="button"
                                 role="radio"
                                 aria-checked={isSelected}
+                                aria-label={`${displayGroupName} ${value}${isAvailable ? "" : ", sold out"}`}
+                                disabled={!isAvailable}
                                 onClick={() => handleOptionChange(group.name, value)}
                                 className={cn(
-                                  "inline-flex min-h-11 min-w-12 items-center justify-center rounded-md border px-4 py-2 text-center text-sm font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30",
+                                  "relative inline-flex min-h-12 min-w-12 items-center justify-center rounded-md border px-4 py-2 text-center text-sm font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 disabled:cursor-not-allowed",
                                   isSelected
                                     ? "border-ink bg-ink text-white shadow-[0_16px_30px_-26px_rgba(11,15,20,0.7)]"
-                                    : "border-ink/12 bg-white text-ink hover:border-gold hover:bg-gold/10",
+                                    : isAvailable
+                                      ? "border-ink/15 bg-white text-ink hover:border-ink/45 hover:bg-stone/40"
+                                      : "border-ink/8 bg-stone/60 text-smoke/60 line-through",
                                 )}
                               >
                                 {value}
@@ -888,7 +919,7 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                   <AddToCartButton
                     merchandiseId={selectedVariant.id}
                     availableForSale={selectedVariant.availableForSale}
-                    className="min-h-[3.25rem] w-full rounded-md border-ink bg-ink text-sm tracking-[0.08em] !text-white hover:border-deep-teal hover:bg-deep-teal"
+                    className="min-h-14 w-full rounded-lg border-ink bg-ink text-sm tracking-[0.08em] !text-white hover:border-deep-teal hover:bg-deep-teal"
                     label="Add to Bag"
                   />
                 ) : (
@@ -898,106 +929,86 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
                 )}
               </div>
 
-              <div className="mt-4 flex items-start gap-3 rounded-md bg-stone/65 px-4 py-3 text-sm leading-6 text-smoke">
-                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-deep-teal" />
-                <p>
-                  <span className="font-semibold text-ink">Fast shipping.</span>{" "}
-                  {shippingAssuranceDetail}
-                </p>
-              </div>
+              <p className="mt-3 flex items-center justify-center gap-2 text-xs text-smoke">
+                <ShieldCheck className="h-4 w-4 text-deep-teal" />
+                Secure checkout powered by Shopify
+              </p>
 
-              <p className="mt-3 text-xs leading-5 text-smoke">{availabilityLabel}</p>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <AssuranceItem
-                icon={<PackageCheck className="h-4 w-4" />}
-                title="Expertly packaged"
-                detail="Each order is protected and presented with boutique-level care."
-              />
-              <AssuranceItem
-                icon={<ShieldCheck className="h-4 w-4" />}
-                title="Authenticity guaranteed"
-                detail="Designer merchandise is sourced through trusted brand channels."
-              />
-              <AssuranceItem
-                icon={<CreditCard className="h-4 w-4" />}
-                title="Secure payments"
-                detail="Checkout runs through encrypted Shopify payment processing."
-              />
-              <AssuranceItem
-                icon={
-                  selectedVariantIsAvailable ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )
-                }
-                title={
-                  selectedVariantIsAvailable ? "In stock, ready to ship" : "Availability support"
-                }
-                detail={statusAssuranceDetail}
-                highlight={selectedVariantIsAvailable}
-              />
-            </div>
-
-            {shouldShowDescriptionSection ? (
-              <section className="rounded-[1.1rem] border border-ink/10 bg-white p-5 shadow-[0_22px_48px_-42px_rgba(14,23,38,0.38)] sm:p-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <p className="text-[11px] font-semibold tracking-[0.16em] text-deep-teal uppercase">
-                      Editor&apos;s notes
-                    </p>
-                    <h2 className="mt-2 font-heading text-2xl leading-tight text-ink">
-                      Details that make it work
-                    </h2>
-                  </div>
-                  <span className="hidden rounded-full border border-gold/25 bg-gold/10 px-3 py-1 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase sm:inline-flex">
-                    Curated
+              <div className="mt-5 grid grid-cols-3 divide-x divide-ink/10 border-y border-ink/10 py-3">
+                <div className="flex flex-col items-center gap-1.5 px-2 text-center">
+                  <Truck className="h-4 w-4 text-deep-teal" />
+                  <span className="text-[10px] font-semibold leading-4 text-ink">
+                    Fast shipping
                   </span>
                 </div>
-
-                <div className="mt-5 grid gap-3">
-                  {descriptionHighlights.map((highlight) => (
-                    <DescriptionHighlight
-                      key={highlight.title}
-                      icon={highlight.icon}
-                      title={highlight.title}
-                      detail={highlight.detail}
-                    />
-                  ))}
+                <div className="flex flex-col items-center gap-1.5 px-2 text-center">
+                  <ShieldCheck className="h-4 w-4 text-deep-teal" />
+                  <span className="text-[10px] font-semibold leading-4 text-ink">
+                    Authentic goods
+                  </span>
                 </div>
-
-                {descriptionMarkup.trim() ? (
-                  <div className="mt-6 border-t border-ink/10 pt-5">
-                    <p className="text-sm font-semibold tracking-[0.12em] text-ink uppercase">
-                      Full description
-                    </p>
-                    <div
-                      className={`${shopifyRichTextClassName} mt-4`}
-                      dangerouslySetInnerHTML={{ __html: descriptionMarkup }}
-                    />
-                  </div>
-                ) : null}
-              </section>
-            ) : null}
-
-            {shouldShowAppointmentCta ? (
-              <div className="rounded-[1.1rem] border border-gold/30 bg-gold/12 px-5 py-5">
-                <p className="text-sm font-semibold text-ink">Need help with fit?</p>
-                <p className="mt-2 text-sm leading-6 text-smoke">
-                  Book an appointment and we&apos;ll help with sizing, tailoring, and
-                  complete-the-look options.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => router.push("/schedule-appointment")}
-                  className="mt-4 inline-flex min-h-10 items-center justify-center rounded-md border border-deep-teal bg-deep-teal px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:bg-ink"
-                >
-                  Book Appointment
-                </button>
+                <div className="flex flex-col items-center gap-1.5 px-2 text-center">
+                  <CreditCard className="h-4 w-4 text-deep-teal" />
+                  <span className="text-[10px] font-semibold leading-4 text-ink">
+                    Secure payment
+                  </span>
+                </div>
               </div>
-            ) : null}
+            </div>
+
+            <div className="divide-y divide-ink/10 border-y border-ink/10">
+              {descriptionMarkup.trim() ? (
+                <details className="group">
+                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-3 text-sm font-semibold text-ink">
+                    Product details
+                    <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+                  </summary>
+                  <div
+                    className={`${shopifyRichTextClassName} pb-6`}
+                    dangerouslySetInnerHTML={{ __html: descriptionMarkup }}
+                  />
+                </details>
+              ) : null}
+
+              <details className="group">
+                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-3 text-sm font-semibold text-ink">
+                  Shipping &amp; order support
+                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="pb-6 text-sm leading-7 text-smoke">
+                  <p>
+                    Orders are prepared quickly and packed with care before leaving our shop. For
+                    delivery or availability questions,{" "}
+                    <Link
+                      href="/contact-us"
+                      className="font-semibold text-deep-teal underline underline-offset-4"
+                    >
+                      contact our team
+                    </Link>
+                    .
+                  </p>
+                </div>
+              </details>
+
+              <details className="group">
+                <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-3 text-sm font-semibold text-ink">
+                  Fit &amp; alterations
+                  <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="pb-6 text-sm leading-7 text-smoke">
+                  <p>
+                    Need a second opinion on size or tailoring?{" "}
+                    <Link
+                      href="/schedule-appointment"
+                      className="font-semibold text-deep-teal underline underline-offset-4"
+                    >
+                      Book an appointment
+                    </Link>{" "}
+                    for personal fit guidance.
+                  </p>
+                </div>
+              </details>
+            </div>
           </div>
         </section>
       </div>
@@ -1008,7 +1019,14 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-smoke">{product.title}</p>
               <div className="flex items-baseline gap-2">
-                <p className={cn("text-base font-bold", compareAtPrice ? "text-[#8f2632]" : "text-ink")}>{priceLabel}</p>
+                <p
+                  className={cn(
+                    "text-base font-bold",
+                    compareAtPrice ? "text-[#8f2632]" : "text-ink",
+                  )}
+                >
+                  {priceLabel}
+                </p>
                 {compareAtPrice ? (
                   <p className="text-xs font-medium text-smoke line-through">{compareAtPrice}</p>
                 ) : null}
@@ -1026,90 +1044,132 @@ export function ProductDetailClient({ product, storeReviewSummary }: ProductDeta
       ) : null}
 
       {isLightboxOpen && activeImage ? (
-        <div className="fixed inset-0 z-[180] bg-ink/92 text-ivory" onClick={closeLightbox}>
-          <div className="flex h-full flex-col">
-            <div
-              className="flex items-center justify-between gap-3 px-4 py-4 sm:px-6"
-              onClick={(event) => event.stopPropagation()}
-            >
+        <div
+          className="fixed inset-0 z-[180] bg-[#090d11] text-white"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Product image viewer"
+        >
+          <div className="flex h-dvh flex-col">
+            <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-5 sm:py-4">
               <button
                 type="button"
                 onClick={closeLightbox}
-                className="inline-flex items-center gap-2 rounded-full border border-ivory/18 bg-ivory/8 px-3.5 py-2 text-[11px] font-semibold tracking-[0.14em] uppercase transition-colors hover:border-gold hover:text-gold"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/8 px-4 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase transition-colors hover:border-white/40 hover:bg-white/12 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40"
                 aria-label="Close image viewer"
               >
                 <X className="h-4 w-4" />
                 Close
               </button>
-              <div className="flex items-center gap-2">
+              <p className="hidden max-w-[40vw] truncate text-xs font-medium text-white/65 sm:block">
+                {product.title}
+              </p>
+              <div className="flex items-center rounded-full border border-white/15 bg-white/8">
                 <button
                   type="button"
-                  onClick={zoomOut}
-                  disabled={zoomLevel <= 1}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ivory/18 bg-ivory/8 transition-colors hover:border-gold hover:text-gold disabled:opacity-45"
+                  onClick={() => changeZoom(-IMAGE_ZOOM_STEP)}
+                  disabled={zoomLevel <= MIN_IMAGE_ZOOM}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-white/12 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-gold/40 disabled:opacity-35"
                   aria-label="Zoom out"
                 >
-                  <ZoomOut className="h-4 w-4" />
+                  <Minus className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
-                  onClick={zoomIn}
-                  disabled={zoomLevel >= 3}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ivory/18 bg-ivory/8 transition-colors hover:border-gold hover:text-gold disabled:opacity-45"
+                  onClick={resetViewer}
+                  className="min-w-14 text-center text-[11px] font-semibold tabular-nums text-white"
+                  aria-label="Reset image zoom"
+                >
+                  {Math.round(zoomLevel * 100)}%
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeZoom(IMAGE_ZOOM_STEP)}
+                  disabled={zoomLevel >= MAX_IMAGE_ZOOM}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors hover:bg-white/12 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-gold/40 disabled:opacity-35"
                   aria-label="Zoom in"
                 >
-                  <ZoomIn className="h-4 w-4" />
+                  <Plus className="h-4 w-4" />
                 </button>
               </div>
             </div>
 
             <div
-              className="relative flex-1 touch-pan-y overflow-hidden px-4 pb-4 sm:px-6 sm:pb-6"
-              onTouchStart={(event) => handleTouchStart(event.touches[0]?.clientX ?? 0)}
-              onTouchEnd={(event) => handleTouchEnd(event.changedTouches[0]?.clientX ?? 0)}
+              ref={lightboxStageRef}
+              className={cn(
+                "relative min-h-0 flex-1 touch-none overflow-hidden bg-[#f3f1ed]",
+                zoomLevel > MIN_IMAGE_ZOOM
+                  ? "cursor-grab active:cursor-grabbing"
+                  : "cursor-zoom-in",
+              )}
+              onDoubleClick={toggleZoom}
+              onWheel={handleLightboxWheel}
+              onTouchStart={handleLightboxTouchStart}
+              onTouchMove={handleLightboxTouchMove}
+              onTouchEnd={handleLightboxTouchEnd}
+              onPointerDown={handleMouseDragStart}
+              onPointerMove={handleMouseDragMove}
+              onPointerUp={handleMouseDragEnd}
+              onPointerCancel={handleMouseDragEnd}
             >
               <div
-                className="relative flex h-full items-center justify-center overflow-auto rounded-[1.2rem] bg-ivory/5"
-                onClick={(event) => event.stopPropagation()}
+                className="relative h-full w-full will-change-transform"
+                style={{
+                  transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoomLevel})`,
+                  transformOrigin: "center center",
+                }}
               >
-                <div
-                  className="relative h-full w-full transition-transform duration-200"
-                  style={{ transform: `scale(${zoomLevel})`, transformOrigin: "center center" }}
-                >
-                  <Image
-                    src={activeImage.url}
-                    alt={activeImage.altText || product.title}
-                    fill
-                    sizes="100vw"
-                    className="object-contain p-3 sm:p-6"
-                  />
-                </div>
+                <Image
+                  src={activeImage.url}
+                  alt={activeImage.altText || product.title}
+                  fill
+                  sizes="100vw"
+                  priority
+                  unoptimized
+                  draggable={false}
+                  className="pointer-events-none object-contain p-2 select-none sm:p-5"
+                />
+              </div>
 
-                {hasMultipleImages ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={showPreviousImage}
-                      className="absolute top-1/2 left-3 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ivory/18 bg-ink/55 transition-colors hover:border-gold hover:text-gold sm:left-5"
-                      aria-label="Show previous image"
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={showNextImage}
-                      className="absolute top-1/2 right-3 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ivory/18 bg-ink/55 transition-colors hover:border-gold hover:text-gold sm:right-5"
-                      aria-label="Show next image"
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </>
-                ) : null}
+              {hasMultipleImages && zoomLevel === MIN_IMAGE_ZOOM ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={showPreviousImage}
+                    className="absolute top-1/2 left-3 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-ink shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40 sm:left-5"
+                    aria-label="Show previous image"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={showNextImage}
+                    className="absolute top-1/2 right-3 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-ink shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40 sm:right-5"
+                    aria-label="Show next image"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </>
+              ) : null}
+
+              <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
+                <p className="rounded-full bg-ink/75 px-3 py-2 text-center text-[10px] font-medium tracking-[0.05em] text-white backdrop-blur">
+                  {zoomLevel > MIN_IMAGE_ZOOM
+                    ? "Drag to explore · Pinch or scroll to zoom · Tap 100% to reset"
+                    : `Double tap, pinch, or scroll to zoom${hasMultipleImages ? " · Swipe for more" : ""}`}
+                </p>
               </div>
             </div>
           </div>
         </div>
       ) : null}
+
+      <ProductSmartFitDrawer
+        product={product}
+        open={isSmartFitOpen}
+        onClose={() => setIsSmartFitOpen(false)}
+        onUseRecommendation={handleFitRecommendation}
+      />
     </div>
   );
 }

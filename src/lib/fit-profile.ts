@@ -137,6 +137,90 @@ export function normalizeSizeToken(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9.]+/g, "");
 }
 
+export function isSuitSizingProduct(product: ShopifyProduct) {
+  const productText = [
+    product.title,
+    product.productType,
+    ...product.collections.map((collection) => collection.title),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  return /suit|jacket|blazer|sport coat|overcoat/.test(productText);
+}
+
+export function normalizeJacketLength(value: string) {
+  const normalizedValue = value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, "");
+
+  if (normalizedValue === "s" || normalizedValue === "short") return "S";
+  if (normalizedValue === "r" || normalizedValue === "regular") return "R";
+  if (normalizedValue === "l" || normalizedValue === "long") return "L";
+  if (normalizedValue === "xl" || normalizedValue === "extralong") return "XL";
+
+  return null;
+}
+
+export function parseSuitSize(value: string) {
+  const normalizedValue = value
+    .trim()
+    .replace(/extra[\s_-]*long/i, "XL")
+    .replace(/short/i, "S")
+    .replace(/regular/i, "R")
+    .replace(/long/i, "L")
+    .replace(/\s+/g, "");
+  const match = normalizedValue.match(/^(\d+(?:\.\d+)?)(XL|S|R|L)$/i);
+
+  if (!match?.[1] || !match[2]) {
+    return null;
+  }
+
+  return {
+    chest: match[1],
+    length: match[2].toUpperCase() as FitEstimate["jacketLength"],
+    label: `${match[1]}${match[2].toUpperCase()}`,
+  };
+}
+
+export function getVariantJacketLengthValue(variant: ShopifyProductVariant) {
+  for (const option of variant.selectedOptions) {
+    if (option.name.toLowerCase().includes("size")) {
+      continue;
+    }
+
+    const length = normalizeJacketLength(option.value);
+
+    if (length) {
+      return length;
+    }
+  }
+
+  return null;
+}
+
+export function findProductSuitVariant(
+  product: ShopifyProduct,
+  suitSize: string,
+  availableOnly = true,
+) {
+  const size = parseSuitSize(suitSize);
+
+  if (!size) {
+    return null;
+  }
+
+  return (
+    product.variants.find(
+      (variant) =>
+        (!availableOnly || variant.availableForSale) &&
+        getVariantSizeValue(variant) === size.chest &&
+        getVariantJacketLengthValue(variant) === size.length,
+    ) ?? null
+  );
+}
+
 function getJacketLength(heightInches: number): FitEstimate["jacketLength"] {
   if (heightInches <= 67) {
     return "S";
@@ -257,11 +341,32 @@ export function buildFitProfile(input: FitProfileInput): FitProfile {
     broad: 0.5,
     full: 0.75,
   };
-  const chest = clamp(roundToEven(heightInches * 0.28 + normalizedWeight * 0.095 + buildChestAdjustments[input.build]), 34, 58);
+  const chest = clamp(
+    roundToEven(
+      heightInches * 0.28 + normalizedWeight * 0.095 + buildChestAdjustments[input.build],
+    ),
+    34,
+    58,
+  );
   const jacketLength = getJacketLength(heightInches);
-  const neck = clamp(roundToHalf(14 + (chest - 34) * 0.25 + buildNeckAdjustments[input.build]), 14, 22);
-  const sleeve = heightInches >= 75 ? "35/36" : heightInches >= 72 ? "34/35" : heightInches >= 69 ? "33/34" : "32/33";
-  const waistPrimary = clamp(Math.round(normalizedWeight * 0.15 + heightInches * 0.035 + buildWaistAdjustments[input.build]), 28, 54);
+  const neck = clamp(
+    roundToHalf(14 + (chest - 34) * 0.25 + buildNeckAdjustments[input.build]),
+    14,
+    22,
+  );
+  const sleeve =
+    heightInches >= 75
+      ? "35/36"
+      : heightInches >= 72
+        ? "34/35"
+        : heightInches >= 69
+          ? "33/34"
+          : "32/33";
+  const waistPrimary = clamp(
+    Math.round(normalizedWeight * 0.15 + heightInches * 0.035 + buildWaistAdjustments[input.build]),
+    28,
+    54,
+  );
   const waist = `${waistPrimary}/${Math.min(56, waistPrimary + 1)}`;
   const knownSuitSize = cleanKnownSize(input.knownSuitSize);
   const knownTopSize = cleanKnownSize(input.knownTopSize);
@@ -273,13 +378,16 @@ export function buildFitProfile(input: FitProfileInput): FitProfile {
     jacketChest: chest,
     jacketLength,
     alpha: knownTopSize || getAlphaSize(chest),
-    dressShirt: knownDressShirtSize || `${neck % 1 === 0 ? neck.toFixed(0) : neck.toFixed(1)} x ${sleeve}`,
+    dressShirt:
+      knownDressShirtSize || `${neck % 1 === 0 ? neck.toFixed(0) : neck.toFixed(1)} x ${sleeve}`,
     waist: knownWaistSize || waist,
     shoe: shoeSize,
     notes: [
       "This is a starting point, not a final tailoring measurement.",
       `Build selected: ${buildLabels[input.build]}.`,
-      ...(knownSuitSize || knownTopSize || knownDressShirtSize || knownWaistSize ? ["Known sizes override estimated sizes when provided."] : []),
+      ...(knownSuitSize || knownTopSize || knownDressShirtSize || knownWaistSize
+        ? ["Known sizes override estimated sizes when provided."]
+        : []),
     ],
   };
 
@@ -321,7 +429,10 @@ export function getMatchingProfileSizes(availableSizes: string[], profile: FitPr
 }
 
 export function getVariantSizeValue(variant: ShopifyProductVariant) {
-  return variant.selectedOptions.find((option) => option.name.toLowerCase().includes("size"))?.value ?? null;
+  return (
+    variant.selectedOptions.find((option) => option.name.toLowerCase().includes("size"))?.value ??
+    null
+  );
 }
 
 export function getProductFitMatches(product: ShopifyProduct, fitSizes: string[]) {

@@ -7,7 +7,6 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
-import { getStoreReviewSnapshot } from "@/lib/google-reviews";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import {
   getRecommendedProducts,
@@ -131,7 +130,6 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
   }
 
   let relatedProducts: ShopifyProduct[] = [];
-  const storeReviewSnapshot = await getStoreReviewSnapshot();
 
   try {
     relatedProducts = await getRecommendedProducts(product.id, product.handle, 4);
@@ -215,18 +213,10 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
         topWave="A"
         background="ivory"
         className="overflow-x-clip"
-        contentClassName="py-7 sm:py-11 lg:py-16"
+        contentClassName="py-4 sm:py-7 lg:py-10"
       >
         <Container>
-          <ProductDetailClient
-            key={product.id}
-            product={product}
-            storeReviewSummary={{
-              source: storeReviewSnapshot.source,
-              ratingValue: storeReviewSnapshot.ratingValue,
-              reviewCount: storeReviewSnapshot.reviewCount,
-            }}
-          />
+          <ProductDetailClient key={product.id} product={product} />
         </Container>
       </WaveSection>
 

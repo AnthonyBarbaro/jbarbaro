@@ -14,6 +14,7 @@ import {
   buildFitProfile,
   FIT_PROFILE_STORAGE_KEY,
   getMatchingProfileSizes,
+  getProductFitMatchesForProfile,
   parseFitProfile,
   type FitBuild,
   type FitEstimate,
@@ -216,7 +217,9 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
   const searchableQuery = deferredQuery.trim().toLowerCase();
 
   useEffect(() => {
-    setQuery(urlQuery);
+    const frameId = window.requestAnimationFrame(() => setQuery(urlQuery));
+
+    return () => window.cancelAnimationFrame(frameId);
   }, [urlQuery]);
 
   useEffect(() => {
@@ -266,10 +269,10 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     const frameId = window.requestAnimationFrame(() => {
       setFitProfile(storedProfile);
       setFitDraft({
-        heightFeet: storedProfile.heightFeet,
-        heightInches: storedProfile.heightInches,
-        weightLbs: storedProfile.weightLbs,
-        build: storedProfile.build,
+        heightFeet: storedProfile.heightFeet ?? "",
+        heightInches: storedProfile.heightInches ?? "",
+        weightLbs: storedProfile.weightLbs ?? "",
+        build: storedProfile.build ?? "",
         knownSuitSize: storedProfile.knownSuitSize ?? "",
         knownTopSize: storedProfile.knownTopSize ?? "",
         knownDressShirtSize: storedProfile.knownDressShirtSize ?? "",
@@ -279,7 +282,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
 
       if (matchingSizes.length > 0) {
         setSmartFitEnabled(true);
-        setSelectedSizes(matchingSizes);
+        setSelectedSizes([]);
       }
     });
 
@@ -296,13 +299,22 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     vendors: deferredSelectedVendors,
     sizes: deferredSelectedSizes,
     colors: deferredSelectedColors,
+    smartFit: smartFitEnabled,
   });
 
   let filteredProducts = products.filter((product) => {
     const matchesQuery = searchableQuery.length === 0 || formatSearchText(product).includes(searchableQuery);
     const matchesType = deferredSelectedTypes.length === 0 || deferredSelectedTypes.includes(product.productType);
     const matchesVendor = deferredSelectedVendors.length === 0 || deferredSelectedVendors.includes(product.vendor);
-    const matchesSize = matchesVariantOption(product, "size", deferredSelectedSizes, deferredAvailability === "in-stock");
+    const matchesSize =
+      smartFitEnabled && fitProfile
+        ? getProductFitMatchesForProfile(product, fitProfile).length > 0
+        : matchesVariantOption(
+            product,
+            "size",
+            deferredSelectedSizes,
+            deferredAvailability === "in-stock",
+          );
     const matchesColor = matchesVariantOption(product, "color", deferredSelectedColors);
 
     return (
@@ -353,7 +365,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     shouldScrollToResultsRef.current = false;
 
     startTransition(() => {
-      setSelectedSizes(matchingSizes);
+      setSelectedSizes([]);
       setSmartFitEnabled(matchingSizes.length > 0);
     });
   }
@@ -372,10 +384,10 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     window.localStorage.setItem(FIT_PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
     setFitProfile(nextProfile);
     setFitDraft({
-      heightFeet: nextProfile.heightFeet,
-      heightInches: nextProfile.heightInches,
-      weightLbs: nextProfile.weightLbs,
-      build: nextProfile.build,
+      heightFeet: nextProfile.heightFeet ?? "",
+      heightInches: nextProfile.heightInches ?? "",
+      weightLbs: nextProfile.weightLbs ?? "",
+      build: nextProfile.build ?? "",
       knownSuitSize: nextProfile.knownSuitSize ?? "",
       knownTopSize: nextProfile.knownTopSize ?? "",
       knownDressShirtSize: nextProfile.knownDressShirtSize ?? "",
@@ -384,6 +396,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     });
     setIsFitEditorOpen(false);
     applySmartFit(nextProfile);
+    setIsFitDrawerOpen(false);
   }
 
   function clearFitProfile() {
@@ -401,28 +414,35 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
   }
 
   function normalizeFitInput(input: FitDraftInput): FitProfileInput | null {
-    if (input.heightFeet === "" || input.heightInches === "" || input.weightLbs === "" || !isFitBuildValue(input.build)) {
-      return null;
-    }
-
-    const heightFeet = Number(input.heightFeet);
-    const heightInches = Number(input.heightInches);
-    const weightLbs = Number(input.weightLbs);
-
-    if (!Number.isFinite(heightFeet) || !Number.isFinite(heightInches) || !Number.isFinite(weightLbs)) {
-      return null;
-    }
-
-    return {
-      heightFeet,
-      heightInches,
-      weightLbs,
-      build: input.build,
+    const knownSizes = {
       knownSuitSize: input.knownSuitSize?.trim() || undefined,
       knownTopSize: input.knownTopSize?.trim() || undefined,
       knownDressShirtSize: input.knownDressShirtSize?.trim() || undefined,
       knownWaistSize: input.knownWaistSize?.trim() || undefined,
       shoeSize: input.shoeSize?.trim() || undefined,
+    };
+    const hasKnownSize = Object.values(knownSizes).some(Boolean);
+    const completedBuild = isFitBuildValue(input.build) ? input.build : undefined;
+    const hasCompleteMeasurements =
+      input.heightFeet !== "" &&
+      input.heightInches !== "" &&
+      input.weightLbs !== "" &&
+      Boolean(completedBuild);
+
+    if (!hasKnownSize && !hasCompleteMeasurements) {
+      return null;
+    }
+
+    return {
+      ...(hasCompleteMeasurements
+        ? {
+            heightFeet: Number(input.heightFeet),
+            heightInches: Number(input.heightInches),
+            weightLbs: Number(input.weightLbs),
+            build: completedBuild,
+          }
+        : {}),
+      ...knownSizes,
     };
   }
 
@@ -463,6 +483,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     selectedVendors.length > 0 ||
     selectedSizes.length > 0 ||
     selectedColors.length > 0 ||
+    smartFitEnabled ||
     sort !== "featured";
   const isFiltering =
     isPending ||
@@ -479,6 +500,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     selectedVendors.length +
     selectedSizes.length +
     selectedColors.length +
+    (smartFitEnabled ? 1 : 0) +
     (availability !== DEFAULT_AVAILABILITY ? 1 : 0) +
     (priceFilter !== "all" ? 1 : 0) +
     (sort !== "featured" ? 1 : 0);
@@ -839,11 +861,13 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
             {vendor}
           </Badge>
         ))}
-        {selectedSizes.map((size) => (
-          <Badge key={size} variant="neutral">
-            Size {size}
-          </Badge>
-        ))}
+        {!smartFitEnabled
+          ? selectedSizes.map((size) => (
+              <Badge key={size} variant="neutral">
+                Size {size}
+              </Badge>
+            ))
+          : null}
         {selectedColors.map((color) => (
           <Badge key={color} variant="neutral">
             {color}
@@ -900,6 +924,360 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       { label: "Waist", value: getFitDisplayValue(previewEstimate.waist), icon: Ruler },
       { label: "Shoes", value: getFitDisplayValue(previewEstimate.shoe), icon: Footprints },
     ];
+
+    if (isDrawer) {
+      const savedSizes = [
+        {
+          label: "Suit / jacket",
+          value: getFitDisplayValue(previewEstimate.suit, ""),
+        },
+        {
+          label: "Pants waist",
+          value: getFitDisplayValue(previewEstimate.waist, ""),
+        },
+        { label: "Tops", value: getFitDisplayValue(previewEstimate.alpha, "") },
+        {
+          label: "Dress shirt",
+          value: getFitDisplayValue(previewEstimate.dressShirt, ""),
+        },
+        { label: "Shoes", value: getFitDisplayValue(previewEstimate.shoe, "") },
+      ].filter((item) => item.value);
+
+      return (
+        <Card className="h-full w-full overflow-hidden rounded-none border-0 bg-white shadow-none">
+          <CardContent className="flex h-full flex-col p-0">
+            <div className="flex items-center justify-between gap-4 border-b border-ink/10 px-5 py-4 sm:px-6">
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-deep-teal/10 text-deep-teal">
+                  <Ruler className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold tracking-[0.16em] text-deep-teal uppercase">
+                    Smart Fit
+                  </p>
+                  <h2 className="truncate text-lg font-semibold text-ink">
+                    {showFitForm ? "Enter your sizes" : "Your saved sizes"}
+                  </h2>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFitDrawerOpen(false)}
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/10 text-ink transition-colors hover:bg-stone focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
+                aria-label="Close Smart Fit"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">
+              {showFitForm ? (
+                <form onSubmit={saveFitProfile}>
+                  <h3 className="text-2xl font-semibold tracking-[-0.02em] text-ink">
+                    Type in the sizes you know.
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-smoke">
+                    Add one or several. Each product will use the right size for its
+                    category.
+                  </p>
+
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    <div>
+                      <FieldLabel htmlFor="drawer-fit-suit">Suit / jacket</FieldLabel>
+                      <Input
+                        id="drawer-fit-suit"
+                        value={fitDraft.knownSuitSize ?? ""}
+                        onChange={(event) =>
+                          setFitDraft((current) => ({
+                            ...current,
+                            knownSuitSize: event.target.value,
+                          }))
+                        }
+                        placeholder="40L"
+                        autoCapitalize="characters"
+                        className="mt-2 min-h-12 bg-white text-base"
+                      />
+                      <p className="mt-1.5 text-[11px] text-smoke">Chest + length</p>
+                    </div>
+
+                    <div>
+                      <FieldLabel htmlFor="drawer-fit-waist">Pants waist</FieldLabel>
+                      <Input
+                        id="drawer-fit-waist"
+                        value={fitDraft.knownWaistSize ?? ""}
+                        onChange={(event) =>
+                          setFitDraft((current) => ({
+                            ...current,
+                            knownWaistSize: event.target.value,
+                          }))
+                        }
+                        placeholder="32"
+                        inputMode="numeric"
+                        className="mt-2 min-h-12 bg-white text-base"
+                      />
+                      <p className="mt-1.5 text-[11px] text-smoke">Waist size</p>
+                    </div>
+
+                    <div>
+                      <FieldLabel htmlFor="drawer-fit-top">Tops</FieldLabel>
+                      <Input
+                        id="drawer-fit-top"
+                        value={fitDraft.knownTopSize ?? ""}
+                        onChange={(event) =>
+                          setFitDraft((current) => ({
+                            ...current,
+                            knownTopSize: event.target.value,
+                          }))
+                        }
+                        placeholder="M"
+                        autoCapitalize="characters"
+                        className="mt-2 min-h-12 bg-white text-base"
+                      />
+                      <p className="mt-1.5 text-[11px] text-smoke">S, M, L, XL</p>
+                    </div>
+
+                    <div>
+                      <FieldLabel htmlFor="drawer-fit-shoe">Shoes</FieldLabel>
+                      <Input
+                        id="drawer-fit-shoe"
+                        value={fitDraft.shoeSize ?? ""}
+                        onChange={(event) =>
+                          setFitDraft((current) => ({
+                            ...current,
+                            shoeSize: event.target.value,
+                          }))
+                        }
+                        placeholder="10.5"
+                        inputMode="decimal"
+                        className="mt-2 min-h-12 bg-white text-base"
+                      />
+                      <p className="mt-1.5 text-[11px] text-smoke">US size</p>
+                    </div>
+
+                    <div className="col-span-2">
+                      <FieldLabel htmlFor="drawer-fit-shirt">Dress shirt</FieldLabel>
+                      <Input
+                        id="drawer-fit-shirt"
+                        value={fitDraft.knownDressShirtSize ?? ""}
+                        onChange={(event) =>
+                          setFitDraft((current) => ({
+                            ...current,
+                            knownDressShirtSize: event.target.value,
+                          }))
+                        }
+                        placeholder="16 x 34/35"
+                        className="mt-2 min-h-12 bg-white text-base"
+                      />
+                      <p className="mt-1.5 text-[11px] text-smoke">
+                        Neck × sleeve, if known
+                      </p>
+                    </div>
+                  </div>
+
+                  <details className="mt-6 rounded-lg border border-ink/10 bg-stone/55">
+                    <summary className="cursor-pointer list-none px-4 py-4 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center justify-between gap-3">
+                        Don&apos;t know every size? Get an estimate
+                        <ChevronDown className="h-4 w-4 shrink-0 text-smoke" />
+                      </span>
+                    </summary>
+                    <div className="grid grid-cols-2 gap-3 border-t border-ink/8 px-4 py-4">
+                      <div>
+                        <FieldLabel htmlFor="drawer-fit-height-feet">Height</FieldLabel>
+                        <Select
+                          id="drawer-fit-height-feet"
+                          value={fitDraft.heightFeet}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({
+                              ...current,
+                              heightFeet:
+                                event.target.value === ""
+                                  ? ""
+                                  : Number(event.target.value),
+                            }))
+                          }
+                          className="mt-2 bg-white"
+                        >
+                          <option value="">Feet</option>
+                          {[4, 5, 6, 7].map((feet) => (
+                            <option key={feet} value={feet}>
+                              {feet} ft
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+
+                      <div>
+                        <FieldLabel htmlFor="drawer-fit-height-inches">
+                          Inches
+                        </FieldLabel>
+                        <Select
+                          id="drawer-fit-height-inches"
+                          value={fitDraft.heightInches}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({
+                              ...current,
+                              heightInches:
+                                event.target.value === ""
+                                  ? ""
+                                  : Number(event.target.value),
+                            }))
+                          }
+                          className="mt-2 bg-white"
+                        >
+                          <option value="">Inches</option>
+                          {Array.from({ length: 12 }, (_, index) => index).map(
+                            (inches) => (
+                              <option key={inches} value={inches}>
+                                {inches} in
+                              </option>
+                            ),
+                          )}
+                        </Select>
+                      </div>
+
+                      <div>
+                        <FieldLabel htmlFor="drawer-fit-weight">Weight</FieldLabel>
+                        <Input
+                          id="drawer-fit-weight"
+                          type="number"
+                          min={95}
+                          max={340}
+                          inputMode="numeric"
+                          value={fitDraft.weightLbs}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({
+                              ...current,
+                              weightLbs:
+                                event.target.value === ""
+                                  ? ""
+                                  : Number(event.target.value),
+                            }))
+                          }
+                          placeholder="180 lb"
+                          className="mt-2 bg-white text-base"
+                        />
+                      </div>
+
+                      <div>
+                        <FieldLabel htmlFor="drawer-fit-build">Build</FieldLabel>
+                        <Select
+                          id="drawer-fit-build"
+                          value={fitDraft.build}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({
+                              ...current,
+                              build:
+                                event.target.value === ""
+                                  ? ""
+                                  : (event.target.value as FitBuild),
+                            }))
+                          }
+                          className="mt-2 bg-white"
+                        >
+                          <option value="">Select</option>
+                          {fitBuildOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                      <p className="col-span-2 text-xs leading-5 text-smoke">
+                        Complete all four fields to estimate any sizes left blank.
+                      </p>
+                    </div>
+                  </details>
+
+                  <button
+                    type="submit"
+                    disabled={!normalizedFitDraft}
+                    className="mt-6 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-lg border border-ink bg-ink px-5 text-sm font-semibold tracking-[0.08em] text-white uppercase transition-colors hover:border-deep-teal hover:bg-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 disabled:cursor-not-allowed disabled:border-ink/15 disabled:bg-ink/15 disabled:text-smoke"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Save &amp; show my sizes
+                  </button>
+
+                  {fitProfile ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsFitEditorOpen(false)}
+                      className="mt-3 inline-flex min-h-11 w-full items-center justify-center text-xs font-semibold text-smoke underline underline-offset-4"
+                    >
+                      Cancel changes
+                    </button>
+                  ) : null}
+
+                  <p className="mt-5 text-xs leading-5 text-smoke">
+                    Saved only in this browser. Smart Fit is a starting point and can
+                    vary by brand.
+                  </p>
+                </form>
+              ) : (
+                <div>
+                  <h3 className="text-2xl font-semibold tracking-[-0.02em] text-ink">
+                    Ready to shop your fit.
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-smoke">
+                    We&apos;ll use the right saved size for each type of product.
+                  </p>
+
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    {savedSizes.map((item, index) => (
+                      <div
+                        key={item.label}
+                        className={cn(
+                          "rounded-lg border border-ink/10 bg-stone/60 p-4",
+                          savedSizes.length % 2 === 1 &&
+                            index === savedSizes.length - 1 &&
+                            "col-span-2",
+                        )}
+                      >
+                        <p className="text-[10px] font-semibold tracking-[0.14em] text-smoke uppercase">
+                          {item.label}
+                        </p>
+                        <p className="mt-1.5 text-lg font-semibold text-ink">
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      applySmartFit();
+                      setIsFitDrawerOpen(false);
+                    }}
+                    className="mt-6 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-lg border border-ink bg-ink px-5 text-sm font-semibold tracking-[0.08em] text-white uppercase transition-colors hover:border-deep-teal hover:bg-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Shop my sizes
+                  </button>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsFitEditorOpen(true)}
+                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-ink/15 bg-white px-4 text-xs font-semibold text-ink transition-colors hover:bg-stone"
+                    >
+                      Edit sizes
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearFitProfile}
+                      className="inline-flex min-h-11 items-center justify-center rounded-md border border-ink/15 bg-white px-4 text-xs font-semibold text-smoke transition-colors hover:bg-stone hover:text-ink"
+                    >
+                      Clear profile
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
 
     return (
       <Card
@@ -1027,7 +1405,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               <p className="text-sm leading-6 text-ink">
                 {fitProfile
                   ? hasSmartFitMatches
-                    ? `Ready to shop: matching catalog sizes include ${smartFitSizes.join(", ")}.`
+                    ? `Ready to shop. Smart Fit will use ${previewEstimate.suit} for suits, ${previewEstimate.alpha} for tops, and ${previewEstimate.waist} for pants.`
                     : "Profile saved. No exact size matches are visible yet, so broaden filters or add more products to the catalog."
                   : "Enter measurements below to preview recommendations before applying size-aware product filters."}
               </p>
@@ -1355,7 +1733,11 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     { key: "availability", label: "Availability", activeCount: availability !== DEFAULT_AVAILABILITY ? 1 : 0 },
     { key: "price", label: "Price", activeCount: priceFilter !== "all" ? 1 : 0 },
     { key: "brand", label: "Brand", activeCount: selectedVendors.length },
-    { key: "size", label: "Size", activeCount: selectedSizes.length },
+    {
+      key: "size",
+      label: "Size",
+      activeCount: smartFitEnabled ? 0 : selectedSizes.length,
+    },
     { key: "color", label: "Color", activeCount: selectedColors.length },
   ];
   const facetPills = facetPillOptions.filter((pill) => {
@@ -1720,7 +2102,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 <ShopProductCard
                   key={product.id}
                   product={product}
-                  fitSizes={smartFitEnabled ? smartFitSizes : []}
+                  fitProfile={smartFitEnabled ? fitProfile : null}
                   imageSizes={
                     mobileLayout === "grid"
                       ? "(max-width: 640px) 50vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"

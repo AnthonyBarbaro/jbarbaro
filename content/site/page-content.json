@@ -53,6 +53,15 @@
         "image": "/images/remote/www.barbaroformalwear.com/wp-content/uploads/2024/02/h3lg.jpg",
         "imageAlt": "Coordinated wedding party in light gray formalwear",
         "mobileFocalPoint": "center"
+      },
+      {
+        "id": "slide-4",
+        "title": "Step Inside Partridge Creek",
+        "caption": "Explore premium menswear, personal styling, and expert fit guidance in a relaxed showroom built around you.",
+        "href": "/location/partridge-creek",
+        "image": "/images/locations/partridge-creek/showroom-02.jpg",
+        "imageAlt": "J. Barbaro Partridge Creek showroom with tailored jackets, dress shirts, denim, and seasonal displays",
+        "mobileFocalPoint": "center"
       }
     ],
     "ctaTiles": [

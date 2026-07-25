@@ -4,6 +4,7 @@ import { ArrowRight, MapPin, Phone } from "lucide-react";
 
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { LocationOpenBadge } from "@/components/locations/LocationOpenBadge";
+import { ShowroomGallery } from "@/components/locations/ShowroomGallery";
 import { NewsletterSignup } from "@/components/marketing/NewsletterSignup";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { Badge } from "@/components/ui/Badge";
@@ -13,6 +14,7 @@ import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { brands } from "@/data/brands";
 import { locations } from "@/data/locations";
+import { partridgeCreekShowroomPhotos } from "@/data/showroom-gallery";
 import { pageContent } from "@/lib/site-content";
 import { buildMetadata } from "@/lib/seo";
 import { resolveMenCategories } from "@/lib/shopify/men-categories";
@@ -57,7 +59,8 @@ const storefrontCategories = [
     label: "Accessories",
     href: "/categories/accessories",
     matches: ["accessories", "neckwear"],
-    image: "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
+    image:
+      "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
     description: "Shop ties, pocket squares, belts, socks, and finishing details.",
   },
   {
@@ -68,17 +71,33 @@ const storefrontCategories = [
     description: "Explore tuxedos, event dressing, and formal accessories.",
   },
 ] as const;
-const inStoreBrandSlugs = ["7-downie-st", "7-for-all-mankind", "ag-jeans", "alberto", "brax", "canali", "ermenegildo-zegna", "eton"];
+const inStoreBrandSlugs = [
+  "7-downie-st",
+  "7-for-all-mankind",
+  "ag-jeans",
+  "alberto",
+  "brax",
+  "canali",
+  "ermenegildo-zegna",
+  "eton",
+];
 const inStoreBrands = inStoreBrandSlugs
   .map((slug) => brands.find((brand) => brand.slug === slug))
   .filter((brand): brand is (typeof brands)[number] => Boolean(brand));
 
 function normalizeCategory(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function getCategoryImage(category: ResolvedCategory | null, fallbackImage: string) {
-  return category?.shopifyCollection?.image?.url ?? category?.shopifyCollection?.products[0]?.featuredImage?.url ?? fallbackImage;
+  return (
+    category?.shopifyCollection?.image?.url ??
+    category?.shopifyCollection?.products[0]?.featuredImage?.url ??
+    fallbackImage
+  );
 }
 
 function getStorefrontCategories(categories: ResolvedCategory[]) {
@@ -134,14 +153,18 @@ export default async function HomePage() {
     bestSellers = newArrivals.slice(0, 4);
   }
 
-  newArrivals = uniqueProducts(newArrivals.filter((product) => !bestSellers.some((item) => item.id === product.id))).slice(0, 4);
+  newArrivals = uniqueProducts(
+    newArrivals.filter((product) => !bestSellers.some((item) => item.id === product.id)),
+  ).slice(0, 4);
 
   return (
     <>
       <HeroCarousel
         slides={homePage.heroSlides}
         badges={homePage.heroBadges}
-        secondaryCta={homePage.heroCtas[1] ?? { label: "Book Appointment", href: "/schedule-appointment" }}
+        secondaryCta={
+          homePage.heroCtas[1] ?? { label: "Book Appointment", href: "/schedule-appointment" }
+        }
       />
 
       <WaveSection topWave="A" background="ivory">
@@ -149,7 +172,9 @@ export default async function HomePage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Badge variant="teal">Shop by Category</Badge>
-              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">Start with what you need.</h2>
+              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
+                Start with what you need.
+              </h2>
             </div>
             <ButtonLink href="/shop" variant="secondary" className="w-full sm:w-auto">
               Shop All
@@ -171,7 +196,9 @@ export default async function HomePage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-ink/72 via-ink/18 to-transparent" />
                     <div className="absolute inset-x-0 bottom-0 p-4">
                       <h3 className="font-heading text-3xl text-white">{category.name}</h3>
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/78">{category.description}</p>
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/78">
+                        {category.description}
+                      </p>
                     </div>
                     <span className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/30 bg-white/12 text-white backdrop-blur transition-transform group-hover:translate-x-1">
                       <ArrowRight className="h-4 w-4" />
@@ -207,7 +234,8 @@ export default async function HomePage() {
               <CardContent>
                 <h3 className="font-heading text-3xl text-ink">Products are refreshing.</h3>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke">
-                  Browse categories or book an appointment and we will prepare options for your size, occasion, and fit goals.
+                  Browse categories or book an appointment and we will prepare options for your
+                  size, occasion, and fit goals.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <ButtonLink href="/categories">Browse Categories</ButtonLink>
@@ -223,10 +251,17 @@ export default async function HomePage() {
             <>
               <div className="mt-12 flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">New Arrivals</p>
-                  <h2 className="mt-2 font-heading text-3xl text-ink sm:text-4xl">Fresh on the Floor</h2>
+                  <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
+                    New Arrivals
+                  </p>
+                  <h2 className="mt-2 font-heading text-3xl text-ink sm:text-4xl">
+                    Fresh on the Floor
+                  </h2>
                 </div>
-                <Link href="/shop" className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold">
+                <Link
+                  href="/shop"
+                  className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
+                >
                   Shop All
                 </Link>
               </div>
@@ -245,9 +280,12 @@ export default async function HomePage() {
           <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div>
               <Badge variant="gold">Fit Help</Badge>
-              <h2 className="mt-4 font-heading text-4xl text-white sm:text-5xl">Need help finding the right fit?</h2>
+              <h2 className="mt-4 font-heading text-4xl text-white sm:text-5xl">
+                Need help finding the right fit?
+              </h2>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-white/78 sm:text-base sm:leading-8">
-                Book a store appointment for suits, formalwear, tailoring, and product recommendations prepared around your size and occasion.
+                Book a store appointment for suits, formalwear, tailoring, and product
+                recommendations prepared around your size and occasion.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
@@ -269,10 +307,42 @@ export default async function HomePage() {
 
       <WaveSection topWave="C" background="ivory">
         <Container>
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <Badge variant="teal">Partridge Creek</Badge>
+              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
+                Step inside our showroom.
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
+                Discover tailored clothing, premium sportswear, and personal service in-store at The
+                Mall at Partridge Creek.
+              </p>
+            </div>
+            <ButtonLink
+              href="/location/partridge-creek"
+              variant="secondary"
+              className="w-full sm:w-auto"
+            >
+              Explore the Store
+            </ButtonLink>
+          </div>
+
+          <ShowroomGallery
+            photos={partridgeCreekShowroomPhotos}
+            visibleCount={3}
+            className="mt-8"
+          />
+        </Container>
+      </WaveSection>
+
+      <WaveSection topWave="C" background="stone">
+        <Container>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Badge variant="teal">Visit a Store</Badge>
-              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">Shop in person today.</h2>
+              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
+                Shop in person today.
+              </h2>
             </div>
             <ButtonLink href="/locations" variant="secondary" className="w-full sm:w-auto">
               All Locations
@@ -290,7 +360,10 @@ export default async function HomePage() {
                         <MapPin className="mt-1 h-4 w-4 shrink-0 text-deep-teal" />
                         {location.address}
                       </p>
-                      <a href={formatPhone(location.phone)} className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-deep-teal hover:text-gold">
+                      <a
+                        href={formatPhone(location.phone)}
+                        className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-deep-teal hover:text-gold"
+                      >
                         <Phone className="h-4 w-4" />
                         {location.phone}
                       </a>
@@ -299,7 +372,12 @@ export default async function HomePage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2 sm:justify-end">
-                      <ButtonLink href={`/location/${location.slug}`} variant="secondary" size="sm" className="w-full sm:w-auto">
+                      <ButtonLink
+                        href={`/location/${location.slug}`}
+                        variant="secondary"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
                         Details
                       </ButtonLink>
                       <ButtonLink
@@ -323,16 +401,27 @@ export default async function HomePage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <Badge variant="gold">In-Store Designers</Badge>
-                <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">Brands carried in store.</h2>
+                <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
+                  Brands carried in store.
+                </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-                  Visit J. Barbaro for premium menswear labels selected for fit, fabric, and wardrobe longevity.
+                  Visit J. Barbaro for premium menswear labels selected for fit, fabric, and
+                  wardrobe longevity.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row">
-                <ButtonLink href="/designers/all-designer-brands" variant="secondary" className="w-full sm:w-auto">
+                <ButtonLink
+                  href="/designers/all-designer-brands"
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                >
                   Browse Designers
                 </ButtonLink>
-                <ButtonLink href="/schedule-appointment" variant="teal" className="w-full sm:w-auto">
+                <ButtonLink
+                  href="/schedule-appointment"
+                  variant="teal"
+                  className="w-full sm:w-auto"
+                >
                   Book Visit
                 </ButtonLink>
               </div>
@@ -340,7 +429,11 @@ export default async function HomePage() {
 
             <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
               {inStoreBrands.map((brand) => (
-                <Link key={brand.slug} href={`/collection-brand/${brand.slug}`} className="group block">
+                <Link
+                  key={brand.slug}
+                  href={`/collection-brand/${brand.slug}`}
+                  className="group block"
+                >
                   <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-ink/10 bg-stone shadow-sm shadow-ink/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-gold/50">
                     <Image
                       src={brand.image}
@@ -352,11 +445,19 @@ export default async function HomePage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-ink/82 via-ink/20 to-transparent" />
                     <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-md border border-white/45 bg-white/86 p-4 shadow-[0_18px_40px_-26px_rgba(14,23,38,0.55)] backdrop-blur-sm">
                       <div className="relative h-16 sm:h-20">
-                        <Image src={brand.logo} alt={`${brand.name} logo`} fill sizes="180px" className="object-contain" />
+                        <Image
+                          src={brand.logo}
+                          alt={`${brand.name} logo`}
+                          fill
+                          sizes="180px"
+                          className="object-contain"
+                        />
                       </div>
                     </div>
                     <div className="absolute inset-x-0 bottom-0 p-4">
-                      <h3 className="text-center text-xs font-semibold tracking-[0.12em] text-white uppercase">{brand.name}</h3>
+                      <h3 className="text-center text-xs font-semibold tracking-[0.12em] text-white uppercase">
+                        {brand.name}
+                      </h3>
                     </div>
                   </div>
                 </Link>
@@ -364,7 +465,8 @@ export default async function HomePage() {
             </div>
 
             <p className="mt-5 text-center text-xs leading-5 text-smoke">
-              Brand selection and inventory vary by location. Book ahead and our team can prepare options around your size and occasion.
+              Brand selection and inventory vary by location. Book ahead and our team can prepare
+              options around your size and occasion.
             </p>
           </div>
         </Container>
@@ -376,9 +478,12 @@ export default async function HomePage() {
             <CardContent className="grid gap-6 lg:grid-cols-[1fr_0.9fr] lg:items-center">
               <div>
                 <Badge variant="gold">New Arrivals</Badge>
-                <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">Get new arrivals and private event updates.</h2>
+                <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">
+                  Get new arrivals and private event updates.
+                </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke">
-                  One email field. No popups. Just product drops, private events, and appointment reminders when they matter.
+                  One email field. No popups. Just product drops, private events, and appointment
+                  reminders when they matter.
                 </p>
               </div>
               <NewsletterSignup source="homepage" />

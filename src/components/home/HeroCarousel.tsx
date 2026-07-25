@@ -32,6 +32,10 @@ function getPrimaryCtaLabel(slide: HeroSlide) {
     return "View Rentals";
   }
 
+  if (slide.href.startsWith("/location/")) {
+    return "Explore the Store";
+  }
+
   if (slide.title.toLowerCase().includes("$299")) {
     return "Shop Suits";
   }

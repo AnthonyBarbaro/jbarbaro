@@ -6,16 +6,14 @@ import { type FormEvent, useEffect, useState } from "react";
 import { FieldLabel, Input, Select } from "@/components/ui/Field";
 import {
   buildFitProfile,
-  findProductSuitVariant,
   FIT_PROFILE_STORAGE_KEY,
-  getProductFitMatches,
-  getVariantSizeValue,
-  isSuitSizingProduct,
-  parseSuitSize,
+  getProductFitRecommendation,
+  getProductSizeKind,
   parseFitProfile,
   type FitBuild,
   type FitProfile,
   type FitProfileInput,
+  type ProductSizeKind,
 } from "@/lib/fit-profile";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils";
@@ -51,36 +49,6 @@ const BUILD_OPTIONS: Array<{ label: string; value: FitBuild }> = [
   { label: "Full", value: "full" },
 ];
 
-type ProductSizeKind = "waist" | "suit" | "shirt" | "shoe" | "top";
-
-function getProductSizeKind(product: ShopifyProduct): ProductSizeKind {
-  const productText = [
-    product.title,
-    product.productType,
-    ...product.collections.map((collection) => collection.title),
-  ]
-    .join(" ")
-    .toLowerCase();
-
-  if (/pant|trouser|denim|jean|short/.test(productText)) {
-    return "waist";
-  }
-
-  if (isSuitSizingProduct(product)) {
-    return "suit";
-  }
-
-  if (/dress shirt|shirt/.test(productText)) {
-    return "shirt";
-  }
-
-  if (/shoe|loafer|sneaker|boot|footwear/.test(productText)) {
-    return "shoe";
-  }
-
-  return "top";
-}
-
 function getKnownSize(profile: FitProfile, kind: ProductSizeKind) {
   if (kind === "waist") return profile.knownWaistSize ?? "";
   if (kind === "suit") return profile.knownSuitSize ?? "";
@@ -91,10 +59,13 @@ function getKnownSize(profile: FitProfile, kind: ProductSizeKind) {
 
 function getDraft(profile: FitProfile, kind: ProductSizeKind): FitDraft {
   return {
-    heightFeet: String(profile.heightFeet),
-    heightInches: String(profile.heightInches),
-    weightLbs: String(profile.weightLbs),
-    build: profile.build,
+    heightFeet:
+      typeof profile.heightFeet === "number" ? String(profile.heightFeet) : "",
+    heightInches:
+      typeof profile.heightInches === "number" ? String(profile.heightInches) : "",
+    weightLbs:
+      typeof profile.weightLbs === "number" ? String(profile.weightLbs) : "",
+    build: profile.build ?? "",
     knownSize: getKnownSize(profile, kind),
   };
 }
@@ -108,82 +79,11 @@ function getEstimateLabel(profile: FitProfile, kind: ProductSizeKind) {
   return `Top ${profile.estimate.alpha}`;
 }
 
-function getNumericTarget(profile: FitProfile, kind: ProductSizeKind) {
-  if (kind === "waist") return Number.parseFloat(profile.estimate.waist.split("/")[0] ?? "");
-  if (kind === "suit") return profile.estimate.jacketChest;
-  if (kind === "shirt") return Number.parseFloat(profile.estimate.dressShirt);
-  if (kind === "shoe") return Number.parseFloat(profile.estimate.shoe ?? "");
-  return Number.NaN;
-}
-
-function getRecommendedProductSize(product: ShopifyProduct, profile: FitProfile) {
-  if (getProductSizeKind(product) === "suit") {
-    const suitSize = parseSuitSize(profile.estimate.suit);
-
-    if (!suitSize) {
-      return null;
-    }
-
-    const exactVariant = findProductSuitVariant(product, suitSize.label);
-
-    return {
-      label: suitSize.label,
-      variantId: exactVariant?.id ?? null,
-    };
-  }
-
-  const exactMatches = getProductFitMatches(product, profile.recommendedSizes);
-  const exactSize = exactMatches[0];
-
-  if (exactSize) {
-    const exactVariant = product.variants.find(
-      (variant) => variant.availableForSale && getVariantSizeValue(variant) === exactSize,
-    );
-
-    if (exactVariant) {
-      return {
-        label: exactSize,
-        variantId: exactVariant.id,
-      };
-    }
-  }
-
-  const sizeKind = getProductSizeKind(product);
-  const target = getNumericTarget(profile, sizeKind);
-
-  if (!Number.isFinite(target)) {
-    return null;
-  }
-
-  const numericSizes = Array.from(
-    new Set(
-      product.variants
-        .filter((variant) => variant.availableForSale)
-        .map(getVariantSizeValue)
-        .filter((value): value is string => Boolean(value))
-        .map((value) => ({ value, number: Number.parseFloat(value) }))
-        .filter((item) => Number.isFinite(item.number)),
-    ),
-  );
-
-  const closestSize = numericSizes.sort(
-    (left, right) => Math.abs(left.number - target) - Math.abs(right.number - target),
-  )[0]?.value;
-  const closestVariant = closestSize
-    ? product.variants.find(
-        (variant) => variant.availableForSale && getVariantSizeValue(variant) === closestSize,
-      )
-    : null;
-
-  return closestSize && closestVariant
-    ? {
-        label: closestSize,
-        variantId: closestVariant.id,
-      }
-    : null;
-}
-
-function buildInputFromDraft(draft: FitDraft, kind: ProductSizeKind): FitProfileInput | null {
+function buildInputFromDraft(
+  draft: FitDraft,
+  kind: ProductSizeKind,
+  currentProfile: FitProfile | null,
+): FitProfileInput | null {
   const heightFeet = Number(draft.heightFeet);
   const heightInches = Number(draft.heightInches);
   const weightLbs = Number(draft.weightLbs);
@@ -203,11 +103,13 @@ function buildInputFromDraft(draft: FitDraft, kind: ProductSizeKind): FitProfile
     heightInches,
     weightLbs,
     build: draft.build,
-    knownWaistSize: kind === "waist" ? knownSize : undefined,
-    knownSuitSize: kind === "suit" ? knownSize : undefined,
-    knownDressShirtSize: kind === "shirt" ? knownSize : undefined,
-    shoeSize: kind === "shoe" ? knownSize : undefined,
-    knownTopSize: kind === "top" ? knownSize : undefined,
+    knownWaistSize:
+      kind === "waist" ? knownSize : currentProfile?.knownWaistSize,
+    knownSuitSize: kind === "suit" ? knownSize : currentProfile?.knownSuitSize,
+    knownDressShirtSize:
+      kind === "shirt" ? knownSize : currentProfile?.knownDressShirtSize,
+    shoeSize: kind === "shoe" ? knownSize : currentProfile?.shoeSize,
+    knownTopSize: kind === "top" ? knownSize : currentProfile?.knownTopSize,
   };
 }
 
@@ -221,7 +123,7 @@ export function ProductSmartFitDrawer({
   const [profile, setProfile] = useState<FitProfile | null>(null);
   const [draft, setDraft] = useState<FitDraft>(EMPTY_DRAFT);
   const [isEditing, setIsEditing] = useState(true);
-  const recommendation = profile ? getRecommendedProductSize(product, profile) : null;
+  const recommendation = profile ? getProductFitRecommendation(product, profile) : null;
   const recommendedSize = recommendation?.label ?? null;
   const recommendationIsAvailable = Boolean(recommendation?.variantId);
 
@@ -270,7 +172,7 @@ export function ProductSmartFitDrawer({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const input = buildInputFromDraft(draft, sizeKind);
+    const input = buildInputFromDraft(draft, sizeKind, profile);
 
     if (!input) {
       return;

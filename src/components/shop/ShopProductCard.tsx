@@ -2,13 +2,16 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Card } from "@/components/ui/Card";
-import { getProductFitMatches } from "@/lib/fit-profile";
+import {
+  getProductFitMatchesForProfile,
+  type FitProfile,
+} from "@/lib/fit-profile";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
 type ShopProductCardProps = {
   product: ShopifyProduct;
-  fitSizes?: string[];
+  fitProfile?: FitProfile | null;
   imageSizes?: string;
 };
 
@@ -18,7 +21,7 @@ function getSecondaryImage(product: ShopifyProduct) {
 
 export function ShopProductCard({
   product,
-  fitSizes = [],
+  fitProfile = null,
   imageSizes = "(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw",
 }: ShopProductCardProps) {
   const availableVariants = product.variants.filter((variant) => variant.availableForSale);
@@ -42,7 +45,9 @@ export function ShopProductCard({
       : null;
   const isSoldOut = availableVariants.length === 0;
   const secondaryImage = getSecondaryImage(product);
-  const fitMatches = getProductFitMatches(product, fitSizes);
+  const fitMatches = fitProfile
+    ? getProductFitMatchesForProfile(product, fitProfile)
+    : [];
   const fitMatchLabel = fitMatches.length > 0 ? fitMatches.slice(0, 2).join(", ") : null;
   return (
     <Card className="group flex h-full flex-col overflow-hidden rounded-lg border-ink/10 bg-white transition-colors duration-200 hover:border-ink/25">

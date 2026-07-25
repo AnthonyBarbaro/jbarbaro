@@ -5,10 +5,10 @@ export const FIT_PROFILE_STORAGE_KEY = "jbarbaro_fit_profile_v1";
 export type FitBuild = "slim" | "average" | "athletic" | "broad" | "full";
 
 export type FitProfileInput = {
-  heightFeet: number;
-  heightInches: number;
-  weightLbs: number;
-  build: FitBuild;
+  heightFeet?: number;
+  heightInches?: number;
+  weightLbs?: number;
+  build?: FitBuild;
   knownSuitSize?: string;
   knownTopSize?: string;
   knownDressShirtSize?: string;
@@ -32,6 +32,8 @@ export type FitProfile = FitProfileInput & {
   estimate: FitEstimate;
   recommendedSizes: string[];
 };
+
+export type ProductSizeKind = "waist" | "suit" | "shirt" | "shoe" | "top";
 
 const buildLabels: Record<FitBuild, string> = {
   slim: "Slim",
@@ -98,38 +100,58 @@ function normalizeStoredFitInput(value: unknown): FitProfileInput | null {
   const heightFeet = toFiniteNumber(profile.heightFeet);
   const heightInches = toFiniteNumber(profile.heightInches);
   const weightLbs = toFiniteNumber(profile.weightLbs);
+  const knownSuitSize = cleanStoredSize(profile.knownSuitSize);
+  const knownTopSize = cleanStoredSize(profile.knownTopSize);
+  const knownDressShirtSize = cleanStoredSize(profile.knownDressShirtSize);
+  const knownWaistSize = cleanStoredSize(profile.knownWaistSize);
+  const shoeSize = cleanStoredSize(profile.shoeSize);
+  const storedBuild = isFitBuild(profile.build) ? profile.build : undefined;
+  const hasKnownSize = Boolean(
+    knownSuitSize ||
+      knownTopSize ||
+      knownDressShirtSize ||
+      knownWaistSize ||
+      shoeSize,
+  );
+  const hasCompleteMeasurements =
+    heightFeet !== null &&
+    heightInches !== null &&
+    weightLbs !== null &&
+    Number.isInteger(heightFeet) &&
+    Number.isInteger(heightInches) &&
+    heightFeet >= 4 &&
+    heightFeet <= 7 &&
+    heightInches >= 0 &&
+    heightInches <= 11 &&
+    weightLbs >= 95 &&
+    weightLbs <= 340 &&
+    Boolean(storedBuild);
 
-  if (
-    heightFeet === null ||
-    heightInches === null ||
-    weightLbs === null ||
-    !Number.isInteger(heightFeet) ||
-    !Number.isInteger(heightInches) ||
-    heightFeet < 4 ||
-    heightFeet > 7 ||
-    heightInches < 0 ||
-    heightInches > 11 ||
-    weightLbs < 95 ||
-    weightLbs > 340 ||
-    !isFitBuild(profile.build)
-  ) {
+  if (!hasCompleteMeasurements && !hasKnownSize) {
     return null;
   }
 
   return {
-    heightFeet,
-    heightInches,
-    weightLbs,
-    build: profile.build,
-    knownSuitSize: cleanStoredSize(profile.knownSuitSize),
-    knownTopSize: cleanStoredSize(profile.knownTopSize),
-    knownDressShirtSize: cleanStoredSize(profile.knownDressShirtSize),
-    knownWaistSize: cleanStoredSize(profile.knownWaistSize),
-    shoeSize: cleanStoredSize(profile.shoeSize),
+    ...(hasCompleteMeasurements
+      ? {
+          heightFeet,
+          heightInches,
+          weightLbs,
+          build: storedBuild,
+        }
+      : {}),
+    knownSuitSize,
+    knownTopSize,
+    knownDressShirtSize,
+    knownWaistSize,
+    shoeSize,
   };
 }
 
-export function getHeightInches(input: Pick<FitProfileInput, "heightFeet" | "heightInches">) {
+export function getHeightInches(input: {
+  heightFeet: number;
+  heightInches: number;
+}) {
   return input.heightFeet * 12 + input.heightInches;
 }
 
@@ -147,6 +169,34 @@ export function isSuitSizingProduct(product: ShopifyProduct) {
     .toLowerCase();
 
   return /suit|jacket|blazer|sport coat|overcoat/.test(productText);
+}
+
+export function getProductSizeKind(product: ShopifyProduct): ProductSizeKind {
+  const productText = [
+    product.title,
+    product.productType,
+    ...product.collections.map((collection) => collection.title),
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (/\b(?:pants?|trousers?|denim|jeans?|shorts)\b/.test(productText)) {
+    return "waist";
+  }
+
+  if (isSuitSizingProduct(product)) {
+    return "suit";
+  }
+
+  if (/dress shirt|shirt/.test(productText)) {
+    return "shirt";
+  }
+
+  if (/shoe|loafer|sneaker|boot|footwear/.test(productText)) {
+    return "shoe";
+  }
+
+  return "top";
 }
 
 export function normalizeJacketLength(value: string) {
@@ -269,11 +319,16 @@ function getRecommendedSizes(estimate: FitEstimate) {
   const sizes = new Set<string>();
   const lengthLabels = jacketLengthLabels[estimate.jacketLength];
 
-  sizes.add(estimate.suit);
-  sizes.add(String(estimate.jacketChest));
-  for (const label of lengthLabels) {
-    sizes.add(`${estimate.jacketChest}${label}`);
-    sizes.add(`${estimate.jacketChest} ${label}`);
+  if (estimate.suit) {
+    sizes.add(estimate.suit);
+  }
+
+  if (estimate.jacketChest > 0) {
+    sizes.add(String(estimate.jacketChest));
+    for (const label of lengthLabels) {
+      sizes.add(`${estimate.jacketChest}${label}`);
+      sizes.add(`${estimate.jacketChest} ${label}`);
+    }
   }
 
   for (const alphaSize of estimate.alpha.split("/")) {
@@ -318,8 +373,21 @@ function getRecommendedSizes(estimate: FitEstimate) {
 }
 
 export function buildFitProfile(input: FitProfileInput): FitProfile {
-  const heightInches = getHeightInches(input);
-  const normalizedWeight = clamp(input.weightLbs, 95, 340);
+  const hasCompleteMeasurements =
+    typeof input.heightFeet === "number" &&
+    typeof input.heightInches === "number" &&
+    typeof input.weightLbs === "number" &&
+    Boolean(input.build);
+  const resolvedBuild = input.build ?? "average";
+  const heightInches = hasCompleteMeasurements
+    ? getHeightInches({
+        heightFeet: input.heightFeet!,
+        heightInches: input.heightInches!,
+      })
+    : 0;
+  const normalizedWeight = hasCompleteMeasurements
+    ? clamp(input.weightLbs!, 95, 340)
+    : 0;
   const buildChestAdjustments: Record<FitBuild, number> = {
     slim: 0,
     average: 1,
@@ -341,50 +409,86 @@ export function buildFitProfile(input: FitProfileInput): FitProfile {
     broad: 0.5,
     full: 0.75,
   };
-  const chest = clamp(
-    roundToEven(
-      heightInches * 0.28 + normalizedWeight * 0.095 + buildChestAdjustments[input.build],
-    ),
-    34,
-    58,
-  );
-  const jacketLength = getJacketLength(heightInches);
-  const neck = clamp(
-    roundToHalf(14 + (chest - 34) * 0.25 + buildNeckAdjustments[input.build]),
-    14,
-    22,
-  );
-  const sleeve =
-    heightInches >= 75
+  const chest = hasCompleteMeasurements
+    ? clamp(
+        roundToEven(
+          heightInches * 0.28 +
+            normalizedWeight * 0.095 +
+            buildChestAdjustments[resolvedBuild],
+        ),
+        34,
+        58,
+      )
+    : 0;
+  const jacketLength = hasCompleteMeasurements
+    ? getJacketLength(heightInches)
+    : "R";
+  const neck = hasCompleteMeasurements
+    ? clamp(
+        roundToHalf(
+          14 + (chest - 34) * 0.25 + buildNeckAdjustments[resolvedBuild],
+        ),
+        14,
+        22,
+      )
+    : 0;
+  const sleeve = hasCompleteMeasurements
+    ? heightInches >= 75
       ? "35/36"
       : heightInches >= 72
         ? "34/35"
         : heightInches >= 69
           ? "33/34"
-          : "32/33";
-  const waistPrimary = clamp(
-    Math.round(normalizedWeight * 0.15 + heightInches * 0.035 + buildWaistAdjustments[input.build]),
-    28,
-    54,
-  );
-  const waist = `${waistPrimary}/${Math.min(56, waistPrimary + 1)}`;
+          : "32/33"
+    : "";
+  const waistPrimary = hasCompleteMeasurements
+    ? clamp(
+        Math.round(
+          normalizedWeight * 0.15 +
+            heightInches * 0.035 +
+            buildWaistAdjustments[resolvedBuild],
+        ),
+        28,
+        54,
+      )
+    : 0;
+  const waist = hasCompleteMeasurements
+    ? `${waistPrimary}/${Math.min(56, waistPrimary + 1)}`
+    : "";
   const knownSuitSize = cleanKnownSize(input.knownSuitSize);
   const knownTopSize = cleanKnownSize(input.knownTopSize);
   const knownDressShirtSize = cleanKnownSize(input.knownDressShirtSize);
   const knownWaistSize = cleanKnownSize(input.knownWaistSize);
   const shoeSize = cleanKnownSize(input.shoeSize);
+  const parsedKnownSuitSize = knownSuitSize ? parseSuitSize(knownSuitSize) : null;
+  const numericKnownSuitSize =
+    knownSuitSize && /^\d+(?:\.\d+)?$/.test(knownSuitSize)
+      ? knownSuitSize
+      : null;
+  const resolvedJacketChest = Number.parseFloat(
+    parsedKnownSuitSize?.chest ?? numericKnownSuitSize ?? String(chest),
+  );
+  const resolvedJacketLength = parsedKnownSuitSize?.length ?? jacketLength;
+  const resolvedSuitSize = parsedKnownSuitSize
+    ? parsedKnownSuitSize.label
+    : numericKnownSuitSize
+      ? `${numericKnownSuitSize}${resolvedJacketLength}`
+      : knownSuitSize || (chest > 0 ? `${chest}${jacketLength}` : "");
   const estimate: FitEstimate = {
-    suit: knownSuitSize || `${chest}${jacketLength}`,
-    jacketChest: chest,
-    jacketLength,
-    alpha: knownTopSize || getAlphaSize(chest),
+    suit: resolvedSuitSize,
+    jacketChest: resolvedJacketChest,
+    jacketLength: resolvedJacketLength,
+    alpha: knownTopSize || (chest > 0 ? getAlphaSize(chest) : ""),
     dressShirt:
-      knownDressShirtSize || `${neck % 1 === 0 ? neck.toFixed(0) : neck.toFixed(1)} x ${sleeve}`,
+      knownDressShirtSize ||
+      (neck > 0
+        ? `${neck % 1 === 0 ? neck.toFixed(0) : neck.toFixed(1)} x ${sleeve}`
+        : ""),
     waist: knownWaistSize || waist,
     shoe: shoeSize,
     notes: [
       "This is a starting point, not a final tailoring measurement.",
-      `Build selected: ${buildLabels[input.build]}.`,
+      ...(input.build ? [`Build selected: ${buildLabels[input.build]}.`] : []),
       ...(knownSuitSize || knownTopSize || knownDressShirtSize || knownWaistSize
         ? ["Known sizes override estimated sizes when provided."]
         : []),
@@ -448,4 +552,177 @@ export function getProductFitMatches(product: ShopifyProduct, fitSizes: string[]
     .filter((value) => fitTokens.has(normalizeSizeToken(value)));
 
   return Array.from(new Set(matches));
+}
+
+function getAlphaSizeAliases(value: string) {
+  const sizes = new Set<string>();
+
+  for (const alphaSize of value.split("/")) {
+    const trimmed = alphaSize.trim();
+
+    if (!trimmed) {
+      continue;
+    }
+
+    sizes.add(trimmed);
+
+    if (trimmed === "S") sizes.add("Small");
+    if (trimmed === "M") sizes.add("Medium");
+    if (trimmed === "L") sizes.add("Large");
+    if (trimmed === "XL") sizes.add("X-Large");
+    if (trimmed === "XXL") sizes.add("XX-Large");
+    if (trimmed.toLowerCase() === "small") sizes.add("S");
+    if (trimmed.toLowerCase() === "medium") sizes.add("M");
+    if (trimmed.toLowerCase() === "large") sizes.add("L");
+    if (trimmed.toLowerCase() === "x-large") sizes.add("XL");
+    if (trimmed.toLowerCase() === "xx-large") sizes.add("XXL");
+  }
+
+  return Array.from(sizes);
+}
+
+export function getProfileSizesForProduct(product: ShopifyProduct, profile: FitProfile) {
+  const kind = getProductSizeKind(product);
+
+  if (kind === "waist") {
+    return profile.estimate.waist
+      .split("/")
+      .map((size) => size.trim())
+      .filter(Boolean);
+  }
+
+  if (kind === "suit") {
+    const suitSize = parseSuitSize(profile.estimate.suit);
+    return suitSize
+      ? [suitSize.chest]
+      : profile.estimate.jacketChest > 0
+        ? [String(profile.estimate.jacketChest)]
+        : [];
+  }
+
+  if (kind === "shirt") {
+    return (profile.estimate.dressShirt.split(" x ")[0] ?? "")
+      .split("/")
+      .map((size) => size.trim())
+      .filter(Boolean);
+  }
+
+  if (kind === "shoe") {
+    return profile.estimate.shoe
+      ? [profile.estimate.shoe, `US ${profile.estimate.shoe}`]
+      : [];
+  }
+
+  return getAlphaSizeAliases(profile.estimate.alpha);
+}
+
+export function getProductFitMatchesForProfile(
+  product: ShopifyProduct,
+  profile: FitProfile,
+) {
+  if (getProductSizeKind(product) === "suit") {
+    const suitSize = parseSuitSize(profile.estimate.suit);
+
+    if (!suitSize || !findProductSuitVariant(product, suitSize.label)) {
+      return [];
+    }
+
+    return [suitSize.label];
+  }
+
+  return getProductFitMatches(product, getProfileSizesForProduct(product, profile));
+}
+
+function getNumericTarget(profile: FitProfile, kind: ProductSizeKind) {
+  if (kind === "waist") {
+    return Number.parseFloat(profile.estimate.waist.split("/")[0] ?? "");
+  }
+
+  if (kind === "suit") {
+    return profile.estimate.jacketChest;
+  }
+
+  if (kind === "shirt") {
+    return Number.parseFloat(profile.estimate.dressShirt);
+  }
+
+  if (kind === "shoe") {
+    return Number.parseFloat(profile.estimate.shoe ?? "");
+  }
+
+  return Number.NaN;
+}
+
+export function getProductFitRecommendation(product: ShopifyProduct, profile: FitProfile) {
+  const sizeKind = getProductSizeKind(product);
+
+  if (sizeKind === "suit") {
+    const suitSize = parseSuitSize(profile.estimate.suit);
+
+    if (!suitSize) {
+      return null;
+    }
+
+    const exactVariant = findProductSuitVariant(product, suitSize.label);
+
+    return {
+      label: suitSize.label,
+      variantId: exactVariant?.id ?? null,
+    };
+  }
+
+  const exactMatches = getProductFitMatches(
+    product,
+    getProfileSizesForProduct(product, profile),
+  );
+  const exactSize = exactMatches[0];
+
+  if (exactSize) {
+    const exactVariant = product.variants.find(
+      (variant) =>
+        variant.availableForSale && getVariantSizeValue(variant) === exactSize,
+    );
+
+    if (exactVariant) {
+      return {
+        label: exactSize,
+        variantId: exactVariant.id,
+      };
+    }
+  }
+
+  const target = getNumericTarget(profile, sizeKind);
+
+  if (!Number.isFinite(target)) {
+    return null;
+  }
+
+  const numericSizes = Array.from(
+    new Map(
+      product.variants
+        .filter((variant) => variant.availableForSale)
+        .map(getVariantSizeValue)
+        .filter((value): value is string => Boolean(value))
+        .map((value) => [value, Number.parseFloat(value)] as const)
+        .filter(([, numericValue]) => Number.isFinite(numericValue)),
+    ).entries(),
+  ).map(([value, numericValue]) => ({ value, number: numericValue }));
+
+  const closestSize = numericSizes.sort(
+    (left, right) =>
+      Math.abs(left.number - target) - Math.abs(right.number - target),
+  )[0]?.value;
+  const closestVariant = closestSize
+    ? product.variants.find(
+        (variant) =>
+          variant.availableForSale && getVariantSizeValue(variant) === closestSize,
+      )
+    : null;
+
+  return closestSize && closestVariant
+    ? {
+        label: closestSize,
+        variantId: closestVariant.id,
+      }
+    : null;
 }

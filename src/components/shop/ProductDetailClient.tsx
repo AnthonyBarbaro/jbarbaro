@@ -30,13 +30,10 @@ import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { ProductSmartFitDrawer } from "@/components/shop/ProductSmartFitDrawer";
 import { brandSlug } from "@/lib/shopify/brand-slug";
 import {
-  findProductSuitVariant,
   FIT_PROFILE_STORAGE_KEY,
-  getProductFitMatches,
-  getVariantSizeValue,
+  getProductFitRecommendation,
   isSuitSizingProduct,
   normalizeJacketLength,
-  parseSuitSize,
   parseFitProfile,
 } from "@/lib/fit-profile";
 import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
@@ -538,31 +535,25 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
   useEffect(() => {
     const profile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
-    const fitMatches = profile ? getProductFitMatches(product, profile.recommendedSizes) : [];
-    const suitSize =
-      profile && isSuitSizingProduct(product) ? parseSuitSize(profile.estimate.suit) : null;
-
-    const matchingVariant = suitSize
-      ? findProductSuitVariant(product, suitSize.label)
-      : fitMatches.length > 0
-        ? (product.variants.find((variant) => {
-            const variantSize = getVariantSizeValue(variant);
-
-            return Boolean(
-              variant.availableForSale && variantSize && fitMatches.includes(variantSize),
-            );
-          }) ?? null)
-        : null;
+    const recommendation = profile
+      ? getProductFitRecommendation(product, profile)
+      : null;
+    const matchingVariant = recommendation?.variantId
+      ? (product.variants.find(
+          (variant) =>
+            variant.availableForSale && variant.id === recommendation.variantId,
+        ) ?? null)
+      : null;
 
     const frameId = window.requestAnimationFrame(() => {
       if (!matchingVariant) {
-        setSmartFitMatch(suitSize?.label ?? null);
-        setSmartFitUnavailable(Boolean(suitSize));
+        setSmartFitMatch(recommendation?.label ?? null);
+        setSmartFitUnavailable(Boolean(recommendation));
         return;
       }
 
       setSelectedOptions(buildInitialOptionState(matchingVariant));
-      setSmartFitMatch(suitSize?.label ?? getVariantSizeValue(matchingVariant));
+      setSmartFitMatch(recommendation?.label ?? null);
       setSmartFitUnavailable(false);
     });
 
@@ -826,8 +817,12 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   </p>
                   <p className="mt-1">
                     {smartFitUnavailable
-                      ? "That exact size and jacket length is not currently available online. Choose another option or ask a fit expert."
-                      : "We selected the exact available size and length. You can still change it before adding it to your bag."}
+                      ? isSuitSizingProduct(product)
+                        ? "That exact size and jacket length is not currently available online. Choose another option or ask a fit expert."
+                        : "That recommended size is not currently available online. Choose another option or ask a fit expert."
+                      : isSuitSizingProduct(product)
+                        ? "We selected the exact available size and length. You can still change it before adding it to your bag."
+                        : "We selected the recommended size for this item. You can still change it before adding it to your bag."}
                   </p>
                 </div>
               ) : null}

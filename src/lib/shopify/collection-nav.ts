@@ -12,40 +12,59 @@ export type CollectionNavItem = {
 
 type CollectionNavSpec = {
   label: string;
+  href: string;
   matches?: string[];
   description: string;
 };
 
 const collectionNavSpecs: CollectionNavSpec[] = [
   {
-    label: "Accessories",
-    matches: ["accessories"],
-    description: "Finish the look with belts, ties, braces, pocket squares, and the smaller details that pull everything together.",
+    label: "Suits",
+    href: "/categories/suits",
+    matches: ["suits"],
+    description: "Shop business, wedding, and event-ready suits with clear size and length options.",
   },
   {
-    label: "Sports Jacket",
-    matches: ["sports jacket", "sport coat", "sports coat"],
+    label: "Shop All",
+    href: "/shop",
+    matches: ["shop all", "all"],
+    description: "Browse every product currently available online.",
+  },
+  {
+    label: "Sport Coats",
+    href: "/categories/sport-coats",
+    matches: ["sports jacket", "sport jacket", "sport coat", "sports coat"],
     description: "Explore tailored jackets built for business casual, dinner plans, and polished everyday dressing.",
   },
   {
     label: "Shirts",
+    href: "/categories/shirts",
     matches: ["shirts"],
     description: "Dress shirts and casual shirting with cleaner fits, better fabrics, and easy options for daily rotation.",
   },
   {
-    label: "Tuxedo",
-    matches: ["tuxedo", "tuxedos"],
-    description: "Formalwear pieces ready for weddings, black-tie events, and special occasions that call for a sharper finish.",
+    label: "Pants",
+    href: "/categories/pants",
+    matches: ["dress pants", "pants", "trousers"],
+    description: "Shop casual and tailored pants organized around the waist size you already know.",
   },
   {
     label: "Shoes",
+    href: "/categories/shoes",
     matches: ["shoes", "footwear"],
     description: "Leather shoes and refined footwear designed to complete suiting, tailoring, and elevated casual looks.",
   },
   {
-    label: "Suits",
-    matches: ["suits"],
-    description: "Shop business, wedding, and event-ready suits with a stronger fit foundation and room for tailoring support.",
+    label: "Accessories",
+    href: "/categories/accessories",
+    matches: ["accessories"],
+    description: "Finish the look with belts, ties, braces, pocket squares, and smaller details.",
+  },
+  {
+    label: "Formalwear",
+    href: "/categories/formalwear",
+    matches: ["tuxedo", "tuxedos", "formalwear"],
+    description: "Formal pieces for weddings, black-tie events, and milestone occasions.",
   },
 ];
 
@@ -71,7 +90,7 @@ function collectionMatches(collection: ShopifyCollectionPreview, spec: Collectio
 export async function resolveCollectionNavItems(limit = 40): Promise<CollectionNavItem[]> {
   const staticItems = collectionNavSpecs.map((item) => ({
     label: item.label,
-    href: `/categories/${item.matches?.[0]?.toLowerCase().replace(/[^a-z0-9]+/g, "-") ?? item.label.toLowerCase()}`,
+    href: item.href,
     description: item.description,
   }));
 
@@ -99,7 +118,7 @@ export async function resolveCollectionNavItems(limit = 40): Promise<CollectionN
 
       return {
         label: item.label,
-        href: `/categories/${matchedCollection.handle}`,
+        href: item.href,
         description: item.description,
       };
     });

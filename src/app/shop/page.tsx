@@ -23,7 +23,7 @@ export default async function ShopPage() {
   let storefrontAvailable = true;
 
   try {
-    products = await getShopProducts(60);
+    products = await getShopProducts(250);
   } catch (error) {
     storefrontAvailable = false;
     console.error("Unable to load Shopify storefront for /shop.", error);

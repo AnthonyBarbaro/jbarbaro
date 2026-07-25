@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CalendarDays, ShoppingBag } from "lucide-react";
 
@@ -15,6 +15,18 @@ import { breadcrumbJsonLd } from "@/lib/structured-data";
 
 export const revalidate = 300;
 
+const categoryRedirects: Record<string, string> = {
+  all: "/shop",
+  "casual-shirts": "/categories/shirts",
+  "dress-pants": "/categories/pants",
+  "dress-shirts": "/categories/shirts",
+  footwear: "/categories/shoes",
+  "sport-jacket": "/categories/sport-coats",
+  "suits-sports-coats": "/categories/suits",
+  trousers: "/categories/pants",
+  tuxedo: "/categories/formalwear",
+};
+
 export async function generateStaticParams() {
   const categories = await resolveMenCategories(40, 1);
   return categories.map((category) => ({ categorySlug: category.slug }));
@@ -22,7 +34,11 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ categorySlug: string }> }) {
   const { categorySlug } = await params;
-  const category = await resolveMenCategory(categorySlug, 1);
+  const redirectPath = categoryRedirects[categorySlug];
+  const canonicalSlug = redirectPath?.startsWith("/categories/")
+    ? redirectPath.replace("/categories/", "")
+    : categorySlug;
+  const category = await resolveMenCategory(canonicalSlug, 1);
 
   if (!category) {
     return {};
@@ -37,7 +53,13 @@ export async function generateMetadata({ params }: { params: Promise<{ categoryS
 
 export default async function MenCategoryPage({ params }: { params: Promise<{ categorySlug: string }> }) {
   const { categorySlug } = await params;
-  const category = await resolveMenCategory(categorySlug, 48);
+  const redirectPath = categoryRedirects[categorySlug];
+
+  if (redirectPath) {
+    redirect(redirectPath);
+  }
+
+  const category = await resolveMenCategory(categorySlug, 250);
 
   if (!category) {
     notFound();

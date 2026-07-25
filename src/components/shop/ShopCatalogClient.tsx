@@ -29,7 +29,7 @@ type ShopCatalogClientProps = {
   bestSellers?: ShopifyProduct[];
 };
 
-type FacetKey = "availability" | "price" | "brand" | "size" | "color";
+type FacetKey = "availability" | "price" | "brand" | "size" | "length" | "color";
 type FacetPill = { key: FacetKey; label: string; activeCount: number };
 
 type SortOption = "featured" | "newest" | "price-low" | "price-high" | "title-asc";
@@ -120,16 +120,27 @@ function matchesAvailability(product: ShopifyProduct, availability: Availability
   return true;
 }
 
-function matchesVariantOption(product: ShopifyProduct, optionName: string, selectedValues: string[], requireAvailable = false) {
-  if (selectedValues.length === 0) {
+function matchesVariantSelections(
+  product: ShopifyProduct,
+  selections: Array<{ optionName: string; selectedValues: string[] }>,
+  requireAvailable = false,
+) {
+  const activeSelections = selections.filter((selection) => selection.selectedValues.length > 0);
+
+  if (activeSelections.length === 0) {
     return true;
   }
 
-  return product.variants.some((variant) =>
-    (!requireAvailable || variant.availableForSale) &&
-    variant.selectedOptions.some(
-      (option) => option.name.toLowerCase().includes(optionName) && selectedValues.includes(option.value),
-    ),
+  return product.variants.some(
+    (variant) =>
+      (!requireAvailable || variant.availableForSale) &&
+      activeSelections.every((selection) =>
+        variant.selectedOptions.some(
+          (option) =>
+            option.name.toLowerCase().includes(selection.optionName) &&
+            selection.selectedValues.includes(option.value),
+        ),
+      ),
   );
 }
 
@@ -189,6 +200,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedLengths, setSelectedLengths] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [fitProfile, setFitProfile] = useState<FitProfile | null>(null);
   const [fitDraft, setFitDraft] = useState<FitDraftInput>(DEFAULT_FIT_INPUT);
@@ -207,11 +219,13 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
   const deferredSelectedTypes = useDeferredValue(selectedTypes);
   const deferredSelectedVendors = useDeferredValue(selectedVendors);
   const deferredSelectedSizes = useDeferredValue(selectedSizes);
+  const deferredSelectedLengths = useDeferredValue(selectedLengths);
   const deferredSelectedColors = useDeferredValue(selectedColors);
 
   const productTypes = useMemo(() => Array.from(new Set(products.map((product) => product.productType).filter(Boolean))).sort(), [products]);
   const vendors = useMemo(() => Array.from(new Set(products.map((product) => product.vendor).filter(Boolean))).sort(), [products]);
   const sizes = useMemo(() => getOptionValues(products, "size"), [products]);
+  const lengths = useMemo(() => getOptionValues(products, "length"), [products]);
   const colors = useMemo(() => getOptionValues(products, "color"), [products]);
   const smartFitSizes = useMemo(() => getMatchingProfileSizes(sizes, fitProfile), [fitProfile, sizes]);
   const searchableQuery = deferredQuery.trim().toLowerCase();
@@ -283,6 +297,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       if (matchingSizes.length > 0) {
         setSmartFitEnabled(true);
         setSelectedSizes([]);
+        setSelectedLengths([]);
       }
     });
 
@@ -298,6 +313,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     types: deferredSelectedTypes,
     vendors: deferredSelectedVendors,
     sizes: deferredSelectedSizes,
+    lengths: deferredSelectedLengths,
     colors: deferredSelectedColors,
     smartFit: smartFitEnabled,
   });
@@ -306,23 +322,29 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     const matchesQuery = searchableQuery.length === 0 || formatSearchText(product).includes(searchableQuery);
     const matchesType = deferredSelectedTypes.length === 0 || deferredSelectedTypes.includes(product.productType);
     const matchesVendor = deferredSelectedVendors.length === 0 || deferredSelectedVendors.includes(product.vendor);
-    const matchesSize =
+    const matchesFit =
       smartFitEnabled && fitProfile
         ? getProductFitMatchesForProfile(product, fitProfile).length > 0
-        : matchesVariantOption(
-            product,
-            "size",
-            deferredSelectedSizes,
-            deferredAvailability === "in-stock",
-          );
-    const matchesColor = matchesVariantOption(product, "color", deferredSelectedColors);
+        : true;
+    const matchesOptions = matchesVariantSelections(
+      product,
+      [
+        {
+          optionName: "size",
+          selectedValues: smartFitEnabled ? [] : deferredSelectedSizes,
+        },
+        { optionName: "length", selectedValues: deferredSelectedLengths },
+        { optionName: "color", selectedValues: deferredSelectedColors },
+      ],
+      deferredAvailability === "in-stock",
+    );
 
     return (
       matchesQuery &&
       matchesType &&
       matchesVendor &&
-      matchesSize &&
-      matchesColor &&
+      matchesFit &&
+      matchesOptions &&
       matchesAvailability(product, deferredAvailability) &&
       matchesPriceFilter(product, deferredPriceFilter)
     );
@@ -366,6 +388,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
 
     startTransition(() => {
       setSelectedSizes([]);
+      setSelectedLengths([]);
       setSmartFitEnabled(matchingSizes.length > 0);
     });
   }
@@ -470,6 +493,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       setSelectedTypes([]);
       setSelectedVendors([]);
       setSelectedSizes([]);
+      setSelectedLengths([]);
       setSelectedColors([]);
       setSmartFitEnabled(false);
     });
@@ -482,6 +506,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     selectedTypes.length > 0 ||
     selectedVendors.length > 0 ||
     selectedSizes.length > 0 ||
+    selectedLengths.length > 0 ||
     selectedColors.length > 0 ||
     smartFitEnabled ||
     sort !== "featured";
@@ -494,11 +519,13 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     !arraysEqual(selectedTypes, deferredSelectedTypes) ||
     !arraysEqual(selectedVendors, deferredSelectedVendors) ||
     !arraysEqual(selectedSizes, deferredSelectedSizes) ||
+    !arraysEqual(selectedLengths, deferredSelectedLengths) ||
     !arraysEqual(selectedColors, deferredSelectedColors);
   const activeFilterCount =
     selectedTypes.length +
     selectedVendors.length +
     selectedSizes.length +
+    selectedLengths.length +
     selectedColors.length +
     (smartFitEnabled ? 1 : 0) +
     (availability !== DEFAULT_AVAILABILITY ? 1 : 0) +
@@ -792,6 +819,28 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               </div>
             ) : null}
 
+            {lengths.length > 0 ? (
+              <div>
+                <p className="text-sm font-medium text-ink/90">Length</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {lengths.map((length) => (
+                    <button
+                      key={length}
+                      type="button"
+                      onClick={() => toggleValue(selectedLengths, length, setSelectedLengths)}
+                      className={`min-h-10 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
+                        selectedLengths.includes(length)
+                          ? "border-deep-teal bg-deep-teal text-white shadow-[0_18px_34px_-24px_rgba(15,91,91,0.75)]"
+                          : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-gold hover:text-gold"
+                      }`}
+                    >
+                      {length}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
             {colors.length > 0 ? (
               <div>
                 <p className="text-sm font-medium text-ink/90">Color</p>
@@ -868,6 +917,11 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               </Badge>
             ))
           : null}
+        {selectedLengths.map((length) => (
+          <Badge key={length} variant="neutral">
+            Length {length}
+          </Badge>
+        ))}
         {selectedColors.map((color) => (
           <Badge key={color} variant="neutral">
             {color}
@@ -1738,11 +1792,13 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       label: "Size",
       activeCount: smartFitEnabled ? 0 : selectedSizes.length,
     },
+    { key: "length", label: "Length", activeCount: selectedLengths.length },
     { key: "color", label: "Color", activeCount: selectedColors.length },
   ];
   const facetPills = facetPillOptions.filter((pill) => {
     if (pill.key === "brand") return vendors.length > 0;
     if (pill.key === "size") return sizes.length > 0;
+    if (pill.key === "length") return lengths.length > 0;
     if (pill.key === "color") return colors.length > 0;
     return true;
   });
@@ -1752,6 +1808,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       if (key === "availability") setAvailability(DEFAULT_AVAILABILITY);
       if (key === "price") setPriceFilter("all");
       if (key === "brand") setSelectedVendors([]);
+      if (key === "length") setSelectedLengths([]);
       if (key === "color") setSelectedColors([]);
 
       if (key === "size") {
@@ -1843,8 +1900,13 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       );
     }
 
-    const values = key === "size" ? sizes : colors;
-    const selected = key === "size" ? selectedSizes : selectedColors;
+    const values = key === "size" ? sizes : key === "length" ? lengths : colors;
+    const selected =
+      key === "size"
+        ? selectedSizes
+        : key === "length"
+          ? selectedLengths
+          : selectedColors;
 
     return (
       <div className="flex max-h-64 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
@@ -1852,7 +1914,15 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
           <button
             key={value}
             type="button"
-            onClick={() => (key === "size" ? toggleSize(value) : toggleValue(selectedColors, value, setSelectedColors))}
+            onClick={() => {
+              if (key === "size") {
+                toggleSize(value);
+              } else if (key === "length") {
+                toggleValue(selectedLengths, value, setSelectedLengths);
+              } else {
+                toggleValue(selectedColors, value, setSelectedColors);
+              }
+            }}
             className={cn(
               "min-h-9 rounded-full border px-3.5 text-xs font-semibold tracking-[0.08em] uppercase transition-colors",
               selected.includes(value)

@@ -16,17 +16,15 @@ export const revalidate = 300;
 type CollectionCategory = Awaited<ReturnType<typeof resolveMenCategories>>[number];
 
 const categoryPriority = [
-  "suits sports coats",
-  "formalwear",
-  "dress shirts",
-  "casual shirts",
-  "footwear",
-  "trousers",
-  "sweaters",
-  "outerwear",
+  "suits",
+  "sport coats",
+  "shirts",
+  "pants",
+  "shoes",
   "denim",
+  "outerwear",
+  "formalwear",
   "accessories",
-  "neckwear",
 ] as const;
 
 export const metadata = buildMetadata({
@@ -69,7 +67,14 @@ function getCategoryImage(category: CollectionCategory) {
 }
 
 export default async function CategoriesHubPage() {
-  const categories = orderCategories(await resolveMenCategories(32, 1));
+  const categories = orderCategories(
+    (await resolveMenCategories(32, 1)).filter((category) => {
+      const name = normalizeCategoryName(category.name);
+      const slug = normalizeCategoryName(category.slug);
+
+      return name !== "shop all" && slug !== "all";
+    }),
+  );
   const crumbs = [
     { name: "Home", href: "/" },
     { name: "Categories", href: "/categories" },

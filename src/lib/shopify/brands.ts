@@ -12,7 +12,7 @@ export type ShopBrand = {
 };
 
 export async function getShopBrands(): Promise<ShopBrand[]> {
-  const products = await getShopProducts(100);
+  const products = await getShopProducts(250);
   const brandsByName = new Map<string, ShopBrand>();
 
   for (const product of products) {

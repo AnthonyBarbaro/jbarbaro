@@ -67,7 +67,7 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
     brand = await getShopBrandBySlug(brandSlug);
 
     if (brand) {
-      products = await getProductsByVendor(brand.name, 60);
+      products = await getProductsByVendor(brand.name, 250);
     }
   } catch (error) {
     storefrontAvailable = false;

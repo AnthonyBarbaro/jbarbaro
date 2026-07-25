@@ -27,7 +27,7 @@ export default async function HtmlSitemapPage() {
   let shopProducts: ShopifyProductPreview[] = [];
 
   try {
-    shopProducts = await getShopProductPreviews(100);
+    shopProducts = await getShopProductPreviews(250);
   } catch (error) {
     console.error("Unable to load Shopify product previews for the HTML sitemap.", error);
   }

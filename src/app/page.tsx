@@ -34,18 +34,16 @@ export const revalidate = 300;
 type ResolvedCategory = Awaited<ReturnType<typeof resolveMenCategories>>[number];
 
 const categoryPriority = [
-  ["suits", "suits sports coats"],
+  ["suits"],
   ["shop all", "all"],
-  ["sports jacket", "sport jacket"],
-  ["dress pants", "trousers"],
+  ["sport coats", "sports jacket", "sport jacket"],
   ["shirts", "dress shirts", "casual shirts"],
+  ["pants", "dress pants", "trousers"],
   ["shoes", "footwear"],
   ["denim"],
   ["accessories"],
-  ["tuxedo", "formalwear"],
-  ["sweaters"],
   ["outerwear"],
-  ["neckwear"],
+  ["tuxedo", "formalwear"],
 ] as const;
 const categoryFallbackImages: Record<string, string> = {
   accessories:
@@ -55,15 +53,34 @@ const categoryFallbackImages: Record<string, string> = {
   denim: "/images/locations/partridge-creek/showroom-06.jpg",
   "dress-shirts":
     "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
+  formalwear: "/images/campaign/formalwear-nav-v2.webp",
   footwear:
     "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
-  formalwear: "/images/campaign/formalwear-nav-v2.webp",
+  pants: "/images/locations/partridge-creek/showroom-06.jpg",
   neckwear:
     "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
   outerwear: "/images/locations/partridge-creek/showroom-05.jpg",
+  shirts:
+    "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
+  shoes:
+    "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
+  "sport-coats": "/images/hero-suits-299.jpg",
+  suits: "/images/hero-suits-299.jpg",
   "suits-sports-coats": "/images/hero-suits-299.jpg",
   sweaters: "/images/locations/partridge-creek/showroom-05.jpg",
   trousers: "/images/locations/partridge-creek/showroom-06.jpg",
+};
+const categoryPresentation: Record<string, { href: string; name: string }> = {
+  all: { href: "/shop", name: "Shop All" },
+  accessories: { href: "/categories/accessories", name: "Accessories" },
+  denim: { href: "/categories/denim", name: "Denim" },
+  formalwear: { href: "/categories/formalwear", name: "Formalwear" },
+  outerwear: { href: "/categories/outerwear", name: "Outerwear" },
+  pants: { href: "/categories/pants", name: "Pants" },
+  shirts: { href: "/categories/shirts", name: "Shirts" },
+  shoes: { href: "/categories/shoes", name: "Shoes" },
+  "sport-coats": { href: "/categories/sport-coats", name: "Sport Coats" },
+  suits: { href: "/categories/suits", name: "Suits" },
 };
 const DEFAULT_CATEGORY_IMAGE =
   "/images/locations/partridge-creek/showroom-02.jpg";
@@ -120,12 +137,16 @@ function getStorefrontCategories(categories: ResolvedCategory[]) {
 
       return leftIndex - rightIndex;
     })
-    .map((category) => ({
-      href: category.href,
-      name: category.name,
-      image: getCategoryImage(category),
-      slug: category.slug,
-    }));
+    .map((category) => {
+      const presentation = categoryPresentation[category.slug];
+
+      return {
+        href: presentation?.href ?? category.href,
+        name: presentation?.name ?? category.name,
+        image: getCategoryImage(category),
+        slug: category.slug,
+      };
+    });
 }
 
 function availableProducts(products: ShopifyProduct[]) {

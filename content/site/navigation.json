@@ -1,52 +1,62 @@
 {
   "primaryNavigation": [
     {
-      "label": "Shop",
+      "label": "Shop All",
       "href": "/shop"
     },
     {
-      "label": "Designers",
-      "href": "/designers",
-      "children": [
-        {
-          "label": "Featured Designers",
-          "href": "/designers/featured-designers"
-        },
-        {
-          "label": "All Designer Brands",
-          "href": "/designers/all-designer-brands"
-        }
-      ]
+      "label": "Suits",
+      "href": "/categories/suits"
+    },
+    {
+      "label": "Sport Coats",
+      "href": "/categories/sport-coats"
+    },
+    {
+      "label": "Shirts",
+      "href": "/categories/shirts"
+    },
+    {
+      "label": "Pants",
+      "href": "/categories/pants"
+    },
+    {
+      "label": "Shoes",
+      "href": "/categories/shoes"
+    },
+    {
+      "label": "Accessories",
+      "href": "/categories/accessories"
     },
     {
       "label": "Formalwear",
-      "href": "/suit-tuxedo-rentals",
+      "href": "/categories/formalwear"
+    },
+    {
+      "label": "Brands",
+      "href": "/shop/brands"
+    },
+    {
+      "label": "Visit",
+      "href": "/locations",
       "children": [
+        {
+          "label": "Store Locations",
+          "href": "/locations"
+        },
+        {
+          "label": "Book an Appointment",
+          "href": "/schedule-appointment"
+        },
+        {
+          "label": "Tailored Clothing",
+          "href": "/tailored-clothing"
+        },
         {
           "label": "Tuxedo Rentals",
           "href": "/suit-tuxedo-rentals"
-        },
-        {
-          "label": "Wedding Registration",
-          "href": "/register-your-wedding"
-        },
-        {
-          "label": "Formalwear Appointment",
-          "href": "/schedule-appointment"
         }
       ]
-    },
-    {
-      "label": "Appointments",
-      "href": "/schedule-appointment"
-    },
-    {
-      "label": "Locations",
-      "href": "/locations"
-    },
-    {
-      "label": "Cart",
-      "href": "/cart"
     }
   ],
   "headerTopLinks": [

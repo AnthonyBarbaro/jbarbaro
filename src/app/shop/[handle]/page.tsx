@@ -41,7 +41,7 @@ async function loadShopProduct(handle: string) {
 
 export async function generateStaticParams() {
   try {
-    const products = await getShopProductPreviews(100);
+    const products = await getShopProductPreviews(250);
     return products.map((product) => ({ handle: product.handle }));
   } catch (error) {
     console.error("Unable to build static params for Shopify product pages.", error);

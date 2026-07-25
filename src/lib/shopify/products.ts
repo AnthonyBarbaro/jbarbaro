@@ -209,7 +209,7 @@ const productFields = `
       currencyCode
     }
   }
-  variants(first: 25) {
+  variants(first: 100) {
     nodes {
       id
       title

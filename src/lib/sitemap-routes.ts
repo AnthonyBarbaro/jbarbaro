@@ -44,7 +44,7 @@ export async function getSitemapRoutes() {
   let shopProductRoutes: string[] = [];
 
   try {
-    shopProductRoutes = (await getShopProductPreviews(100)).map(
+    shopProductRoutes = (await getShopProductPreviews(250)).map(
       (product) => `/shop/${product.handle}`,
     );
   } catch (error) {

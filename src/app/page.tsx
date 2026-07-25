@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, MapPin, Phone } from "lucide-react";
+import { MapPin, Phone, Ruler, ShieldCheck, Store, Tags } from "lucide-react";
 
+import { CollectionRail } from "@/components/home/CollectionRail";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { LocationOpenBadge } from "@/components/locations/LocationOpenBadge";
 import { ShowroomGallery } from "@/components/locations/ShowroomGallery";
-import { NewsletterSignup } from "@/components/marketing/NewsletterSignup";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
@@ -33,44 +33,40 @@ export const revalidate = 300;
 
 type ResolvedCategory = Awaited<ReturnType<typeof resolveMenCategories>>[number];
 
-const storefrontCategories = [
-  {
-    label: "Suits",
-    href: "/categories/suits-sports-coats",
-    matches: ["suits", "suits sports coats", "suits-sports-coats"],
-    image: "/images/remote/www.jasonbarbaro.com/assets/media/2020/05/t002.jpg",
-    description: "Shop tailored suits, sport coats, and polished separates.",
-  },
-  {
-    label: "Shirts",
-    href: "/categories/dress-shirts",
-    matches: ["shirts", "dress shirts", "casual shirts", "dress-shirts"],
-    image: "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
-    description: "Find dress shirts, sport shirts, and refined everyday layers.",
-  },
-  {
-    label: "Shoes",
-    href: "/categories/footwear",
-    matches: ["shoes", "footwear"],
-    image: "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
-    description: "Finish the look with premium shoes and casual footwear.",
-  },
-  {
-    label: "Accessories",
-    href: "/categories/accessories",
-    matches: ["accessories", "neckwear"],
-    image:
-      "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
-    description: "Shop ties, pocket squares, belts, socks, and finishing details.",
-  },
-  {
-    label: "Formalwear",
-    href: "/categories/formalwear",
-    matches: ["formalwear", "tuxedo", "tuxedos"],
-    image: "/images/campaign/formalwear-nav-v2.webp",
-    description: "Explore tuxedos, event dressing, and formal accessories.",
-  },
+const categoryPriority = [
+  ["suits", "suits sports coats"],
+  ["shop all", "all"],
+  ["sports jacket", "sport jacket"],
+  ["dress pants", "trousers"],
+  ["shirts", "dress shirts", "casual shirts"],
+  ["shoes", "footwear"],
+  ["denim"],
+  ["accessories"],
+  ["tuxedo", "formalwear"],
+  ["sweaters"],
+  ["outerwear"],
+  ["neckwear"],
 ] as const;
+const categoryFallbackImages: Record<string, string> = {
+  accessories:
+    "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
+  "casual-shirts":
+    "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
+  denim: "/images/locations/partridge-creek/showroom-06.jpg",
+  "dress-shirts":
+    "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
+  footwear:
+    "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
+  formalwear: "/images/campaign/formalwear-nav-v2.webp",
+  neckwear:
+    "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
+  outerwear: "/images/locations/partridge-creek/showroom-05.jpg",
+  "suits-sports-coats": "/images/hero-suits-299.jpg",
+  sweaters: "/images/locations/partridge-creek/showroom-05.jpg",
+  trousers: "/images/locations/partridge-creek/showroom-06.jpg",
+};
+const DEFAULT_CATEGORY_IMAGE =
+  "/images/locations/partridge-creek/showroom-02.jpg";
 const inStoreBrandSlugs = [
   "7-downie-st",
   "7-for-all-mankind",
@@ -92,35 +88,44 @@ function normalizeCategory(value: string) {
     .trim();
 }
 
-function getCategoryImage(category: ResolvedCategory | null, fallbackImage: string) {
+function getCategoryImage(category: ResolvedCategory) {
   return (
     category?.shopifyCollection?.image?.url ??
     category?.shopifyCollection?.products[0]?.featuredImage?.url ??
-    fallbackImage
+    categoryFallbackImages[category.slug] ??
+    DEFAULT_CATEGORY_IMAGE
   );
 }
 
 function getStorefrontCategories(categories: ResolvedCategory[]) {
-  return storefrontCategories.map((target) => {
-    const matchedCategory =
-      categories.find((category) => {
-        const normalizedName = normalizeCategory(category.name);
-        const normalizedSlug = normalizeCategory(category.slug);
+  return [...categories]
+    .sort((left, right) => {
+      const leftName = normalizeCategory(left.name);
+      const leftSlug = normalizeCategory(left.slug);
+      const rightName = normalizeCategory(right.name);
+      const rightSlug = normalizeCategory(right.slug);
+      const leftIndex = categoryPriority.findIndex(
+        (aliases) => aliases.some((alias) => leftName === alias || leftSlug === alias),
+      );
+      const rightIndex = categoryPriority.findIndex(
+        (aliases) => aliases.some((alias) => rightName === alias || rightSlug === alias),
+      );
 
-        return target.matches.some((match) => {
-          const normalizedMatch = normalizeCategory(match);
-          return normalizedName === normalizedMatch || normalizedSlug === normalizedMatch;
-        });
-      }) ?? null;
+      if (leftIndex === -1 && rightIndex === -1) {
+        return left.name.localeCompare(right.name);
+      }
 
-    return {
-      ...target,
-      href: matchedCategory?.href || target.href,
-      name: target.label,
-      image: getCategoryImage(matchedCategory, target.image),
-      description: target.description,
-    };
-  });
+      if (leftIndex === -1) return 1;
+      if (rightIndex === -1) return -1;
+
+      return leftIndex - rightIndex;
+    })
+    .map((category) => ({
+      href: category.href,
+      name: category.name,
+      image: getCategoryImage(category),
+      slug: category.slug,
+    }));
 }
 
 function availableProducts(products: ShopifyProduct[]) {
@@ -132,25 +137,25 @@ function uniqueProducts(products: ShopifyProduct[]) {
 }
 
 export default async function HomePage() {
-  const resolvedCategories = await resolveMenCategories(24, 2);
+  const resolvedCategories = await resolveMenCategories(50, 1);
   const categories = getStorefrontCategories(resolvedCategories);
   let bestSellers: ShopifyProduct[] = [];
   let newArrivals: ShopifyProduct[] = [];
 
   try {
-    bestSellers = availableProducts(await getBestSellingProducts(4)).slice(0, 4);
+    bestSellers = (await getBestSellingProducts(16)).slice(0, 16);
   } catch (error) {
     console.error("Unable to load homepage best sellers.", error);
   }
 
   try {
-    newArrivals = availableProducts(await getShopProducts(8)).slice(0, 4);
+    newArrivals = availableProducts(await getShopProducts(24));
   } catch (error) {
     console.error("Unable to load homepage new arrivals.", error);
   }
 
   if (bestSellers.length === 0 && newArrivals.length > 0) {
-    bestSellers = newArrivals.slice(0, 4);
+    bestSellers = newArrivals.slice(0, 16);
   }
 
   newArrivals = uniqueProducts(
@@ -169,45 +174,16 @@ export default async function HomePage() {
 
       <WaveSection topWave="A" background="ivory">
         <Container>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
             <div>
               <Badge variant="teal">Shop by Category</Badge>
               <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
                 Start with what you need.
               </h2>
             </div>
-            <ButtonLink href="/shop" variant="secondary" className="w-full sm:w-auto">
-              Shop All
-            </ButtonLink>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            {categories.map((category) => (
-              <Link key={category.label} href={category.href} className="group block h-full">
-                <Card className="h-full overflow-hidden bg-white transition-all duration-300 hover:-translate-y-1 hover:border-gold/40">
-                  <div className="relative aspect-[4/5] bg-stone">
-                    <Image
-                      src={category.image}
-                      alt={`${category.name} category`}
-                      fill
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 20vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-ink/72 via-ink/18 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 p-4">
-                      <h3 className="font-heading text-3xl text-white">{category.name}</h3>
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-white/78">
-                        {category.description}
-                      </p>
-                    </div>
-                    <span className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/30 bg-white/12 text-white backdrop-blur transition-transform group-hover:translate-x-1">
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
-                </Card>
-              </Link>
-            ))}
-          </div>
+          <CollectionRail collections={categories} />
         </Container>
       </WaveSection>
 
@@ -224,9 +200,13 @@ export default async function HomePage() {
           </div>
 
           {bestSellers.length > 0 ? (
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
               {bestSellers.map((product) => (
-                <ShopProductCard key={product.id} product={product} />
+                <ShopProductCard
+                  key={product.id}
+                  product={product}
+                  imageSizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                />
               ))}
             </div>
           ) : (
@@ -275,56 +255,44 @@ export default async function HomePage() {
         </Container>
       </WaveSection>
 
-      <WaveSection topWave="A" background="ink">
-        <Container>
-          <div className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
-            <div>
-              <Badge variant="gold">Fit Help</Badge>
-              <h2 className="mt-4 font-heading text-4xl text-white sm:text-5xl">
-                Need help finding the right fit?
-              </h2>
-              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/78 sm:text-base sm:leading-8">
-                Book a store appointment for suits, formalwear, tailoring, and product
-                recommendations prepared around your size and occasion.
-              </p>
-            </div>
-            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-              <ButtonLink href="/schedule-appointment" size="lg" className="w-full sm:w-auto">
-                Book Appointment
-              </ButtonLink>
-              <ButtonLink
-                href="/tailored-clothing"
-                variant="secondary"
-                size="lg"
-                className="w-full border-white/70 bg-transparent text-white hover:border-gold hover:bg-transparent hover:text-gold sm:w-auto"
-              >
-                Tailoring
-              </ButtonLink>
-            </div>
-          </div>
-        </Container>
-      </WaveSection>
-
       <WaveSection topWave="C" background="ivory">
         <Container>
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-            <div>
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div className="max-w-3xl">
               <Badge variant="teal">Partridge Creek</Badge>
               <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
                 Step inside our showroom.
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-                Discover tailored clothing, premium sportswear, and personal service in-store at The
-                Mall at Partridge Creek.
+                Come in and browse anytime, or book a one-on-one appointment for expert fit help,
+                tailoring, formalwear, and recommendations prepared around your size and occasion.
               </p>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                {["Walk-ins welcome", "Personal fittings", "Tailoring available"].map((item) => (
+                  <span
+                    key={item}
+                    className="rounded-full border border-deep-teal/15 bg-deep-teal/7 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-deep-teal uppercase"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
-            <ButtonLink
-              href="/location/partridge-creek"
-              variant="secondary"
-              className="w-full sm:w-auto"
-            >
-              Explore the Store
-            </ButtonLink>
+
+            <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+              <ButtonLink href="/schedule-appointment" size="lg" className="w-full sm:w-auto">
+                Book Appointment
+              </ButtonLink>
+              <ButtonLink
+                href="/location/partridge-creek"
+                variant="secondary"
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                Store Details &amp; Directions
+              </ButtonLink>
+            </div>
           </div>
 
           <ShowroomGallery
@@ -337,60 +305,84 @@ export default async function HomePage() {
 
       <WaveSection topWave="C" background="stone">
         <Container>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <Badge variant="teal">Visit a Store</Badge>
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div className="max-w-3xl">
+              <Badge variant="teal">Visit J. Barbaro</Badge>
               <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
-                Shop in person today.
+                Two stores. Personal service at both.
               </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
+                Stop in to browse, get fitted, or book ahead and our team will prepare options for
+                your size, style, and occasion.
+              </p>
             </div>
             <ButtonLink href="/locations" variant="secondary" className="w-full sm:w-auto">
-              All Locations
+              Compare Locations
             </ButtonLink>
           </div>
 
-          <div className="mt-8 grid gap-4 lg:grid-cols-2">
+          <div className="mt-8 grid gap-5 lg:grid-cols-2">
             {locations.map((location) => (
-              <Card key={location.slug} className="h-full bg-white">
-                <CardContent>
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="font-heading text-3xl text-ink">{location.name}</h3>
-                      <p className="mt-2 flex max-w-md gap-2 text-sm leading-7 text-smoke">
-                        <MapPin className="mt-1 h-4 w-4 shrink-0 text-deep-teal" />
-                        {location.address}
-                      </p>
-                      <a
-                        href={formatPhone(location.phone)}
-                        className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-deep-teal hover:text-gold"
-                      >
-                        <Phone className="h-4 w-4" />
-                        {location.phone}
-                      </a>
-                      <div className="mt-4">
-                        <LocationOpenBadge location={location} />
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2 sm:justify-end">
-                      <ButtonLink
-                        href={`/location/${location.slug}`}
-                        variant="secondary"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        Details
-                      </ButtonLink>
-                      <ButtonLink
-                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.address)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="teal"
-                        size="sm"
-                        className="w-full sm:w-auto"
-                      >
-                        Directions
-                      </ButtonLink>
-                    </div>
+              <Card
+                key={location.slug}
+                className="group flex h-full flex-col overflow-hidden bg-white transition-colors hover:border-ink/20"
+              >
+                <Link
+                  href={`/location/${location.slug}`}
+                  className="relative block aspect-[16/8] overflow-hidden bg-stone"
+                >
+                  <Image
+                    src={location.photo}
+                    alt={location.photoAlt}
+                    fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-[1.025]"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink/78 via-ink/12 to-transparent" />
+                  <span className="absolute top-4 left-4 rounded-full border border-white/25 bg-ink/45 px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-white uppercase backdrop-blur">
+                    {location.photoLabel}
+                  </span>
+                  <h3 className="absolute inset-x-0 bottom-0 p-5 font-heading text-3xl text-white sm:text-4xl">
+                    {location.name}
+                  </h3>
+                </Link>
+
+                <CardContent className="flex flex-1 flex-col p-5 sm:p-6">
+                  <div>
+                    <LocationOpenBadge location={location} />
+
+                    <p className="mt-4 flex max-w-lg gap-2 text-sm leading-7 text-smoke">
+                      <MapPin className="mt-1 h-4 w-4 shrink-0 text-deep-teal" />
+                      {location.address}
+                    </p>
+                    <a
+                      href={formatPhone(location.phone)}
+                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-deep-teal hover:text-gold"
+                    >
+                      <Phone className="h-4 w-4" />
+                      {location.phone}
+                    </a>
+                  </div>
+
+                  <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
+                    <ButtonLink
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      variant="teal"
+                      size="sm"
+                      className="w-full"
+                    >
+                      Directions
+                    </ButtonLink>
+                    <ButtonLink
+                      href={`/location/${location.slug}`}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full"
+                    >
+                      Store Details
+                    </ButtonLink>
                   </div>
                 </CardContent>
               </Card>
@@ -472,23 +464,68 @@ export default async function HomePage() {
         </Container>
       </WaveSection>
 
-      <WaveSection topWave="A" background="stone">
+      <WaveSection topWave="A" background="ivory">
         <Container>
-          <Card className="bg-white">
-            <CardContent className="grid gap-6 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-              <div>
-                <Badge variant="gold">New Arrivals</Badge>
-                <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">
-                  Get new arrivals and private event updates.
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke">
-                  One email field. No popups. Just product drops, private events, and appointment
-                  reminders when they matter.
-                </p>
+          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+            <div>
+              <Badge variant="gold">Why J. Barbaro</Badge>
+              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
+                Menswear, made personal.
+              </h2>
+              <p className="mt-4 max-w-xl text-sm leading-7 text-smoke sm:text-base">
+                Shop premium menswear online with fit guidance when you need it, backed by two
+                Metro Detroit stores and a team that knows the product.
+              </p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <ButtonLink href="/shop" className="w-full sm:w-auto">
+                  Shop Menswear
+                </ButtonLink>
+                <ButtonLink href="/services" variant="secondary" className="w-full sm:w-auto">
+                  Explore Services
+                </ButtonLink>
               </div>
-              <NewsletterSignup source="homepage" />
-            </CardContent>
-          </Card>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[
+                {
+                  title: "Expert fit guidance",
+                  copy: "Use Smart Fit online or work one-on-one with our in-store team.",
+                  icon: Ruler,
+                },
+                {
+                  title: "Curated designer brands",
+                  copy: "Premium labels selected for fit, fabric, versatility, and lasting wear.",
+                  icon: Tags,
+                },
+                {
+                  title: "Two local showrooms",
+                  copy: "Visit Partridge Creek or Great Lakes Crossing for personal service.",
+                  icon: Store,
+                },
+                {
+                  title: "Secure online checkout",
+                  copy: "Shop confidently with encrypted, Shopify-powered payment processing.",
+                  icon: ShieldCheck,
+                },
+              ].map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div
+                    key={item.title}
+                    className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm shadow-ink/[0.03]"
+                  >
+                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-deep-teal/10 text-deep-teal">
+                      <Icon className="h-4.5 w-4.5" />
+                    </span>
+                    <h3 className="mt-4 text-base font-semibold text-ink">{item.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-smoke">{item.copy}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </Container>
       </WaveSection>
     </>

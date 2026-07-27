@@ -37,8 +37,12 @@ export default function ContactUsPage() {
               <Card tone="stone">
                 <CardContent>
                   <Badge variant="teal">{contactPage.supportCard.badge}</Badge>
-                  <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">{contactPage.supportCard.title}</h2>
-                  <p className="mt-3 text-sm leading-7 text-smoke">{contactPage.supportCard.description}</p>
+                  <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">
+                    {contactPage.supportCard.title}
+                  </h2>
+                  <p className="mt-3 text-sm leading-7 text-smoke">
+                    {contactPage.supportCard.description}
+                  </p>
                 </CardContent>
               </Card>
 
@@ -66,7 +70,10 @@ export default function ContactUsPage() {
                     <h2 className="font-heading text-2xl text-ink sm:text-3xl">{location.name}</h2>
                     <p className="mt-2 text-sm leading-7 text-smoke">{location.address}</p>
 
-                    <a href={formatPhone(location.phone)} className="mt-2 inline-flex text-sm font-semibold text-deep-teal hover:text-gold">
+                    <a
+                      href={formatPhone(location.phone)}
+                      className="mt-2 inline-flex text-sm font-semibold text-deep-teal hover:text-ink"
+                    >
                       {location.phone}
                     </a>
 
@@ -75,13 +82,19 @@ export default function ContactUsPage() {
                     <div className="mt-4 rounded-2xl border border-ink/10 bg-stone/35 p-3 text-sm text-smoke">
                       {location.hours.map((interval) => (
                         <p key={`${location.slug}-${interval.days}`}>
-                          <span className="font-semibold text-ink">{interval.days}:</span> {interval.open} - {interval.close}
+                          <span className="font-semibold text-ink">{interval.days}:</span>{" "}
+                          {interval.open} - {interval.close}
                         </p>
                       ))}
                     </div>
 
                     <div className="mt-5 flex flex-wrap gap-2">
-                      <ButtonLink href={`/location/${location.slug}`} variant="secondary" size="sm" className="w-full sm:w-auto">
+                      <ButtonLink
+                        href={`/location/${location.slug}`}
+                        variant="secondary"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
                         View Location
                       </ButtonLink>
                       <ButtonLink
@@ -101,9 +114,17 @@ export default function ContactUsPage() {
 
               <Card tone="ink">
                 <CardContent>
-                  <h2 className="font-heading text-2xl sm:text-3xl">{contactPage.asideCta.title}</h2>
-                  <p className="mt-3 text-sm leading-7 text-ivory/82">{contactPage.asideCta.description}</p>
-                  <ButtonLink href={contactPage.asideCta.buttonHref} variant="teal" className="mt-5 w-full sm:w-auto">
+                  <h2 className="font-heading text-2xl sm:text-3xl">
+                    {contactPage.asideCta.title}
+                  </h2>
+                  <p className="mt-3 text-sm leading-7 text-ivory/82">
+                    {contactPage.asideCta.description}
+                  </p>
+                  <ButtonLink
+                    href={contactPage.asideCta.buttonHref}
+                    variant="teal"
+                    className="mt-5 w-full sm:w-auto"
+                  >
                     {contactPage.asideCta.buttonLabel}
                   </ButtonLink>
                 </CardContent>

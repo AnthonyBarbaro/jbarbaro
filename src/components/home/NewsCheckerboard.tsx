@@ -20,9 +20,14 @@ export function NewsCheckerboard({ posts }: NewsCheckerboardProps) {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Badge variant="teal">Editorial</Badge>
-            <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">Latest News & Style Stories</h2>
+            <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
+              Latest News & Style Stories
+            </h2>
           </div>
-          <Link href="/blog" className="text-sm font-semibold tracking-[0.12em] text-deep-teal uppercase hover:text-gold">
+          <Link
+            href="/blog"
+            className="text-sm font-semibold tracking-[0.12em] text-deep-teal uppercase hover:text-ink"
+          >
             View All Articles
           </Link>
         </div>
@@ -43,12 +48,14 @@ export function NewsCheckerboard({ posts }: NewsCheckerboardProps) {
                 />
               </div>
               <div className="p-6 md:p-8">
-                <p className="text-xs font-semibold tracking-[0.14em] text-smoke uppercase">{formatDate(post.publishedAt)}</p>
+                <p className="text-xs font-semibold tracking-[0.14em] text-smoke uppercase">
+                  {formatDate(post.publishedAt)}
+                </p>
                 <h3 className="mt-3 font-heading text-3xl leading-tight text-ink">{post.title}</h3>
                 <p className="mt-3 text-sm leading-7 text-smoke">{post.description}</p>
                 <Link
                   href={`/${post.type}/${post.slug}`}
-                  className="mt-5 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
+                  className="mt-5 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
                 >
                   Read Story
                 </Link>

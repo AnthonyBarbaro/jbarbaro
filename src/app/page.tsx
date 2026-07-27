@@ -54,16 +54,13 @@ const categoryFallbackImages: Record<string, string> = {
   "dress-shirts":
     "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
   formalwear: "/images/campaign/formalwear-nav-v2.webp",
-  footwear:
-    "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
+  footwear: "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
   pants: "/images/locations/partridge-creek/showroom-06.jpg",
   neckwear:
     "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/tateossian-111716-278-500x500.jpg",
   outerwear: "/images/locations/partridge-creek/showroom-05.jpg",
-  shirts:
-    "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
-  shoes:
-    "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
+  shirts: "/images/remote/www.jasonbarbaro.com/assets/media/2020/02/eton-012220-114-500x500.jpg",
+  shoes: "/images/remote/www.jasonbarbaro.com/assets/media/2022/01/swims-131051-024-500x500.jpg",
   "sport-coats": "/images/hero-suits-299.jpg",
   suits: "/images/hero-suits-299.jpg",
   "suits-sports-coats": "/images/hero-suits-299.jpg",
@@ -82,8 +79,7 @@ const categoryPresentation: Record<string, { href: string; name: string }> = {
   "sport-coats": { href: "/categories/sport-coats", name: "Sport Coats" },
   suits: { href: "/categories/suits", name: "Suits" },
 };
-const DEFAULT_CATEGORY_IMAGE =
-  "/images/locations/partridge-creek/showroom-02.jpg";
+const DEFAULT_CATEGORY_IMAGE = "/images/locations/partridge-creek/showroom-02.jpg";
 const inStoreBrandSlugs = [
   "7-downie-st",
   "7-for-all-mankind",
@@ -121,11 +117,11 @@ function getStorefrontCategories(categories: ResolvedCategory[]) {
       const leftSlug = normalizeCategory(left.slug);
       const rightName = normalizeCategory(right.name);
       const rightSlug = normalizeCategory(right.slug);
-      const leftIndex = categoryPriority.findIndex(
-        (aliases) => aliases.some((alias) => leftName === alias || leftSlug === alias),
+      const leftIndex = categoryPriority.findIndex((aliases) =>
+        aliases.some((alias) => leftName === alias || leftSlug === alias),
       );
-      const rightIndex = categoryPriority.findIndex(
-        (aliases) => aliases.some((alias) => rightName === alias || rightSlug === alias),
+      const rightIndex = categoryPriority.findIndex((aliases) =>
+        aliases.some((alias) => rightName === alias || rightSlug === alias),
       );
 
       if (leftIndex === -1 && rightIndex === -1) {
@@ -164,7 +160,7 @@ export default async function HomePage() {
   let newArrivals: ShopifyProduct[] = [];
 
   try {
-    bestSellers = (await getBestSellingProducts(16)).slice(0, 16);
+    bestSellers = uniqueProducts(availableProducts(await getBestSellingProducts(24))).slice(0, 8);
   } catch (error) {
     console.error("Unable to load homepage best sellers.", error);
   }
@@ -173,10 +169,6 @@ export default async function HomePage() {
     newArrivals = availableProducts(await getShopProducts(24));
   } catch (error) {
     console.error("Unable to load homepage new arrivals.", error);
-  }
-
-  if (bestSellers.length === 0 && newArrivals.length > 0) {
-    bestSellers = newArrivals.slice(0, 16);
   }
 
   newArrivals = uniqueProducts(
@@ -201,6 +193,10 @@ export default async function HomePage() {
               <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
                 Start with what you need.
               </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
+                Browse the online floor by wardrobe need, then narrow by brand, size, color, and
+                availability.
+              </p>
             </div>
           </div>
 
@@ -215,8 +211,12 @@ export default async function HomePage() {
               <Badge variant="gold">Featured Products</Badge>
               <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">Best Sellers</h2>
             </div>
-            <ButtonLink href="/shop" variant="secondary" className="w-full sm:w-auto">
-              View Shop
+            <ButtonLink
+              href="/shop?top=best#top-picks"
+              variant="secondary"
+              className="w-full sm:w-auto"
+            >
+              Shop Best Sellers
             </ButtonLink>
           </div>
 
@@ -260,10 +260,10 @@ export default async function HomePage() {
                   </h2>
                 </div>
                 <Link
-                  href="/shop"
-                  className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
+                  href="/shop?top=new#top-picks"
+                  className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
                 >
-                  Shop All
+                  Shop New Arrivals
                 </Link>
               </div>
               <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -378,7 +378,7 @@ export default async function HomePage() {
                     </p>
                     <a
                       href={formatPhone(location.phone)}
-                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-deep-teal hover:text-gold"
+                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-deep-teal hover:text-ink"
                     >
                       <Phone className="h-4 w-4" />
                       {location.phone}
@@ -494,8 +494,8 @@ export default async function HomePage() {
                 Menswear, made personal.
               </h2>
               <p className="mt-4 max-w-xl text-sm leading-7 text-smoke sm:text-base">
-                Shop premium menswear online with fit guidance when you need it, backed by two
-                Metro Detroit stores and a team that knows the product.
+                Shop premium menswear online with fit guidance when you need it, backed by two Metro
+                Detroit stores and a team that knows the product.
               </p>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row">
                 <ButtonLink href="/shop" className="w-full sm:w-auto">

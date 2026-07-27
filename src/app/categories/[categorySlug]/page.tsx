@@ -51,7 +51,11 @@ export async function generateMetadata({ params }: { params: Promise<{ categoryS
   });
 }
 
-export default async function MenCategoryPage({ params }: { params: Promise<{ categorySlug: string }> }) {
+export default async function MenCategoryPage({
+  params,
+}: {
+  params: Promise<{ categorySlug: string }>;
+}) {
   const { categorySlug } = await params;
   const redirectPath = categoryRedirects[categorySlug];
 
@@ -66,8 +70,11 @@ export default async function MenCategoryPage({ params }: { params: Promise<{ ca
   }
 
   const products = category.shopifyCollection?.products ?? [];
-  const relatedCategories = (await resolveMenCategories(24, 1)).filter((item) => item.href !== category.href).slice(0, 8);
-  const heroDescription = category.shopifyCollection?.description.trim() || category.longDescription;
+  const relatedCategories = (await resolveMenCategories(24, 1))
+    .filter((item) => item.href !== category.href)
+    .slice(0, 8);
+  const heroDescription =
+    category.shopifyCollection?.description.trim() || category.longDescription;
   const crumbs = [
     { name: "Home", href: "/" },
     { name: "Categories", href: "/categories" },
@@ -103,11 +110,16 @@ export default async function MenCategoryPage({ params }: { params: Promise<{ ca
         <Container className="py-8 sm:py-10 lg:py-12">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">Category</p>
-              <h1 className="mt-3 font-heading text-4xl text-ink sm:text-5xl">Shop {category.name}</h1>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
+                Category
+              </p>
+              <h1 className="mt-3 font-heading text-4xl text-ink sm:text-5xl">
+                Shop {category.name}
+              </h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-smoke">{heroDescription}</p>
               <p className="mt-3 text-sm text-smoke">
-                {products.length} {products.length === 1 ? "item" : "items"} loaded from this category.
+                {products.length} {products.length === 1 ? "item" : "items"} loaded from this
+                category.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -128,7 +140,7 @@ export default async function MenCategoryPage({ params }: { params: Promise<{ ca
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="inline-flex min-h-10 shrink-0 items-center rounded-md border border-ink/10 bg-white px-4 text-xs font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-gold hover:text-gold"
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-ink/10 bg-white px-4 text-xs font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-deep-teal hover:text-deep-teal"
                 >
                   {item.name}
                 </Link>
@@ -149,13 +161,18 @@ export default async function MenCategoryPage({ params }: { params: Promise<{ ca
               <CardContent>
                 <h2 className="font-heading text-3xl text-ink">More pieces are arriving soon.</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke">
-                  This category is still being connected to live products. Browse all products or book an appointment for a prepared pull list.
+                  This category is still being connected to live products. Browse all products or
+                  book an appointment for a prepared pull list.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <ButtonLink href="/shop" className="w-full sm:w-auto">
                     Browse Shop
                   </ButtonLink>
-                  <ButtonLink href="/schedule-appointment" variant="secondary" className="w-full sm:w-auto">
+                  <ButtonLink
+                    href="/schedule-appointment"
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                  >
                     Book Appointment
                   </ButtonLink>
                 </div>

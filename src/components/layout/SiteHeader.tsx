@@ -315,7 +315,9 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
     <>
       <aside className="bg-ink text-white" aria-label="Store promotion">
         <div className="mx-auto flex max-w-[84rem] items-center justify-center gap-2 px-4 py-2 text-center text-[11px] font-medium tracking-[0.08em] sm:text-xs">
-          <span className="hidden sm:inline">Personal styling and expert tailoring at two Metro Detroit locations.</span>
+          <span className="hidden sm:inline">
+            Personal styling and expert tailoring at two Metro Detroit locations.
+          </span>
           <span className="sm:hidden">Two Metro Detroit stores.</span>
           <Link
             href="/schedule-appointment"
@@ -332,7 +334,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
               ref={menuButtonRef}
               type="button"
               onClick={() => setIsOpen(true)}
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-ink/12 text-ink lg:hidden"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 lg:hidden"
               aria-label="Open navigation"
               aria-expanded={isOpen}
             >
@@ -355,12 +357,15 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
-              <HeaderAccountButton compact className="h-10 w-10 rounded-md bg-ivory" />
-              <HeaderCartButton compact className="h-10 w-10 rounded-md bg-ivory" />
+              <HeaderAccountButton compact className="h-11 w-11 rounded-md bg-ivory" />
+              <HeaderCartButton compact className="h-11 w-11 rounded-md bg-ivory" />
             </div>
           </div>
 
-          <nav className="hidden items-center justify-center gap-2 pb-2.5 lg:flex xl:gap-4 2xl:gap-6" aria-label="Primary">
+          <nav
+            className="hidden items-center justify-center gap-2 pb-2.5 lg:flex xl:gap-4 2xl:gap-6"
+            aria-label="Primary"
+          >
             {renderDesktopNav(desktopNavItems)}
           </nav>
 
@@ -403,7 +408,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
             ref={closeButtonRef}
             type="button"
             onClick={() => setIsOpen(false)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-ink/12 text-ink"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
             aria-label="Close navigation"
           >
             <X className="h-5 w-5" />

@@ -56,7 +56,13 @@ export default function FeaturedDesignersPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/68 via-ink/20 to-transparent" />
                   <div className="absolute inset-0 flex items-center justify-center p-2 sm:p-3">
                     <div className="relative h-24 w-[86%] max-w-[340px] rounded-2xl border border-white/45 bg-white/30 p-3 backdrop-blur-sm sm:h-28">
-                      <Image src={brand.logo} alt={`${brand.name} logo`} fill sizes="220px" className="object-contain" />
+                      <Image
+                        src={brand.logo}
+                        alt={`${brand.name} logo`}
+                        fill
+                        sizes="220px"
+                        className="object-contain"
+                      />
                     </div>
                   </div>
                 </div>
@@ -65,7 +71,7 @@ export default function FeaturedDesignersPage() {
                   <p className="mt-2 text-sm leading-7 text-smoke">{brand.description}</p>
                   <Link
                     href={`/collection-brand/${brand.slug}`}
-                    className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
+                    className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
                   >
                     View Brand
                   </Link>

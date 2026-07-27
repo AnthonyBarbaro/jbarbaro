@@ -27,12 +27,14 @@ export function PostCard({ post }: PostCardProps) {
         </div>
       </div>
       <CardContent className="flex h-full flex-col">
-        <p className="text-xs tracking-[0.14em] text-smoke uppercase">{formatDate(post.publishedAt)}</p>
+        <p className="text-xs tracking-[0.14em] text-smoke uppercase">
+          {formatDate(post.publishedAt)}
+        </p>
         <h3 className="mt-3 font-heading text-2xl leading-tight text-ink">{post.title}</h3>
         <p className="mt-3 text-sm leading-7 text-smoke">{post.description}</p>
         <Link
           href={`/${post.type}/${post.slug}`}
-          className="mt-5 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
+          className="mt-5 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
         >
           Read More
         </Link>

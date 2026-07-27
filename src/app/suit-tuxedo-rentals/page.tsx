@@ -172,7 +172,7 @@ export default function SuitTuxedoRentalsPage() {
               </div>
               <Link
                 href={rentalsPage.closingCard.footerLinkHref}
-                className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
+                className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
               >
                 {rentalsPage.closingCard.footerLinkLabel} →
               </Link>

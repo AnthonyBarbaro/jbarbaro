@@ -32,9 +32,12 @@ import { brandSlug } from "@/lib/shopify/brand-slug";
 import {
   FIT_PROFILE_STORAGE_KEY,
   getProductFitRecommendation,
+  getProductSuitSizeSystem,
+  getUsJacketEquivalentLabel,
+  isProductJacketLengthOption,
   isSuitSizingProduct,
-  normalizeJacketLength,
   parseFitProfile,
+  type ProductFitRecommendation,
 } from "@/lib/fit-profile";
 import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
@@ -74,17 +77,21 @@ function getOptionMap(product: ShopifyProduct) {
       name,
       values: values.filter((value) => value.trim().toLowerCase() !== "default title"),
     }))
-    .filter((group) => group.name.trim().toLowerCase() !== "title" && group.values.length > 1);
+    .filter((group) => group.name.trim().toLowerCase() !== "title" && group.values.length > 0);
 }
 
-function getProductOptionLabel(product: ShopifyProduct, name: string, values: string[]) {
-  const isJacketLength =
+function getProductOptionLabel(product: ShopifyProduct, name: string) {
+  if (
     isSuitSizingProduct(product) &&
-    !name.toLowerCase().includes("size") &&
-    values.length > 0 &&
-    values.every((value) => Boolean(normalizeJacketLength(value)));
+    name.toLowerCase().includes("size") &&
+    getProductSuitSizeSystem(product) === "EU"
+  ) {
+    return "EU Jacket Size";
+  }
 
-  return isJacketLength ? "Length" : name;
+  return isSuitSizingProduct(product) && isProductJacketLengthOption(product, name)
+    ? "Length"
+    : name;
 }
 
 function findMatchingVariant(product: ShopifyProduct, selectedOptions: Record<string, string>) {
@@ -165,13 +172,15 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [smartFitMatch, setSmartFitMatch] = useState<string | null>(null);
-  const [smartFitUnavailable, setSmartFitUnavailable] = useState(false);
+  const [smartFitRecommendation, setSmartFitRecommendation] =
+    useState<ProductFitRecommendation | null>(null);
   const [isSmartFitOpen, setIsSmartFitOpen] = useState(false);
   const [isBuyBoxInView, setIsBuyBoxInView] = useState(true);
   const galleryTouchStartXRef = useRef<number | null>(null);
   const buyBoxRef = useRef<HTMLDivElement | null>(null);
+  const lightboxDialogRef = useRef<HTMLDivElement | null>(null);
   const lightboxStageRef = useRef<HTMLDivElement | null>(null);
+  const lightboxTriggerRef = useRef<HTMLElement | null>(null);
   const lightboxTouchRef = useRef({
     startX: 0,
     startY: 0,
@@ -183,7 +192,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   });
   const mouseDragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
 
-  const selectedVariant = findMatchingVariant(product, selectedOptions) ?? initialVariant;
+  const selectedVariant = findMatchingVariant(product, selectedOptions);
   const activeImage = images[selectedImageIndex] ?? images[0] ?? null;
   const hasMultipleImages = images.length > 1;
   const primaryCollection = getPrimaryCollection(product);
@@ -195,28 +204,65 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         product.priceRange.minVariantPrice.amount,
         product.priceRange.minVariantPrice.currencyCode,
       );
-  const isOnSale =
-    Boolean(selectedVariant?.compareAtPrice) &&
-    Number(selectedVariant.compareAtPrice?.amount) > Number(selectedVariant.price.amount);
+  const selectedCompareAtPrice = selectedVariant?.compareAtPrice ?? null;
+  const isOnSale = Boolean(
+    selectedVariant &&
+    selectedCompareAtPrice &&
+    Number(selectedCompareAtPrice.amount) > Number(selectedVariant.price.amount),
+  );
   const compareAtPrice =
-    isOnSale && selectedVariant.compareAtPrice
-      ? formatMoney(
-          selectedVariant.compareAtPrice.amount,
-          selectedVariant.compareAtPrice.currencyCode,
-        )
+    isOnSale && selectedCompareAtPrice
+      ? formatMoney(selectedCompareAtPrice.amount, selectedCompareAtPrice.currencyCode)
       : null;
   const salePercent =
-    isOnSale && selectedVariant.compareAtPrice
+    isOnSale && selectedVariant && selectedCompareAtPrice
       ? Math.round(
-          (1 -
-            Number(selectedVariant.price.amount) / Number(selectedVariant.compareAtPrice.amount)) *
-            100,
+          (1 - Number(selectedVariant.price.amount) / Number(selectedCompareAtPrice.amount)) * 100,
         )
       : null;
   const selectedVariantIsAvailable = Boolean(selectedVariant?.availableForSale);
-  const availabilityMessage = selectedVariantIsAvailable ? "In stock, ready to ship" : "Sold out";
+  const availabilityMessage = selectedVariant
+    ? selectedVariantIsAvailable
+      ? "In stock, ready to ship"
+      : "Sold out"
+    : "Choose a size to continue";
+  const selectedOptionSummary = selectedVariant?.selectedOptions
+    .filter(
+      (option) =>
+        option.name.trim().toLowerCase() !== "title" &&
+        option.value.trim().toLowerCase() !== "default title",
+    )
+    .map((option) => option.value)
+    .join(" · ");
   const metaCategoryLabel = primaryCollection?.title || product.productType;
   const visibleOptionGroups = optionGroups;
+  const smartFitUnavailable = Boolean(smartFitRecommendation && !smartFitRecommendation.variantId);
+  const smartFitSupportingCopy = smartFitRecommendation
+    ? (() => {
+        const suitRecommendation = smartFitRecommendation.suit;
+        const equivalence = suitRecommendation?.converted
+          ? `Equivalent to your saved ${suitRecommendation.savedLabel}. `
+          : "";
+
+        if (smartFitUnavailable) {
+          if (!suitRecommendation) {
+            return "That recommended size is not currently available online. Choose another option or ask a fit expert.";
+          }
+
+          return suitRecommendation.lengthOffered
+            ? `${equivalence}That size and jacket length are not currently available online.`
+            : `${equivalence}That jacket size is not currently available online. This style does not list jacket length separately.`;
+        }
+
+        if (!suitRecommendation) {
+          return "We selected the recommended size for this item. You can still change it before adding it to your bag.";
+        }
+
+        return suitRecommendation.lengthOffered
+          ? `${equivalence}We selected the available size and jacket length.`
+          : `${equivalence}We selected the available jacket size. This style does not list jacket length separately.`;
+      })()
+    : "";
 
   function showPreviousImage() {
     if (!hasMultipleImages) {
@@ -270,6 +316,8 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
       return;
     }
 
+    lightboxTriggerRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
     setIsLightboxOpen(true);
@@ -506,8 +554,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   }
 
   function handleOptionChange(optionName: string, optionValue: string) {
-    setSmartFitMatch(null);
-    setSmartFitUnavailable(false);
+    setSmartFitRecommendation(null);
     setSelectedOptions((current) => {
       const nextVariant = findAvailableVariantForOption(product, optionName, optionValue, current);
 
@@ -519,15 +566,18 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     });
   }
 
-  function handleFitRecommendation(recommendation: { label: string; variantId: string }) {
+  function handleFitRecommendation(recommendation: ProductFitRecommendation) {
+    if (!recommendation.variantId) {
+      return;
+    }
+
     const matchingVariant = product.variants.find(
       (variant) => variant.availableForSale && variant.id === recommendation.variantId,
     );
 
     if (matchingVariant) {
       setSelectedOptions(buildInitialOptionState(matchingVariant));
-      setSmartFitMatch(recommendation.label);
-      setSmartFitUnavailable(false);
+      setSmartFitRecommendation(recommendation);
     }
 
     setIsSmartFitOpen(false);
@@ -535,26 +585,26 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
   useEffect(() => {
     const profile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
-    const recommendation = profile
-      ? getProductFitRecommendation(product, profile)
-      : null;
+    const recommendation = profile ? getProductFitRecommendation(product, profile) : null;
     const matchingVariant = recommendation?.variantId
       ? (product.variants.find(
-          (variant) =>
-            variant.availableForSale && variant.id === recommendation.variantId,
+          (variant) => variant.availableForSale && variant.id === recommendation.variantId,
         ) ?? null)
       : null;
 
     const frameId = window.requestAnimationFrame(() => {
       if (!matchingVariant) {
-        setSmartFitMatch(recommendation?.label ?? null);
-        setSmartFitUnavailable(Boolean(recommendation));
+        setSmartFitRecommendation(recommendation);
+
+        if (recommendation?.suit) {
+          setSelectedOptions({});
+        }
+
         return;
       }
 
       setSelectedOptions(buildInitialOptionState(matchingVariant));
-      setSmartFitMatch(recommendation?.label ?? null);
-      setSmartFitUnavailable(false);
+      setSmartFitRecommendation(recommendation);
     });
 
     return () => {
@@ -589,12 +639,21 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     }
 
     const previousOverflow = document.body.style.overflow;
+    const lightboxTrigger = lightboxTriggerRef.current;
+    const focusFrame = window.requestAnimationFrame(() => {
+      const firstFocusable = lightboxDialogRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+
+      (firstFocusable ?? lightboxDialogRef.current)?.focus();
+    });
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsLightboxOpen(false);
         setZoomLevel(1);
         setPanOffset({ x: 0, y: 0 });
+        return;
       }
 
       if (event.key === "ArrowLeft") {
@@ -620,14 +679,37 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         setZoomLevel(1);
         setPanOffset({ x: 0, y: 0 });
       }
+
+      if (event.key === "Tab") {
+        const focusableElements = Array.from(
+          lightboxDialogRef.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+          ) ?? [],
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements.at(-1);
+
+        if (!firstElement || !lastElement) {
+          event.preventDefault();
+          lightboxDialogRef.current?.focus();
+        } else if (event.shiftKey && document.activeElement === firstElement) {
+          event.preventDefault();
+          lastElement.focus();
+        } else if (!event.shiftKey && document.activeElement === lastElement) {
+          event.preventDefault();
+          firstElement.focus();
+        }
+      }
     }
 
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      lightboxTrigger?.focus();
     };
   }, [hasMultipleImages, images.length, isLightboxOpen]);
 
@@ -639,7 +721,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             <button
               type="button"
               onClick={goBack}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-ink/10 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30 hover:bg-stone/50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-ink/10 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30 hover:bg-stone/50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
               aria-label="Go back to previous page"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -647,7 +729,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             </button>
           </div>
 
-          <div className="relative overflow-hidden rounded-[1rem] border border-ink/8 bg-[#f3f1ed]">
+          <div className="relative overflow-hidden rounded-[1rem] border border-ink/8 bg-product-canvas">
             <div
               className="relative aspect-[4/5] touch-pan-y sm:aspect-[5/4] lg:aspect-[4/5]"
               onTouchStart={(event) => handleGalleryTouchStart(event.touches[0]?.clientX ?? 0)}
@@ -657,7 +739,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 <button
                   type="button"
                   onClick={openLightbox}
-                  className="group block h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-gold/40"
+                  className="group block h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-deep-teal"
                   aria-label="Open product image viewer"
                 >
                   <Image
@@ -685,7 +767,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 <button
                   type="button"
                   onClick={showPreviousImage}
-                  className="absolute top-1/2 left-3 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 sm:left-4"
+                  className="absolute top-1/2 left-3 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal sm:left-4"
                   aria-label="Show previous product image"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -693,7 +775,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 <button
                   type="button"
                   onClick={showNextImage}
-                  className="absolute top-1/2 right-3 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 sm:right-4"
+                  className="absolute top-1/2 right-3 inline-flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-ink/10 bg-white/92 text-ink shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal sm:right-4"
                   aria-label="Show next product image"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -705,7 +787,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               <button
                 type="button"
                 onClick={openLightbox}
-                className="absolute bottom-3 left-1/2 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-full border border-ink/10 bg-white/92 px-4 py-2 text-[10px] font-semibold tracking-[0.12em] whitespace-nowrap text-ink uppercase shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 sm:bottom-4"
+                className="absolute bottom-3 left-1/2 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-full border border-ink/10 bg-white/92 px-4 py-2 text-[10px] font-semibold tracking-[0.12em] whitespace-nowrap text-ink uppercase shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal sm:bottom-4"
                 aria-label="Zoom product image"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
@@ -723,12 +805,13 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                     type="button"
                     onClick={() => selectImage(index)}
                     className={cn(
-                      "relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-md border bg-[#f3f1ed] transition-all sm:h-20 sm:w-20",
+                      "relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-md border bg-product-canvas transition-all sm:h-20 sm:w-20",
                       index === selectedImageIndex
                         ? "border-ink ring-1 ring-ink"
                         : "border-ink/10 hover:border-ink/35",
                     )}
                     aria-label={`View product image ${index + 1}`}
+                    aria-pressed={index === selectedImageIndex}
                   >
                     <Image
                       src={image.url}
@@ -785,7 +868,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   <p
                     className={cn(
                       "text-[1.75rem] font-semibold sm:text-[2rem]",
-                      compareAtPrice ? "text-[#8f2632]" : "text-ink",
+                      compareAtPrice ? "text-sale" : "text-ink",
                     )}
                   >
                     {priceLabel}
@@ -796,15 +879,18 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                     </p>
                   ) : null}
                   {salePercent ? (
-                    <span className="rounded-full bg-[#8f2632] px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-white uppercase">
+                    <span className="rounded-full bg-sale px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-white uppercase">
                       Save {salePercent}%
                     </span>
                   ) : null}
                 </div>
               </div>
 
-              {smartFitMatch ? (
+              {smartFitRecommendation ? (
                 <div
+                  id="smart-fit-match-status"
+                  role="status"
+                  aria-live="polite"
                   className={cn(
                     "mt-4 rounded-md border px-4 py-3 text-sm leading-6 text-smoke",
                     smartFitUnavailable
@@ -813,17 +899,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   )}
                 >
                   <p className="font-semibold text-ink">
-                    Smart Fit found your saved size: {smartFitMatch}
+                    Smart Fit match: {smartFitRecommendation.label}
                   </p>
-                  <p className="mt-1">
-                    {smartFitUnavailable
-                      ? isSuitSizingProduct(product)
-                        ? "That exact size and jacket length is not currently available online. Choose another option or ask a fit expert."
-                        : "That recommended size is not currently available online. Choose another option or ask a fit expert."
-                      : isSuitSizingProduct(product)
-                        ? "We selected the exact available size and length. You can still change it before adding it to your bag."
-                        : "We selected the recommended size for this item. You can still change it before adding it to your bag."}
-                  </p>
+                  <p className="mt-1">{smartFitSupportingCopy}</p>
                 </div>
               ) : null}
 
@@ -832,11 +910,10 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   {visibleOptionGroups.map((group) => {
                     const labelId = `product-option-${group.name.toLowerCase().replace(/\s+/g, "-")}`;
                     const selectedValue = selectedOptions[group.name] ?? "";
-                    const displayGroupName = getProductOptionLabel(
-                      product,
-                      group.name,
-                      group.values,
-                    );
+                    const displayGroupName = getProductOptionLabel(product, group.name);
+                    const isEuropeanJacketSize =
+                      getProductSuitSizeSystem(product) === "EU" &&
+                      group.name.toLowerCase().includes("size");
 
                     return (
                       <div key={group.name} className="min-w-0">
@@ -865,8 +942,11 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                           </div>
                         </div>
                         <div
-                          role="radiogroup"
+                          role="group"
                           aria-labelledby={labelId}
+                          aria-describedby={
+                            smartFitRecommendation ? "smart-fit-match-status" : undefined
+                          }
                           className="mt-3 flex flex-wrap gap-2"
                         >
                           {group.values.map((value) => {
@@ -879,18 +959,22 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                                 selectedOptions,
                               ),
                             );
+                            const usJacketEquivalent = isEuropeanJacketSize
+                              ? getUsJacketEquivalentLabel(value)
+                              : null;
 
                             return (
                               <button
                                 key={value}
                                 type="button"
-                                role="radio"
-                                aria-checked={isSelected}
-                                aria-label={`${displayGroupName} ${value}${isAvailable ? "" : ", sold out"}`}
+                                aria-pressed={isSelected}
+                                aria-label={`${displayGroupName} ${value}${
+                                  usJacketEquivalent ? `, equivalent to ${usJacketEquivalent}` : ""
+                                }${isAvailable ? "" : ", sold out"}`}
                                 disabled={!isAvailable}
                                 onClick={() => handleOptionChange(group.name, value)}
                                 className={cn(
-                                  "relative inline-flex min-h-12 min-w-12 items-center justify-center rounded-md border px-4 py-2 text-center text-sm font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30 disabled:cursor-not-allowed",
+                                  "relative inline-flex min-h-12 min-w-12 flex-col items-center justify-center rounded-md border px-4 py-2 text-center text-sm font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal disabled:cursor-not-allowed",
                                   isSelected
                                     ? "border-ink bg-ink text-white shadow-[0_16px_30px_-26px_rgba(11,15,20,0.7)]"
                                     : isAvailable
@@ -898,7 +982,17 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                                       : "border-ink/8 bg-stone/60 text-smoke/60 line-through",
                                 )}
                               >
-                                {value}
+                                <span>{value}</span>
+                                {usJacketEquivalent ? (
+                                  <span
+                                    className={cn(
+                                      "mt-0.5 text-[10px] font-medium",
+                                      isSelected ? "text-white/70" : "text-smoke",
+                                    )}
+                                  >
+                                    {usJacketEquivalent}
+                                  </span>
+                                ) : null}
                               </button>
                             );
                           })}
@@ -914,8 +1008,17 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   <AddToCartButton
                     merchandiseId={selectedVariant.id}
                     availableForSale={selectedVariant.availableForSale}
+                    itemName={product.title}
                     className="min-h-14 w-full rounded-lg border-ink bg-ink text-sm tracking-[0.08em] !text-white hover:border-deep-teal hover:bg-deep-teal"
                     label="Add to Bag"
+                  />
+                ) : initialVariant ? (
+                  <AddToCartButton
+                    merchandiseId={initialVariant.id}
+                    availableForSale={false}
+                    disabledLabel="Select a Size"
+                    itemName={product.title}
+                    className="min-h-14 w-full rounded-lg border-ink bg-ink text-sm tracking-[0.08em] !text-white hover:border-deep-teal hover:bg-deep-teal"
                   />
                 ) : (
                   <p className="text-sm text-smoke">
@@ -931,21 +1034,19 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
               <div className="mt-5 grid grid-cols-3 divide-x divide-ink/10 border-y border-ink/10 py-3">
                 <div className="flex flex-col items-center gap-1.5 px-2 text-center">
-                  <Truck className="h-4 w-4 text-deep-teal" />
-                  <span className="text-[10px] font-semibold leading-4 text-ink">
-                    Fast shipping
-                  </span>
+                  <HelpCircle className="h-4 w-4 text-deep-teal" />
+                  <span className="text-[10px] font-semibold leading-4 text-ink">Fit guidance</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 px-2 text-center">
-                  <ShieldCheck className="h-4 w-4 text-deep-teal" />
+                  <Truck className="h-4 w-4 text-deep-teal" />
                   <span className="text-[10px] font-semibold leading-4 text-ink">
-                    Authentic goods
+                    Shipping at checkout
                   </span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 px-2 text-center">
                   <CreditCard className="h-4 w-4 text-deep-teal" />
                   <span className="text-[10px] font-semibold leading-4 text-ink">
-                    Secure payment
+                    Shopify checkout
                   </span>
                 </div>
               </div>
@@ -1013,13 +1114,13 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-smoke">{product.title}</p>
+              {selectedOptionSummary ? (
+                <p className="truncate text-[11px] font-semibold text-deep-teal">
+                  {selectedOptionSummary}
+                </p>
+              ) : null}
               <div className="flex items-baseline gap-2">
-                <p
-                  className={cn(
-                    "text-base font-bold",
-                    compareAtPrice ? "text-[#8f2632]" : "text-ink",
-                  )}
-                >
+                <p className={cn("text-base font-bold", compareAtPrice ? "text-sale" : "text-ink")}>
                   {priceLabel}
                 </p>
                 {compareAtPrice ? (
@@ -1030,6 +1131,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             <AddToCartButton
               merchandiseId={selectedVariant.id}
               availableForSale={selectedVariant.availableForSale}
+              itemName={product.title}
               className="min-h-11 shrink-0 rounded-md border-ink bg-ink px-5 text-xs !text-white hover:border-deep-teal hover:bg-deep-teal"
               label="Add to Bag"
               ariaLabel={`Add ${product.title} to bag`}
@@ -1040,10 +1142,12 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
 
       {isLightboxOpen && activeImage ? (
         <div
+          ref={lightboxDialogRef}
           className="fixed inset-0 z-[180] bg-[#090d11] text-white"
           role="dialog"
           aria-modal="true"
           aria-label="Product image viewer"
+          tabIndex={-1}
         >
           <div className="flex h-dvh flex-col">
             <div className="flex items-center justify-between gap-3 px-3 py-3 sm:px-5 sm:py-4">
@@ -1092,7 +1196,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             <div
               ref={lightboxStageRef}
               className={cn(
-                "relative min-h-0 flex-1 touch-none overflow-hidden bg-[#f3f1ed]",
+                "relative min-h-0 flex-1 touch-none overflow-hidden bg-product-canvas",
                 zoomLevel > MIN_IMAGE_ZOOM
                   ? "cursor-grab active:cursor-grabbing"
                   : "cursor-zoom-in",
@@ -1131,7 +1235,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   <button
                     type="button"
                     onClick={showPreviousImage}
-                    className="absolute top-1/2 left-3 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-ink shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40 sm:left-5"
+                    className="absolute top-1/2 left-3 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-ink shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal sm:left-5"
                     aria-label="Show previous image"
                   >
                     <ChevronLeft className="h-5 w-5" />
@@ -1139,7 +1243,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   <button
                     type="button"
                     onClick={showNextImage}
-                    className="absolute top-1/2 right-3 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-ink shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40 sm:right-5"
+                    className="absolute top-1/2 right-3 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-black/10 bg-white/90 text-ink shadow-sm transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal sm:right-5"
                     aria-label="Show next image"
                   >
                     <ChevronRight className="h-5 w-5" />

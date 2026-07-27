@@ -29,12 +29,16 @@ const categoryPriority = [
 
 export const metadata = buildMetadata({
   title: "Categories",
-  description: "Shop J. Barbaro Clothiers by category, including suits, formalwear, shirts, footwear, trousers, denim, and accessories.",
+  description:
+    "Shop J. Barbaro Clothiers by category, including suits, formalwear, shirts, footwear, trousers, denim, and accessories.",
   path: "/categories",
 });
 
 function normalizeCategoryName(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 function orderCategories(categories: CollectionCategory[]) {
@@ -44,7 +48,9 @@ function orderCategories(categories: CollectionCategory[]) {
     const rightName = normalizeCategoryName(right.name);
     const rightSlug = normalizeCategoryName(right.slug);
     const leftIndex = categoryPriority.findIndex((item) => leftName === item || leftSlug === item);
-    const rightIndex = categoryPriority.findIndex((item) => rightName === item || rightSlug === item);
+    const rightIndex = categoryPriority.findIndex(
+      (item) => rightName === item || rightSlug === item,
+    );
 
     if (leftIndex === -1 && rightIndex === -1) {
       return left.name.localeCompare(right.name);
@@ -63,7 +69,11 @@ function orderCategories(categories: CollectionCategory[]) {
 }
 
 function getCategoryImage(category: CollectionCategory) {
-  return category.shopifyCollection?.image ?? category.shopifyCollection?.products[0]?.featuredImage ?? null;
+  return (
+    category.shopifyCollection?.image ??
+    category.shopifyCollection?.products[0]?.featuredImage ??
+    null
+  );
 }
 
 export default async function CategoriesHubPage() {
@@ -94,10 +104,13 @@ export default async function CategoriesHubPage() {
         <Container className="py-8 sm:py-10 lg:py-12">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">Categories</p>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
+                Categories
+              </p>
               <h1 className="mt-3 font-heading text-4xl text-ink sm:text-5xl">Shop by Category</h1>
               <p className="mt-3 max-w-3xl text-sm leading-7 text-smoke">
-                Browse the store by the way men actually shop: tailoring, shirts, footwear, denim, layers, and finishing pieces.
+                Browse the store by the way men actually shop: tailoring, shirts, footwear, denim,
+                layers, and finishing pieces.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
@@ -105,7 +118,11 @@ export default async function CategoriesHubPage() {
                 <ShoppingBag className="mr-2 h-4 w-4" />
                 Shop All
               </ButtonLink>
-              <ButtonLink href="/schedule-appointment" variant="secondary" className="w-full sm:w-auto">
+              <ButtonLink
+                href="/schedule-appointment"
+                variant="secondary"
+                className="w-full sm:w-auto"
+              >
                 <CalendarDays className="mr-2 h-4 w-4" />
                 Book Appointment
               </ButtonLink>
@@ -134,20 +151,28 @@ export default async function CategoriesHubPage() {
                             className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                           />
                         ) : (
-                          <div className="flex h-full items-center justify-center text-sm text-smoke">Category image coming soon</div>
+                          <div className="flex h-full items-center justify-center text-sm text-smoke">
+                            Category image coming soon
+                          </div>
                         )}
                       </div>
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between gap-4">
                           <div>
-                            <p className="text-[11px] font-semibold tracking-[0.16em] text-deep-teal uppercase">Category</p>
-                            <h2 className="mt-2 text-xl font-semibold tracking-[-0.01em] text-ink">{category.name}</h2>
+                            <p className="text-[11px] font-semibold tracking-[0.16em] text-deep-teal uppercase">
+                              Category
+                            </p>
+                            <h2 className="mt-2 text-xl font-semibold tracking-[-0.01em] text-ink">
+                              {category.name}
+                            </h2>
                           </div>
-                          <span className="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-ink/10 text-ink transition-colors group-hover:border-gold group-hover:text-gold">
+                          <span className="mt-1 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ink/10 text-ink transition-colors group-hover:border-deep-teal group-hover:text-deep-teal">
                             <ArrowRight className="h-4 w-4" />
                           </span>
                         </div>
-                        <p className="mt-3 text-sm leading-6 text-smoke">{category.shortDescription}</p>
+                        <p className="mt-3 text-sm leading-6 text-smoke">
+                          {category.shortDescription}
+                        </p>
                       </CardContent>
                     </Card>
                   </Link>
@@ -159,13 +184,18 @@ export default async function CategoriesHubPage() {
               <CardContent>
                 <h2 className="font-heading text-3xl text-ink">Categories are being updated.</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke">
-                  Browse all products while the category list refreshes, or book an appointment for a prepared selection.
+                  Browse all products while the category list refreshes, or book an appointment for
+                  a prepared selection.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <ButtonLink href="/shop" className="w-full sm:w-auto">
                     Browse Shop
                   </ButtonLink>
-                  <ButtonLink href="/schedule-appointment" variant="secondary" className="w-full sm:w-auto">
+                  <ButtonLink
+                    href="/schedule-appointment"
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                  >
                     Book Appointment
                   </ButtonLink>
                 </div>
@@ -179,10 +209,15 @@ export default async function CategoriesHubPage() {
         <Container>
           <div className="flex flex-col gap-4 rounded-lg border border-ink/10 bg-ivory p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">Fit Help</p>
-              <h2 className="mt-2 font-heading text-3xl text-ink">Need the right category for an event?</h2>
+              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
+                Fit Help
+              </p>
+              <h2 className="mt-2 font-heading text-3xl text-ink">
+                Need the right category for an event?
+              </h2>
               <p className="mt-2 max-w-3xl text-sm leading-7 text-smoke">
-                Book a store appointment and the team can prepare sizes, shoes, shirts, and finishing pieces before you arrive.
+                Book a store appointment and the team can prepare sizes, shoes, shirts, and
+                finishing pieces before you arrive.
               </p>
             </div>
             <ButtonLink href="/schedule-appointment" className="w-full sm:w-auto">

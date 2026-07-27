@@ -87,7 +87,7 @@ export function ShowroomGallery({
               type="button"
               onClick={() => setActiveIndex(index)}
               className={cn(
-                "group relative overflow-hidden rounded-lg border border-ink/10 bg-stone text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/35",
+                "group relative overflow-hidden rounded-lg border border-ink/10 bg-stone text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal",
                 isLeadPhoto
                   ? "col-span-2 aspect-[3/2] md:col-span-7 md:row-span-2 md:aspect-auto"
                   : "aspect-square md:col-span-5 md:aspect-auto",

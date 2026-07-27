@@ -98,7 +98,10 @@ export default function LocationsPage() {
                   <p className="mt-2 text-sm leading-7 text-smoke">{location.address}</p>
 
                   <div className="mt-4 rounded-2xl border border-ink/10 bg-stone/35 p-3">
-                    <a href={formatPhone(location.phone)} className="inline-flex text-sm font-semibold text-deep-teal hover:text-gold">
+                    <a
+                      href={formatPhone(location.phone)}
+                      className="inline-flex text-sm font-semibold text-deep-teal hover:text-ink"
+                    >
                       {location.phone}
                     </a>
                     <div className="mt-3 border-t border-ink/10 pt-3">
@@ -123,7 +126,8 @@ export default function LocationsPage() {
                   <div className="mt-4 rounded-2xl border border-ink/10 bg-stone/40 p-3 text-sm text-smoke">
                     {location.hours.map((interval) => (
                       <p key={`${location.slug}-${interval.days}`}>
-                        <span className="font-semibold text-ink">{interval.days}:</span> {interval.open} - {interval.close}
+                        <span className="font-semibold text-ink">{interval.days}:</span>{" "}
+                        {interval.open} - {interval.close}
                       </p>
                     ))}
                   </div>
@@ -131,7 +135,12 @@ export default function LocationsPage() {
                   <p className="mt-3 text-xs text-smoke">{location.note}</p>
 
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <ButtonLink href={`/location/${location.slug}`} variant="secondary" size="sm" className="w-full sm:w-auto">
+                    <ButtonLink
+                      href={`/location/${location.slug}`}
+                      variant="secondary"
+                      size="sm"
+                      className="w-full sm:w-auto"
+                    >
                       View Details
                     </ButtonLink>
                     <ButtonLink href="/schedule-appointment" size="sm" className="w-full sm:w-auto">
@@ -153,7 +162,7 @@ export default function LocationsPage() {
                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.address)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-4 inline-flex text-xs font-semibold tracking-[0.12em] text-deep-teal uppercase hover:text-gold"
+                    className="mt-4 inline-flex text-xs font-semibold tracking-[0.12em] text-deep-teal uppercase hover:text-ink"
                   >
                     View Map in Google →
                   </a>
@@ -174,8 +183,12 @@ export default function LocationsPage() {
               >
                 {locationsPage.closingBadge}
               </Badge>
-              <h2 className="mt-4 font-heading text-3xl sm:text-4xl">{locationsPage.closingTitle}</h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-ivory/82">{locationsPage.closingDescription}</p>
+              <h2 className="mt-4 font-heading text-3xl sm:text-4xl">
+                {locationsPage.closingTitle}
+              </h2>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-ivory/82">
+                {locationsPage.closingDescription}
+              </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 {locationsPage.closingButtons.map((button, index) => (
                   <ButtonLink

@@ -2,8 +2,28 @@
 
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useDeferredValue, useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
-import { ChevronDown, Footprints, LayoutGrid, Ruler, Search, Shirt, SlidersHorizontal, Sparkles, Square, X } from "lucide-react";
+import {
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from "react";
+import {
+  ChevronDown,
+  Footprints,
+  LayoutGrid,
+  Ruler,
+  Search,
+  Shirt,
+  SlidersHorizontal,
+  Sparkles,
+  Square,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
@@ -13,7 +33,6 @@ import { FieldLabel, Input, Select } from "@/components/ui/Field";
 import {
   buildFitProfile,
   FIT_PROFILE_STORAGE_KEY,
-  getMatchingProfileSizes,
   getProductFitMatchesForProfile,
   parseFitProfile,
   type FitBuild,
@@ -21,12 +40,14 @@ import {
   type FitProfile,
   type FitProfileInput,
 } from "@/lib/fit-profile";
+import { getProductSale } from "@/lib/shopify/product-merchandising";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
 type ShopCatalogClientProps = {
   products: ShopifyProduct[];
   bestSellers?: ShopifyProduct[];
+  newArrivals?: ShopifyProduct[];
 };
 
 type FacetKey = "availability" | "price" | "brand" | "size" | "length" | "color";
@@ -35,13 +56,18 @@ type FacetPill = { key: FacetKey; label: string; activeCount: number };
 type SortOption = "featured" | "newest" | "price-low" | "price-high" | "title-asc";
 type AvailabilityOption = "all" | "in-stock" | "sold-out";
 type PriceOption = "all" | "under-100" | "100-250" | "250-500" | "500-plus";
-type FitDraftInput = Omit<FitProfileInput, "build" | "heightFeet" | "heightInches" | "weightLbs"> & {
+type FitDraftInput = Omit<
+  FitProfileInput,
+  "build" | "heightFeet" | "heightInches" | "weightLbs"
+> & {
   build: FitBuild | "";
   heightFeet: number | "";
   heightInches: number | "";
   weightLbs: number | "";
 };
 const DEFAULT_AVAILABILITY: AvailabilityOption = "in-stock";
+const INITIAL_VISIBLE_PRODUCTS = 36;
+const PRODUCT_LOAD_STEP = 36;
 const DEFAULT_FIT_INPUT: FitDraftInput = {
   heightFeet: "",
   heightInches: "",
@@ -87,6 +113,18 @@ function getFitDisplayValue(value?: string, fallback = "Not set") {
 
 function getProductPrice(product: ShopifyProduct) {
   return Number(product.priceRange.minVariantPrice.amount);
+}
+
+function getProductPriceLabel(product: ShopifyProduct) {
+  const minimum = product.priceRange.minVariantPrice;
+  const maximum = product.priceRange.maxVariantPrice;
+  const minimumLabel = formatMoney(minimum.amount, minimum.currencyCode);
+
+  if (minimum.amount === maximum.amount) {
+    return minimumLabel;
+  }
+
+  return `${minimumLabel} – ${formatMoney(maximum.amount, maximum.currencyCode)}`;
 }
 
 function matchesPriceFilter(product: ShopifyProduct, priceFilter: PriceOption) {
@@ -150,7 +188,9 @@ function formatSearchText(product: ShopifyProduct) {
     product.vendor,
     product.productType,
     product.tags.join(" "),
-    product.variants.flatMap((variant) => variant.selectedOptions.map((option) => option.value)).join(" "),
+    product.variants
+      .flatMap((variant) => variant.selectedOptions.map((option) => option.value))
+      .join(" "),
     product.collections.map((collection) => collection.title).join(" "),
   ]
     .join(" ")
@@ -171,6 +211,16 @@ function getOptionValues(products: ShopifyProduct[], optionName: string) {
   ).sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
 }
 
+function getProductAwareSmartFitSizes(products: ShopifyProduct[], profile: FitProfile | null) {
+  if (!profile) {
+    return [];
+  }
+
+  return Array.from(
+    new Set(products.flatMap((product) => getProductFitMatchesForProfile(product, profile))),
+  );
+}
+
 function arraysEqual(left: string[], right: string[]) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
@@ -183,15 +233,26 @@ function isFitBuildValue(value: FitDraftInput["build"]): value is FitBuild {
   return fitBuildOptions.some((option) => option.value === value);
 }
 
-export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogClientProps) {
+export function ShopCatalogClient({
+  products,
+  bestSellers = [],
+  newArrivals = [],
+}: ShopCatalogClientProps) {
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get("q")?.trim() || "";
+  const urlTopPicksId = searchParams.get("top");
   const [isPending, startTransition] = useTransition();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [mobileLayout, setMobileLayout] = useState<"grid" | "single">("grid");
   const [openFacet, setOpenFacet] = useState<FacetKey | null>(null);
-  const [activeTopPicksId, setActiveTopPicksId] = useState<string | null>(null);
+  const [activeTopPicksId, setActiveTopPicksId] = useState<string | null>(() =>
+    urlTopPicksId && ["best", "new", "under-100"].includes(urlTopPicksId) ? urlTopPicksId : null,
+  );
+  const [productWindow, setProductWindow] = useState({
+    signature: "",
+    count: INITIAL_VISIBLE_PRODUCTS,
+  });
   const pillBarRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOption>("featured");
@@ -209,6 +270,11 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
   const [isManualSizeEditorOpen, setIsManualSizeEditorOpen] = useState(false);
   const [smartFitEnabled, setSmartFitEnabled] = useState(false);
   const resultsAnchorRef = useRef<HTMLDivElement | null>(null);
+  const mobileFilterTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const mobileFilterPanelRef = useRef<HTMLDivElement | null>(null);
+  const fitTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const fitPanelRef = useRef<HTMLDivElement | null>(null);
+  const topPicksRailRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollToResultsRef = useRef(false);
   const hasMountedRef = useRef(false);
   const hasLoadedFitProfileRef = useRef(false);
@@ -222,12 +288,22 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
   const deferredSelectedLengths = useDeferredValue(selectedLengths);
   const deferredSelectedColors = useDeferredValue(selectedColors);
 
-  const productTypes = useMemo(() => Array.from(new Set(products.map((product) => product.productType).filter(Boolean))).sort(), [products]);
-  const vendors = useMemo(() => Array.from(new Set(products.map((product) => product.vendor).filter(Boolean))).sort(), [products]);
+  const productTypes = useMemo(
+    () =>
+      Array.from(new Set(products.map((product) => product.productType).filter(Boolean))).sort(),
+    [products],
+  );
+  const vendors = useMemo(
+    () => Array.from(new Set(products.map((product) => product.vendor).filter(Boolean))).sort(),
+    [products],
+  );
   const sizes = useMemo(() => getOptionValues(products, "size"), [products]);
   const lengths = useMemo(() => getOptionValues(products, "length"), [products]);
   const colors = useMemo(() => getOptionValues(products, "color"), [products]);
-  const smartFitSizes = useMemo(() => getMatchingProfileSizes(sizes, fitProfile), [fitProfile, sizes]);
+  const smartFitSizes = useMemo(
+    () => getProductAwareSmartFitSizes(products, fitProfile),
+    [fitProfile, products],
+  );
   const searchableQuery = deferredQuery.trim().toLowerCase();
 
   useEffect(() => {
@@ -235,6 +311,16 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
 
     return () => window.cancelAnimationFrame(frameId);
   }, [urlQuery]);
+
+  useEffect(() => {
+    if (!urlTopPicksId || !["best", "new", "under-100"].includes(urlTopPicksId)) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => setActiveTopPicksId(urlTopPicksId));
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [urlTopPicksId]);
 
   useEffect(() => {
     if (!openFacet) {
@@ -279,7 +365,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       return;
     }
 
-    const matchingSizes = getMatchingProfileSizes(sizes, storedProfile);
+    const matchingSizes = getProductAwareSmartFitSizes(products, storedProfile);
     const frameId = window.requestAnimationFrame(() => {
       setFitProfile(storedProfile);
       setFitDraft({
@@ -304,7 +390,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     return () => {
       window.cancelAnimationFrame(frameId);
     };
-  }, [sizes]);
+  }, [products]);
 
   const appliedFilterSignature = JSON.stringify({
     sort: deferredSort,
@@ -319,9 +405,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
   });
 
   let filteredProducts = products.filter((product) => {
-    const matchesQuery = searchableQuery.length === 0 || formatSearchText(product).includes(searchableQuery);
-    const matchesType = deferredSelectedTypes.length === 0 || deferredSelectedTypes.includes(product.productType);
-    const matchesVendor = deferredSelectedVendors.length === 0 || deferredSelectedVendors.includes(product.vendor);
+    const matchesQuery =
+      searchableQuery.length === 0 || formatSearchText(product).includes(searchableQuery);
+    const matchesType =
+      deferredSelectedTypes.length === 0 || deferredSelectedTypes.includes(product.productType);
+    const matchesVendor =
+      deferredSelectedVendors.length === 0 || deferredSelectedVendors.includes(product.vendor);
     const matchesFit =
       smartFitEnabled && fitProfile
         ? getProductFitMatchesForProfile(product, fitProfile).length > 0
@@ -350,15 +439,41 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     );
   });
 
-  if (deferredSort === "price-low") {
-    filteredProducts = [...filteredProducts].sort((a, b) => getProductPrice(a) - getProductPrice(b));
+  if (deferredSort === "featured" && bestSellers.length > 0) {
+    const bestSellerRank = new Map(bestSellers.map((product, index) => [product.id, index]));
+
+    filteredProducts = [...filteredProducts].sort((left, right) => {
+      const leftRank = bestSellerRank.get(left.id) ?? Number.MAX_SAFE_INTEGER;
+      const rightRank = bestSellerRank.get(right.id) ?? Number.MAX_SAFE_INTEGER;
+
+      if (leftRank !== rightRank) {
+        return leftRank - rightRank;
+      }
+
+      return +new Date(right.createdAt) - +new Date(left.createdAt);
+    });
+  } else if (deferredSort === "price-low") {
+    filteredProducts = [...filteredProducts].sort(
+      (a, b) => getProductPrice(a) - getProductPrice(b),
+    );
   } else if (deferredSort === "price-high") {
-    filteredProducts = [...filteredProducts].sort((a, b) => getProductPrice(b) - getProductPrice(a));
+    filteredProducts = [...filteredProducts].sort(
+      (a, b) => getProductPrice(b) - getProductPrice(a),
+    );
   } else if (deferredSort === "newest") {
-    filteredProducts = [...filteredProducts].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+    filteredProducts = [...filteredProducts].sort(
+      (a, b) => +new Date(b.createdAt) - +new Date(a.createdAt),
+    );
   } else if (deferredSort === "title-asc") {
     filteredProducts = [...filteredProducts].sort((a, b) => a.title.localeCompare(b.title));
   }
+
+  const visibleProductCount =
+    productWindow.signature === appliedFilterSignature
+      ? productWindow.count
+      : INITIAL_VISIBLE_PRODUCTS;
+  const visibleProducts = filteredProducts.slice(0, visibleProductCount);
+  const remainingProductCount = Math.max(0, filteredProducts.length - visibleProducts.length);
 
   function toggleValue(list: string[], value: string, setter: (next: string[]) => void) {
     shouldScrollToResultsRef.current = false;
@@ -373,7 +488,9 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     setSmartFitEnabled(false);
 
     startTransition(() => {
-      setSelectedSizes((current) => (current.includes(size) ? current.filter((item) => item !== size) : [...current, size]));
+      setSelectedSizes((current) =>
+        current.includes(size) ? current.filter((item) => item !== size) : [...current, size],
+      );
     });
   }
 
@@ -383,7 +500,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       return;
     }
 
-    const matchingSizes = getMatchingProfileSizes(sizes, profile);
+    const matchingSizes = getProductAwareSmartFitSizes(products, profile);
     shouldScrollToResultsRef.current = false;
 
     startTransition(() => {
@@ -585,18 +702,109 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       return;
     }
 
+    const filterTrigger = mobileFilterTriggerRef.current;
+    const focusFrame = window.requestAnimationFrame(() => {
+      const firstFocusable = mobileFilterPanelRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+
+      (firstFocusable ?? mobileFilterPanelRef.current)?.focus();
+    });
+
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsMobileFiltersOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        mobileFilterPanelRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        mobileFilterPanelRef.current?.focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       window.removeEventListener("keydown", handleKeyDown);
+      filterTrigger?.focus();
     };
   }, [isMobileFiltersOpen]);
+
+  useEffect(() => {
+    if (!isFitDrawerOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    const fitTrigger = fitTriggerRef.current;
+    const focusFrame = window.requestAnimationFrame(() => {
+      const firstFocusable = fitPanelRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+
+      (firstFocusable ?? fitPanelRef.current)?.focus();
+    });
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsFitDrawerOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        fitPanelRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        fitPanelRef.current?.focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    }
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+      fitTrigger?.focus();
+    };
+  }, [isFitDrawerOpen]);
 
   function renderFilterPanel(variant: "desktop" | "mobile") {
     const searchId = `${variant}-shop-search`;
@@ -606,12 +814,17 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       <Card
         className={cn(
           "border-ink/10 bg-white",
-          variant === "mobile" && "flex h-full flex-col shadow-[0_30px_80px_-50px_rgba(14,23,38,0.4)]",
+          variant === "mobile" &&
+            "flex h-full flex-col shadow-[0_30px_80px_-50px_rgba(14,23,38,0.4)]",
           variant === "desktop" &&
             "flex h-full max-h-[calc(100dvh-6rem)] flex-col rounded-lg border border-ink/10 shadow-none",
         )}
       >
-        <CardContent className={cn((variant === "mobile" || variant === "desktop") && "flex min-h-0 flex-1 flex-col")}>
+        <CardContent
+          className={cn(
+            (variant === "mobile" || variant === "desktop") && "flex min-h-0 flex-1 flex-col",
+          )}
+        >
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-semibold tracking-[0.22em] text-smoke uppercase sm:text-sm">
               {variant === "mobile" ? "Filter & Sort" : "Filters"}
@@ -630,7 +843,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 <button
                   type="button"
                   onClick={() => setIsMobileFiltersOpen(false)}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-gold hover:text-gold"
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/15 text-ink transition-colors hover:border-deep-teal hover:text-deep-teal"
                   aria-label="Close filters"
                 >
                   <X className="h-4 w-4" />
@@ -806,10 +1019,11 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                       key={size}
                       type="button"
                       onClick={() => toggleSize(size)}
-                      className={`min-h-10 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
+                      aria-pressed={selectedSizes.includes(size)}
+                      className={`min-h-11 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
                         selectedSizes.includes(size)
                           ? "border-deep-teal bg-deep-teal text-white shadow-[0_18px_34px_-24px_rgba(15,91,91,0.75)]"
-                          : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-gold hover:text-gold"
+                          : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-deep-teal hover:text-deep-teal"
                       }`}
                     >
                       {size}
@@ -828,10 +1042,11 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                       key={length}
                       type="button"
                       onClick={() => toggleValue(selectedLengths, length, setSelectedLengths)}
-                      className={`min-h-10 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
+                      aria-pressed={selectedLengths.includes(length)}
+                      className={`min-h-11 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
                         selectedLengths.includes(length)
                           ? "border-deep-teal bg-deep-teal text-white shadow-[0_18px_34px_-24px_rgba(15,91,91,0.75)]"
-                          : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-gold hover:text-gold"
+                          : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-deep-teal hover:text-deep-teal"
                       }`}
                     >
                       {length}
@@ -850,10 +1065,11 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                       key={color}
                       type="button"
                       onClick={() => toggleValue(selectedColors, color, setSelectedColors)}
-                      className={`min-h-10 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
+                      aria-pressed={selectedColors.includes(color)}
+                      className={`min-h-11 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
                         selectedColors.includes(color)
                           ? "border-deep-teal bg-deep-teal text-white shadow-[0_18px_34px_-24px_rgba(15,91,91,0.75)]"
-                          : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-gold hover:text-gold"
+                          : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-deep-teal hover:text-deep-teal"
                       }`}
                     >
                       {color}
@@ -862,7 +1078,6 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 </div>
               </div>
             ) : null}
-
           </div>
 
           {variant === "mobile" ? (
@@ -927,7 +1142,9 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
             {color}
           </Badge>
         ))}
-        {availability !== DEFAULT_AVAILABILITY ? <Badge variant="neutral">{availability === "in-stock" ? "In stock" : "Sold out"}</Badge> : null}
+        {availability !== DEFAULT_AVAILABILITY ? (
+          <Badge variant="neutral">{availability === "in-stock" ? "In stock" : "Sold out"}</Badge>
+        ) : null}
         {priceFilter !== "all" ? (
           <Badge variant="neutral">
             {priceFilter === "under-100"
@@ -951,28 +1168,32 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     const hasSmartFitMatches = smartFitSizes.length > 0;
     const showFitForm = isFitEditorOpen || !fitProfile;
     const emptyEstimate = getEmptyFitEstimate(fitDraft);
-    const previewEstimate = showFitForm ? previewProfile?.estimate ?? emptyEstimate : estimate ?? previewProfile?.estimate ?? emptyEstimate;
+    const previewEstimate = showFitForm
+      ? (previewProfile?.estimate ?? emptyEstimate)
+      : (estimate ?? previewProfile?.estimate ?? emptyEstimate);
     const manualSizeItems = [
-      { label: "Suit", value: fitDraft.knownSuitSize },
+      { label: "Suit (US)", value: fitDraft.knownSuitSize },
       { label: "Top", value: fitDraft.knownTopSize },
       { label: "Shirt", value: fitDraft.knownDressShirtSize },
       { label: "Waist", value: fitDraft.knownWaistSize },
       { label: "Shoe", value: fitDraft.shoeSize },
     ].filter((item): item is { label: string; value: string } => Boolean(item.value?.trim()));
     const hasManualSizeValues = manualSizeItems.length > 0;
-    const selectedBuildLabel = fitDraft.build ? fitBuildOptions.find((option) => option.value === fitDraft.build)?.label ?? "Average" : "Select build";
+    const selectedBuildLabel = fitDraft.build
+      ? (fitBuildOptions.find((option) => option.value === fitDraft.build)?.label ?? "Average")
+      : "Select build";
     const measurementSummary = normalizedFitDraft
       ? `Based on ${fitDraft.heightFeet}'${fitDraft.heightInches}", ${fitDraft.weightLbs} lb, ${selectedBuildLabel.toLowerCase()} build.`
       : hasManualSizeValues
         ? "Known sizes are ready. Complete measurements to calculate the full profile."
         : "Complete your measurements to generate personalized size recommendations.";
     const visualStats = [
-      { label: "Suit", value: getFitDisplayValue(previewEstimate.suit) },
+      { label: "Suit (US)", value: getFitDisplayValue(previewEstimate.suit) },
       { label: "Tops", value: getFitDisplayValue(previewEstimate.alpha) },
       { label: "Shoes", value: getFitDisplayValue(previewEstimate.shoe) },
     ];
     const estimateItems = [
-      { label: "Suit", value: getFitDisplayValue(previewEstimate.suit), icon: Ruler },
+      { label: "Suit (US)", value: getFitDisplayValue(previewEstimate.suit), icon: Ruler },
       { label: "Tops", value: getFitDisplayValue(previewEstimate.alpha), icon: Shirt },
       { label: "Dress shirt", value: getFitDisplayValue(previewEstimate.dressShirt), icon: Shirt },
       { label: "Waist", value: getFitDisplayValue(previewEstimate.waist), icon: Ruler },
@@ -982,7 +1203,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
     if (isDrawer) {
       const savedSizes = [
         {
-          label: "Suit / jacket",
+          label: "Suit / jacket (US)",
           value: getFitDisplayValue(previewEstimate.suit, ""),
         },
         {
@@ -1017,7 +1238,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               <button
                 type="button"
                 onClick={() => setIsFitDrawerOpen(false)}
-                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/10 text-ink transition-colors hover:bg-stone focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/10 text-ink transition-colors hover:bg-stone focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
                 aria-label="Close Smart Fit"
               >
                 <X className="h-4 w-4" />
@@ -1031,13 +1252,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                     Type in the sizes you know.
                   </h3>
                   <p className="mt-2 text-sm leading-6 text-smoke">
-                    Add one or several. Each product will use the right size for its
-                    category.
+                    Add one or several. Each product will use the right size for its category.
                   </p>
 
                   <div className="mt-6 grid grid-cols-2 gap-3">
                     <div>
-                      <FieldLabel htmlFor="drawer-fit-suit">Suit / jacket</FieldLabel>
+                      <FieldLabel htmlFor="drawer-fit-suit">Suit / jacket (US)</FieldLabel>
                       <Input
                         id="drawer-fit-suit"
                         value={fitDraft.knownSuitSize ?? ""}
@@ -1051,7 +1271,9 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                         autoCapitalize="characters"
                         className="mt-2 min-h-12 bg-white text-base"
                       />
-                      <p className="mt-1.5 text-[11px] text-smoke">Chest + length</p>
+                      <p className="mt-1.5 text-[11px] leading-4 text-smoke">
+                        Chest + length. We convert EU-sized sport coats.
+                      </p>
                     </div>
 
                     <div>
@@ -1122,9 +1344,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                         placeholder="16 x 34/35"
                         className="mt-2 min-h-12 bg-white text-base"
                       />
-                      <p className="mt-1.5 text-[11px] text-smoke">
-                        Neck × sleeve, if known
-                      </p>
+                      <p className="mt-1.5 text-[11px] text-smoke">Neck × sleeve, if known</p>
                     </div>
                   </div>
 
@@ -1145,9 +1365,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                             setFitDraft((current) => ({
                               ...current,
                               heightFeet:
-                                event.target.value === ""
-                                  ? ""
-                                  : Number(event.target.value),
+                                event.target.value === "" ? "" : Number(event.target.value),
                             }))
                           }
                           className="mt-2 bg-white"
@@ -1162,9 +1380,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                       </div>
 
                       <div>
-                        <FieldLabel htmlFor="drawer-fit-height-inches">
-                          Inches
-                        </FieldLabel>
+                        <FieldLabel htmlFor="drawer-fit-height-inches">Inches</FieldLabel>
                         <Select
                           id="drawer-fit-height-inches"
                           value={fitDraft.heightInches}
@@ -1172,21 +1388,17 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                             setFitDraft((current) => ({
                               ...current,
                               heightInches:
-                                event.target.value === ""
-                                  ? ""
-                                  : Number(event.target.value),
+                                event.target.value === "" ? "" : Number(event.target.value),
                             }))
                           }
                           className="mt-2 bg-white"
                         >
                           <option value="">Inches</option>
-                          {Array.from({ length: 12 }, (_, index) => index).map(
-                            (inches) => (
-                              <option key={inches} value={inches}>
-                                {inches} in
-                              </option>
-                            ),
-                          )}
+                          {Array.from({ length: 12 }, (_, index) => index).map((inches) => (
+                            <option key={inches} value={inches}>
+                              {inches} in
+                            </option>
+                          ))}
                         </Select>
                       </div>
 
@@ -1203,9 +1415,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                             setFitDraft((current) => ({
                               ...current,
                               weightLbs:
-                                event.target.value === ""
-                                  ? ""
-                                  : Number(event.target.value),
+                                event.target.value === "" ? "" : Number(event.target.value),
                             }))
                           }
                           placeholder="180 lb"
@@ -1222,9 +1432,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                             setFitDraft((current) => ({
                               ...current,
                               build:
-                                event.target.value === ""
-                                  ? ""
-                                  : (event.target.value as FitBuild),
+                                event.target.value === "" ? "" : (event.target.value as FitBuild),
                             }))
                           }
                           className="mt-2 bg-white"
@@ -1263,8 +1471,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                   ) : null}
 
                   <p className="mt-5 text-xs leading-5 text-smoke">
-                    Saved only in this browser. Smart Fit is a starting point and can
-                    vary by brand.
+                    Saved only in this browser. Smart Fit is a starting point and can vary by brand.
                   </p>
                 </form>
               ) : (
@@ -1290,9 +1497,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                         <p className="text-[10px] font-semibold tracking-[0.14em] text-smoke uppercase">
                           {item.label}
                         </p>
-                        <p className="mt-1.5 text-lg font-semibold text-ink">
-                          {item.value}
-                        </p>
+                        <p className="mt-1.5 text-lg font-semibold text-ink">{item.value}</p>
                       </div>
                     ))}
                   </div>
@@ -1340,7 +1545,14 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
           isDrawer ? "h-full rounded-none border-0 shadow-none" : "mb-5 rounded-lg",
         )}
       >
-        <CardContent className={cn("grid min-w-0 gap-0 p-0", isDrawer ? "h-full grid-cols-1 overflow-y-auto" : "lg:grid-cols-[minmax(19rem,0.84fr)_minmax(0,1.16fr)]")}>
+        <CardContent
+          className={cn(
+            "grid min-w-0 gap-0 p-0",
+            isDrawer
+              ? "h-full grid-cols-1 overflow-y-auto"
+              : "lg:grid-cols-[minmax(19rem,0.84fr)_minmax(0,1.16fr)]",
+          )}
+        >
           <div
             className={cn(
               "relative min-w-0 overflow-hidden bg-ink text-white",
@@ -1358,7 +1570,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
             <div className="absolute inset-0 bg-gradient-to-br from-[#071016]/90 via-[#071016]/52 to-[#071016]/12" />
             <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-[#071016] to-transparent" />
 
-            <div className={cn("relative flex flex-col justify-between p-5 sm:p-6", isDrawer ? "min-h-[16.5rem]" : "min-h-[19rem] sm:min-h-[22rem]")}>
+            <div
+              className={cn(
+                "relative flex flex-col justify-between p-5 sm:p-6",
+                isDrawer ? "min-h-[16.5rem]" : "min-h-[19rem] sm:min-h-[22rem]",
+              )}
+            >
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex min-h-8 items-center rounded-full bg-white px-3 py-1 text-[10px] font-semibold tracking-[0.16em] text-ink uppercase shadow-sm">
                   Smart Fit Profile
@@ -1380,14 +1597,25 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-white/70 uppercase">Starting estimate</p>
-                <p className="mt-2 text-4xl font-semibold tracking-normal text-white sm:text-5xl">{getFitDisplayValue(previewEstimate.suit)}</p>
-                <p className="mt-2 max-w-xs text-sm leading-6 text-white/78">{measurementSummary}</p>
+                <p className="text-[11px] font-semibold tracking-[0.16em] text-white/70 uppercase">
+                  Starting estimate
+                </p>
+                <p className="mt-2 text-4xl font-semibold tracking-normal text-white sm:text-5xl">
+                  {getFitDisplayValue(previewEstimate.suit)}
+                </p>
+                <p className="mt-2 max-w-xs text-sm leading-6 text-white/78">
+                  {measurementSummary}
+                </p>
 
                 <div className={cn("mt-5 grid gap-2", isDrawer ? "grid-cols-3" : "grid-cols-3")}>
                   {visualStats.map((item) => (
-                    <div key={item.label} className="min-w-0 rounded-md border border-white/14 bg-white/10 px-3 py-2 backdrop-blur">
-                      <p className="text-[9px] font-semibold tracking-[0.14em] text-white/58 uppercase">{item.label}</p>
+                    <div
+                      key={item.label}
+                      className="min-w-0 rounded-md border border-white/14 bg-white/10 px-3 py-2 backdrop-blur"
+                    >
+                      <p className="text-[9px] font-semibold tracking-[0.14em] text-white/58 uppercase">
+                        {item.label}
+                      </p>
                       <p className="mt-1 truncate text-sm font-semibold text-white">{item.value}</p>
                     </div>
                   ))}
@@ -1402,14 +1630,22 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 <p className="inline-flex min-h-7 items-center rounded-full border border-deep-teal/20 bg-deep-teal/8 px-3 text-[10px] font-semibold tracking-[0.16em] text-deep-teal uppercase">
                   Smart Fit
                 </p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-normal text-ink sm:text-3xl">Find your best starting size.</h2>
+                <h2 className="mt-3 text-2xl font-semibold tracking-normal text-ink sm:text-3xl">
+                  Find your best starting size.
+                </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-6 text-smoke">
-                  Save a fit profile once. The shop can surface matching suit, shirt, waist, and shoe variants while you browse.
+                  Save a fit profile once. The shop can surface matching suit, shirt, waist, and
+                  shoe variants while you browse.
                 </p>
               </div>
 
               {fitProfile ? (
-                <div className={cn("flex shrink-0 flex-wrap gap-2 xl:justify-end", isDrawer && "grid grid-cols-2")}>
+                <div
+                  className={cn(
+                    "flex shrink-0 flex-wrap gap-2 xl:justify-end",
+                    isDrawer && "grid grid-cols-2",
+                  )}
+                >
                   <button
                     type="button"
                     onClick={() => applySmartFit()}
@@ -1439,14 +1675,24 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               ) : null}
             </div>
 
-            <div className={cn("mt-5 grid gap-2", isDrawer ? "grid-cols-1" : "sm:grid-cols-2 xl:grid-cols-5")}>
+            <div
+              className={cn(
+                "mt-5 grid gap-2",
+                isDrawer ? "grid-cols-1" : "sm:grid-cols-2 xl:grid-cols-5",
+              )}
+            >
               {estimateItems.map((item) => {
                 const Icon = item.icon;
 
                 return (
-                  <div key={item.label} className="min-h-[5.5rem] min-w-0 rounded-md border border-ink/8 bg-stone px-3 py-3">
+                  <div
+                    key={item.label}
+                    className="min-h-[5.5rem] min-w-0 rounded-md border border-ink/8 bg-stone px-3 py-3"
+                  >
                     <div className="flex items-center justify-between gap-2 text-smoke">
-                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase">{item.label}</p>
+                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase">
+                        {item.label}
+                      </p>
                       <Icon className="h-4 w-4 shrink-0" />
                     </div>
                     <p className="mt-2 text-base leading-5 font-semibold text-ink">{item.value}</p>
@@ -1467,13 +1713,23 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
 
             {showFitForm ? (
               <form onSubmit={saveFitProfile} className="mt-5 border-t border-ink/8 pt-5">
-                <div className={cn("grid gap-3", isDrawer ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4")}>
+                <div
+                  className={cn(
+                    "grid gap-3",
+                    isDrawer ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-4",
+                  )}
+                >
                   <div>
                     <FieldLabel htmlFor="fit-height-feet">Height ft</FieldLabel>
                     <Select
                       id="fit-height-feet"
                       value={fitDraft.heightFeet}
-                      onChange={(event) => setFitDraft((current) => ({ ...current, heightFeet: event.target.value === "" ? "" : Number(event.target.value) }))}
+                      onChange={(event) =>
+                        setFitDraft((current) => ({
+                          ...current,
+                          heightFeet: event.target.value === "" ? "" : Number(event.target.value),
+                        }))
+                      }
                       className="mt-2 bg-white"
                       required
                     >
@@ -1491,7 +1747,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                     <Select
                       id="fit-height-inches"
                       value={fitDraft.heightInches}
-                      onChange={(event) => setFitDraft((current) => ({ ...current, heightInches: event.target.value === "" ? "" : Number(event.target.value) }))}
+                      onChange={(event) =>
+                        setFitDraft((current) => ({
+                          ...current,
+                          heightInches: event.target.value === "" ? "" : Number(event.target.value),
+                        }))
+                      }
                       className="mt-2 bg-white"
                       required
                     >
@@ -1512,7 +1773,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                       min={95}
                       max={340}
                       value={fitDraft.weightLbs}
-                      onChange={(event) => setFitDraft((current) => ({ ...current, weightLbs: event.target.value === "" ? "" : Number(event.target.value) }))}
+                      onChange={(event) =>
+                        setFitDraft((current) => ({
+                          ...current,
+                          weightLbs: event.target.value === "" ? "" : Number(event.target.value),
+                        }))
+                      }
                       className={cn("mt-2 bg-white", isDrawer && "text-base")}
                       placeholder="Weight"
                       required
@@ -1524,7 +1790,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                     <Select
                       id="fit-build"
                       value={fitDraft.build}
-                      onChange={(event) => setFitDraft((current) => ({ ...current, build: event.target.value === "" ? "" : (event.target.value as FitBuild) }))}
+                      onChange={(event) =>
+                        setFitDraft((current) => ({
+                          ...current,
+                          build: event.target.value === "" ? "" : (event.target.value as FitBuild),
+                        }))
+                      }
                       className="mt-2 bg-white"
                       required
                     >
@@ -1541,7 +1812,9 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 <div className="mt-5 rounded-md border border-ink/10 bg-stone p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-[11px] font-semibold tracking-[0.14em] text-deep-teal uppercase">Known sizes</p>
+                      <p className="text-[11px] font-semibold tracking-[0.14em] text-deep-teal uppercase">
+                        Known sizes
+                      </p>
                       <p className="mt-1 text-xs leading-5 text-smoke">
                         Optional manual sizes override the estimate.
                       </p>
@@ -1552,14 +1825,21 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                       onClick={() => setIsManualSizeEditorOpen((current) => !current)}
                       className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/15 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30"
                     >
-                      {isManualSizeEditorOpen ? "Hide Known Sizes" : hasManualSizeValues ? "Edit Known Sizes" : "Add Known Sizes"}
+                      {isManualSizeEditorOpen
+                        ? "Hide Known Sizes"
+                        : hasManualSizeValues
+                          ? "Edit Known Sizes"
+                          : "Add Known Sizes"}
                     </button>
                   </div>
 
                   {!isManualSizeEditorOpen && hasManualSizeValues ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {manualSizeItems.map((item) => (
-                        <span key={item.label} className="rounded-full border border-ink/10 bg-white px-3 py-1 text-xs font-semibold text-ink">
+                        <span
+                          key={item.label}
+                          className="rounded-full border border-ink/10 bg-white px-3 py-1 text-xs font-semibold text-ink"
+                        >
                           {item.label}: {item.value}
                         </span>
                       ))}
@@ -1567,13 +1847,23 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                   ) : null}
 
                   {isManualSizeEditorOpen ? (
-                    <div className={cn("mt-3 grid gap-3", isDrawer ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-5")}>
+                    <div
+                      className={cn(
+                        "mt-3 grid gap-3",
+                        isDrawer ? "grid-cols-2" : "sm:grid-cols-2 xl:grid-cols-5",
+                      )}
+                    >
                       <div>
-                        <FieldLabel htmlFor="fit-known-suit">Suit</FieldLabel>
+                        <FieldLabel htmlFor="fit-known-suit">Suit (US)</FieldLabel>
                         <Input
                           id="fit-known-suit"
                           value={fitDraft.knownSuitSize ?? ""}
-                          onChange={(event) => setFitDraft((current) => ({ ...current, knownSuitSize: event.target.value }))}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({
+                              ...current,
+                              knownSuitSize: event.target.value,
+                            }))
+                          }
                           placeholder="40L"
                           className={cn("mt-2 bg-white", isDrawer && "text-base")}
                         />
@@ -1584,7 +1874,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                         <Input
                           id="fit-known-top"
                           value={fitDraft.knownTopSize ?? ""}
-                          onChange={(event) => setFitDraft((current) => ({ ...current, knownTopSize: event.target.value }))}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({
+                              ...current,
+                              knownTopSize: event.target.value,
+                            }))
+                          }
                           placeholder="M"
                           className={cn("mt-2 bg-white", isDrawer && "text-base")}
                         />
@@ -1595,7 +1890,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                         <Input
                           id="fit-known-shirt"
                           value={fitDraft.knownDressShirtSize ?? ""}
-                          onChange={(event) => setFitDraft((current) => ({ ...current, knownDressShirtSize: event.target.value }))}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({
+                              ...current,
+                              knownDressShirtSize: event.target.value,
+                            }))
+                          }
                           placeholder="16 x 34/35"
                           className={cn("mt-2 bg-white", isDrawer && "text-base")}
                         />
@@ -1606,7 +1906,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                         <Input
                           id="fit-known-waist"
                           value={fitDraft.knownWaistSize ?? ""}
-                          onChange={(event) => setFitDraft((current) => ({ ...current, knownWaistSize: event.target.value }))}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({
+                              ...current,
+                              knownWaistSize: event.target.value,
+                            }))
+                          }
                           placeholder="33"
                           className={cn("mt-2 bg-white", isDrawer && "text-base")}
                         />
@@ -1617,7 +1922,9 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                         <Input
                           id="fit-shoe"
                           value={fitDraft.shoeSize ?? ""}
-                          onChange={(event) => setFitDraft((current) => ({ ...current, shoeSize: event.target.value }))}
+                          onChange={(event) =>
+                            setFitDraft((current) => ({ ...current, shoeSize: event.target.value }))
+                          }
                           placeholder="10"
                           className={cn("mt-2 bg-white", isDrawer && "text-base")}
                         />
@@ -1634,13 +1941,15 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 </button>
 
                 <p className="mt-3 text-xs leading-5 text-smoke">
-                  Fit is an estimate for browsing. A tailor or in-store appointment is still best for final suit adjustments.
+                  Fit is an estimate for browsing. A tailor or in-store appointment is still best
+                  for final suit adjustments.
                 </p>
               </form>
             ) : (
               <div className="mt-5 flex flex-col gap-2 border-t border-ink/8 pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-smoke">
-                  Saved to this browser as {fitDraft.heightFeet}&apos;{fitDraft.heightInches}&quot;, {fitDraft.weightLbs} lb, {selectedBuildLabel.toLowerCase()} build.
+                  Saved to this browser as {fitDraft.heightFeet}&apos;{fitDraft.heightInches}&quot;,{" "}
+                  {fitDraft.weightLbs} lb, {selectedBuildLabel.toLowerCase()} build.
                 </p>
                 <button
                   type="button"
@@ -1678,6 +1987,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
 
     return (
       <button
+        ref={fitTriggerRef}
         type="button"
         onClick={() => setIsFitDrawerOpen(true)}
         className="mb-4 flex w-full items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white px-3.5 py-2.5 text-left shadow-sm shadow-ink/[0.03] transition-colors hover:border-deep-teal/30 hover:bg-[#fbfcfc]"
@@ -1703,34 +2013,89 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
 
   const topPickTabs = [
     { id: "best", label: "Best Sellers", items: bestSellers.slice(0, 10) },
-    { id: "new", label: "New Arrivals", items: products.slice(0, 10) },
+    { id: "new", label: "New Arrivals", items: newArrivals.slice(0, 10) },
     {
       id: "under-100",
       label: "Under $100",
-      items: products.filter((product) => getProductPrice(product) < 100).slice(0, 10),
+      items: products
+        .filter(
+          (product) =>
+            product.variants.some((variant) => variant.availableForSale) &&
+            getProductPrice(product) < 100,
+        )
+        .slice(0, 10),
     },
   ].filter((tab) => tab.items.length > 0);
-  const activeTopPicksTab = topPickTabs.find((tab) => tab.id === activeTopPicksId) ?? topPickTabs[0];
+  const activeTopPicksTab =
+    topPickTabs.find((tab) => tab.id === activeTopPicksId) ?? topPickTabs[0];
+
+  useEffect(() => {
+    topPicksRailRef.current?.scrollTo({ left: 0, behavior: "auto" });
+  }, [activeTopPicksTab?.id]);
+
+  function handleTopPicksKeyDown(
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) {
+    let nextIndex = currentIndex;
+
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % topPickTabs.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + topPickTabs.length) % topPickTabs.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = topPickTabs.length - 1;
+    } else {
+      return;
+    }
+
+    event.preventDefault();
+    const nextTab = topPickTabs[nextIndex];
+
+    if (!nextTab) {
+      return;
+    }
+
+    setActiveTopPicksId(nextTab.id);
+    const tabButtons =
+      event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+
+    tabButtons?.[nextIndex]?.focus();
+  }
 
   function renderTopPicks() {
-    if (bestSellers.length === 0 || !activeTopPicksTab) {
+    if (!activeTopPicksTab) {
       return null;
     }
 
     return (
-      <section className="mb-6" aria-label="Top picks">
+      <section id="top-picks" className="mb-6 scroll-mt-28" aria-label="Top picks">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-[-0.01em] text-ink sm:text-xl">Top Picks</h2>
+          <h2 className="text-lg font-semibold tracking-[-0.01em] text-ink sm:text-xl">
+            Top Picks
+          </h2>
         </div>
 
-        <div className="mt-2 flex gap-5 overflow-x-auto border-b border-ink/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {topPickTabs.map((tab) => (
+        <div
+          className="mt-2 flex gap-5 overflow-x-auto border-b border-ink/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+          aria-label="Top picks"
+        >
+          {topPickTabs.map((tab, index) => (
             <button
               key={tab.id}
+              id={`top-picks-tab-${tab.id}`}
               type="button"
               onClick={() => setActiveTopPicksId(tab.id)}
+              onKeyDown={(event) => handleTopPicksKeyDown(event, index)}
+              role="tab"
+              aria-selected={tab.id === activeTopPicksTab.id}
+              aria-controls="top-picks-panel"
+              tabIndex={tab.id === activeTopPicksTab.id ? 0 : -1}
               className={cn(
-                "-mb-px shrink-0 border-b-2 pb-2 text-sm transition-colors",
+                "-mb-px inline-flex min-h-11 shrink-0 items-center border-b-2 px-1 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2",
                 tab.id === activeTopPicksTab.id
                   ? "border-ink font-semibold text-ink"
                   : "border-transparent font-medium text-smoke hover:text-ink",
@@ -1741,11 +2106,15 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
           ))}
         </div>
 
-        <div className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          ref={topPicksRailRef}
+          id="top-picks-panel"
+          role="tabpanel"
+          aria-labelledby={`top-picks-tab-${activeTopPicksTab.id}`}
+          className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {activeTopPicksTab.items.map((product) => {
-            const isOnSale =
-              Boolean(product.variants[0]?.compareAtPrice) &&
-              Number(product.variants[0].compareAtPrice?.amount) > Number(product.variants[0].price.amount);
+            const isOnSale = Boolean(getProductSale(product));
 
             return (
               <Link
@@ -1772,8 +2141,8 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 <p className="mt-0.5 truncate text-sm font-medium text-ink transition-colors group-hover:text-deep-teal">
                   {product.title}
                 </p>
-                <p className={cn("mt-0.5 text-sm font-bold", isOnSale ? "text-[#8f2632]" : "text-ink")}>
-                  {formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode)}
+                <p className={cn("mt-0.5 text-sm font-bold", isOnSale ? "text-sale" : "text-ink")}>
+                  {getProductPriceLabel(product)}
                 </p>
               </Link>
             );
@@ -1784,7 +2153,11 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
   }
 
   const facetPillOptions: FacetPill[] = [
-    { key: "availability", label: "Availability", activeCount: availability !== DEFAULT_AVAILABILITY ? 1 : 0 },
+    {
+      key: "availability",
+      label: "Availability",
+      activeCount: availability !== DEFAULT_AVAILABILITY ? 1 : 0,
+    },
     { key: "price", label: "Price", activeCount: priceFilter !== "all" ? 1 : 0 },
     { key: "brand", label: "Brand", activeCount: selectedVendors.length },
     {
@@ -1902,11 +2275,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
 
     const values = key === "size" ? sizes : key === "length" ? lengths : colors;
     const selected =
-      key === "size"
-        ? selectedSizes
-        : key === "length"
-          ? selectedLengths
-          : selectedColors;
+      key === "size" ? selectedSizes : key === "length" ? selectedLengths : selectedColors;
 
     return (
       <div className="flex max-h-64 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
@@ -1923,8 +2292,9 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 toggleValue(selectedColors, value, setSelectedColors);
               }
             }}
+            aria-pressed={selected.includes(value)}
             className={cn(
-              "min-h-9 rounded-full border px-3.5 text-xs font-semibold tracking-[0.08em] uppercase transition-colors",
+              "min-h-11 rounded-full border px-3.5 text-xs font-semibold tracking-[0.08em] uppercase transition-colors",
               selected.includes(value)
                 ? "border-deep-teal bg-deep-teal text-white"
                 : "border-ink/15 bg-white text-ink hover:border-ink/40",
@@ -1951,7 +2321,15 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
             aria-label="Close Smart Fit"
           />
           <div className="fixed inset-y-0 left-0 z-[160] w-full max-w-[24rem] sm:max-w-[28rem] lg:max-w-[32rem]">
-            <div id="smart-fit-panel" role="dialog" aria-modal="true" aria-label="Smart Fit calculator" className="h-full bg-white shadow-xl">
+            <div
+              ref={fitPanelRef}
+              id="smart-fit-panel"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Smart Fit calculator"
+              tabIndex={-1}
+              className="h-full bg-white shadow-xl outline-none"
+            >
               {renderFitProfileCard("drawer")}
             </div>
           </div>
@@ -1961,16 +2339,19 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       <div ref={pillBarRef} className="relative">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
+            ref={mobileFilterTriggerRef}
             type="button"
             onClick={() => setIsMobileFiltersOpen(true)}
-            className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-ink/15 bg-white px-4 text-sm font-medium text-ink transition-colors hover:border-ink/40 lg:hidden"
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-ink/15 bg-white px-4 text-sm font-medium text-ink transition-colors hover:border-ink/40 lg:hidden"
             aria-expanded={isMobileFiltersOpen}
             aria-controls="shop-filters"
           >
             <SlidersHorizontal className="h-4 w-4" />
             All Filters
             {activeFilterCount > 0 ? (
-              <span className="rounded-full bg-deep-teal px-2 py-0.5 text-[10px] font-semibold text-white">{activeFilterCount}</span>
+              <span className="rounded-full bg-deep-teal px-2 py-0.5 text-[10px] font-semibold text-white">
+                {activeFilterCount}
+              </span>
             ) : null}
           </button>
 
@@ -1987,7 +2368,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                   setSort(event.target.value as SortOption);
                 });
               }}
-              className="h-10 appearance-none rounded-full border border-ink/15 bg-white pr-9 pl-4 text-sm font-medium text-ink outline-none transition-colors hover:border-ink/40 focus:border-deep-teal"
+              className="h-11 appearance-none rounded-full border border-ink/15 bg-white pr-9 pl-4 text-sm font-medium text-ink outline-none transition-colors hover:border-ink/40 focus:border-deep-teal focus:ring-4 focus:ring-deep-teal/15"
             >
               <option value="featured">Sort: Featured</option>
               <option value="newest">Sort: Newest</option>
@@ -2005,7 +2386,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               onClick={() => setOpenFacet((current) => (current === pill.key ? null : pill.key))}
               aria-expanded={openFacet === pill.key}
               className={cn(
-                "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors lg:hidden",
+                "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors lg:hidden",
                 pill.activeCount > 0 || openFacet === pill.key
                   ? "border-ink bg-ink text-white"
                   : "border-ink/15 bg-white text-ink hover:border-ink/40",
@@ -2013,9 +2394,16 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
             >
               {pill.label}
               {pill.activeCount > 0 ? (
-                <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold">{pill.activeCount}</span>
+                <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold">
+                  {pill.activeCount}
+                </span>
               ) : null}
-              <ChevronDown className={cn("h-4 w-4 transition-transform", openFacet === pill.key && "rotate-180")} />
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 transition-transform",
+                  openFacet === pill.key && "rotate-180",
+                )}
+              />
             </button>
           ))}
 
@@ -2031,12 +2419,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
                 }}
                 placeholder="Search products"
                 aria-label="Search products"
-                className="mt-0 h-10 w-56 rounded-full py-0 pr-9 pl-10 text-sm xl:w-64"
+                className="mt-0 h-11 w-56 rounded-full py-0 pr-10 pl-10 text-sm xl:w-64"
               />
               <button
                 type="button"
                 onClick={() => setIsSearchOpen(false)}
-                className="absolute top-1/2 right-1.5 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-smoke transition-colors hover:text-ink"
+                className="absolute top-1/2 right-1 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-smoke transition-colors hover:text-ink"
                 aria-label="Close search"
               >
                 <X className="h-3.5 w-3.5" />
@@ -2046,21 +2434,25 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
             <button
               type="button"
               onClick={() => setIsSearchOpen(true)}
-              className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full border border-ink/15 bg-white text-ink transition-colors hover:border-ink/40 lg:inline-flex"
+              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/15 bg-white text-ink transition-colors hover:border-ink/40 lg:inline-flex"
               aria-label="Search products"
             >
               <Search className="h-4 w-4" />
             </button>
           )}
 
-          <div className="inline-flex h-10 shrink-0 items-center gap-1 rounded-full border border-ink/15 bg-white p-1 sm:hidden" role="group" aria-label="Product layout">
+          <div
+            className="inline-flex h-11 shrink-0 items-center gap-1 rounded-full border border-ink/15 bg-white p-1 sm:hidden"
+            role="group"
+            aria-label="Product layout"
+          >
             <button
               type="button"
               onClick={() => setMobileLayout("grid")}
               aria-pressed={mobileLayout === "grid"}
               aria-label="Two column grid"
               className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                "inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors",
                 mobileLayout === "grid" ? "bg-ink text-white" : "text-smoke hover:text-ink",
               )}
             >
@@ -2072,7 +2464,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               aria-pressed={mobileLayout === "single"}
               aria-label="Single column view"
               className={cn(
-                "inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+                "inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors",
                 mobileLayout === "single" ? "bg-ink text-white" : "text-smoke hover:text-ink",
               )}
             >
@@ -2095,7 +2487,7 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               <button
                 type="button"
                 onClick={() => setOpenFacet(null)}
-                className="inline-flex min-h-9 items-center justify-center rounded-full border border-ink bg-ink px-4 text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:bg-deep-teal"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-ink bg-ink px-4 text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:bg-deep-teal"
               >
                 Done
               </button>
@@ -2104,10 +2496,11 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
         ) : null}
       </div>
 
-      <p className={cn("mt-3 text-sm text-smoke", isFiltering && "text-deep-teal")}>
-        {filteredProducts.length === products.length
-          ? `${products.length} ${pluralize(products.length, "product")}`
-          : `Showing ${filteredProducts.length} of ${products.length} ${pluralize(products.length, "product")}`}
+      <p
+        className={cn("mt-3 text-sm text-smoke", isFiltering && "text-deep-teal")}
+        aria-live="polite"
+      >
+        {`Showing ${visibleProducts.length} of ${filteredProducts.length} matching ${pluralize(filteredProducts.length, "product")}`}
         {isFiltering ? " · Updating" : ""}
       </p>
 
@@ -2146,7 +2539,15 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
             aria-label="Close filters"
           />
           <div className="fixed inset-y-0 right-0 z-[140] w-full max-w-md p-3 sm:p-4">
-            <div id="shop-filters" role="dialog" aria-modal="true" aria-label="Filter products" className="h-full">
+            <div
+              ref={mobileFilterPanelRef}
+              id="shop-filters"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Filter products"
+              tabIndex={-1}
+              className="h-full outline-none"
+            >
               {renderFilterPanel("mobile")}
             </div>
           </div>
@@ -2154,7 +2555,9 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
       ) : null}
 
       <div className="lg:mt-6 lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-5 xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="hidden lg:sticky lg:top-24 lg:block">{renderFilterPanel("desktop")}</aside>
+        <aside className="hidden lg:sticky lg:top-24 lg:block">
+          {renderFilterPanel("desktop")}
+        </aside>
 
         <div className="min-w-0">
           <div ref={resultsAnchorRef} className="h-px" />
@@ -2165,10 +2568,12 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               className={cn(
                 "mt-6 grid gap-3 transition-[opacity,transform,filter] duration-300 ease-out sm:grid-cols-2 md:grid-cols-3 lg:mt-0 lg:grid-cols-2 xl:grid-cols-3 xl:gap-4",
                 mobileLayout === "grid" ? "grid-cols-2" : "grid-cols-1",
-                isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
+                isFiltering
+                  ? "translate-y-1 opacity-60 blur-[1px]"
+                  : "translate-y-0 opacity-100 blur-0",
               )}
             >
-              {filteredProducts.map((product) => (
+              {visibleProducts.map((product) => (
                 <ShopProductCard
                   key={product.id}
                   product={product}
@@ -2185,11 +2590,15 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
             <Card
               className={cn(
                 "mt-8 transition-[opacity,transform,filter] duration-300 ease-out lg:mt-0",
-                isFiltering ? "translate-y-1 opacity-60 blur-[1px]" : "translate-y-0 opacity-100 blur-0",
+                isFiltering
+                  ? "translate-y-1 opacity-60 blur-[1px]"
+                  : "translate-y-0 opacity-100 blur-0",
               )}
             >
               <CardContent>
-                <h3 className="text-2xl font-semibold tracking-[-0.02em] text-ink">No products match your filters</h3>
+                <h3 className="text-2xl font-semibold tracking-[-0.02em] text-ink">
+                  No products match your filters
+                </h3>
                 <p className="mt-3 text-sm leading-7 text-smoke">
                   Try a broader search or clear filters to bring more products back into view.
                 </p>
@@ -2203,6 +2612,26 @@ export function ShopCatalogClient({ products, bestSellers = [] }: ShopCatalogCli
               </CardContent>
             </Card>
           )}
+
+          {remainingProductCount > 0 ? (
+            <div className="mt-8 flex flex-col items-center border-t border-ink/10 pt-8 text-center">
+              <p className="text-sm text-smoke">
+                {visibleProducts.length} of {filteredProducts.length} matching products shown
+              </p>
+              <button
+                type="button"
+                onClick={() =>
+                  setProductWindow({
+                    signature: appliedFilterSignature,
+                    count: visibleProductCount + PRODUCT_LOAD_STEP,
+                  })
+                }
+                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md border border-ink bg-ink px-6 py-2.5 text-xs font-semibold tracking-[0.16em] text-white uppercase transition-colors hover:border-deep-teal hover:bg-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
+              >
+                Show {Math.min(PRODUCT_LOAD_STEP, remainingProductCount)} More
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

@@ -34,6 +34,22 @@ export type FitProfile = FitProfileInput & {
 };
 
 export type ProductSizeKind = "waist" | "suit" | "shirt" | "shoe" | "top";
+export type SuitSizeSystem = "US" | "EU";
+export type FitProduct = Pick<
+  ShopifyProduct,
+  "title" | "vendor" | "productType" | "tags" | "collections" | "variants"
+>;
+
+export type ProductFitRecommendation = {
+  label: string;
+  variantId: string | null;
+  suit?: {
+    savedLabel: string;
+    productSizeSystem: SuitSizeSystem;
+    converted: boolean;
+    lengthOffered: boolean;
+  };
+};
 
 const buildLabels: Record<FitBuild, string> = {
   slim: "Slim",
@@ -50,6 +66,9 @@ const jacketLengthLabels: Record<FitEstimate["jacketLength"], string[]> = {
   XL: ["XL", "Extra Long"],
 };
 const fitBuildValues: FitBuild[] = ["slim", "average", "athletic", "broad", "full"];
+// These makers use the EU jacket scale in the verified Shopify sport-coat inventory.
+// New products should prefer an explicit "Sizing: EU" tag instead of relying on this fallback.
+const verifiedEuropeanJacketVendors = new Set(["canali", "latorre", "sand triluxe apparel group"]);
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -107,11 +126,7 @@ function normalizeStoredFitInput(value: unknown): FitProfileInput | null {
   const shoeSize = cleanStoredSize(profile.shoeSize);
   const storedBuild = isFitBuild(profile.build) ? profile.build : undefined;
   const hasKnownSize = Boolean(
-    knownSuitSize ||
-      knownTopSize ||
-      knownDressShirtSize ||
-      knownWaistSize ||
-      shoeSize,
+    knownSuitSize || knownTopSize || knownDressShirtSize || knownWaistSize || shoeSize,
   );
   const hasCompleteMeasurements =
     heightFeet !== null &&
@@ -148,10 +163,7 @@ function normalizeStoredFitInput(value: unknown): FitProfileInput | null {
   };
 }
 
-export function getHeightInches(input: {
-  heightFeet: number;
-  heightInches: number;
-}) {
+export function getHeightInches(input: { heightFeet: number; heightInches: number }) {
   return input.heightFeet * 12 + input.heightInches;
 }
 
@@ -159,7 +171,7 @@ export function normalizeSizeToken(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9.]+/g, "");
 }
 
-export function isSuitSizingProduct(product: ShopifyProduct) {
+export function isSuitSizingProduct(product: FitProduct) {
   const productText = [
     product.title,
     product.productType,
@@ -171,7 +183,7 @@ export function isSuitSizingProduct(product: ShopifyProduct) {
   return /suit|jacket|blazer|sport coat|overcoat/.test(productText);
 }
 
-export function getProductSizeKind(product: ShopifyProduct): ProductSizeKind {
+export function getProductSizeKind(product: FitProduct): ProductSizeKind {
   const productText = [
     product.title,
     product.productType,
@@ -207,18 +219,41 @@ export function normalizeJacketLength(value: string) {
 
   if (normalizedValue === "s" || normalizedValue === "short") return "S";
   if (normalizedValue === "r" || normalizedValue === "regular") return "R";
-  if (normalizedValue === "l" || normalizedValue === "long") return "L";
-  if (normalizedValue === "xl" || normalizedValue === "extralong") return "XL";
+  if (
+    normalizedValue === "l" ||
+    normalizedValue === "long" ||
+    normalizedValue === "t" ||
+    normalizedValue === "tall"
+  ) {
+    return "L";
+  }
+  if (
+    normalizedValue === "xl" ||
+    normalizedValue === "extralong" ||
+    normalizedValue === "xt" ||
+    normalizedValue === "extratall"
+  ) {
+    return "XL";
+  }
 
   return null;
 }
 
 export function parseSuitSize(value: string) {
+  const trimmedValue = value.trim();
+  const sizeSystem = /^(?:EU|EUR|European)(?=\s|\d)/i.test(trimmedValue)
+    ? "EU"
+    : /^(?:US|USA|American)(?=\s|\d)/i.test(trimmedValue)
+      ? "US"
+      : null;
   const normalizedValue = value
     .trim()
+    .replace(/^(?:US|USA|American|EU|EUR|European)(?=\s|\d)\s*/i, "")
     .replace(/extra[\s_-]*long/i, "XL")
+    .replace(/extra[\s_-]*tall/i, "XL")
     .replace(/short/i, "S")
     .replace(/regular/i, "R")
+    .replace(/tall/i, "L")
     .replace(/long/i, "L")
     .replace(/\s+/g, "");
   const match = normalizedValue.match(/^(\d+(?:\.\d+)?)(XL|S|R|L)$/i);
@@ -231,12 +266,46 @@ export function parseSuitSize(value: string) {
     chest: match[1],
     length: match[2].toUpperCase() as FitEstimate["jacketLength"],
     label: `${match[1]}${match[2].toUpperCase()}`,
+    sizeSystem,
   };
 }
 
-export function getVariantJacketLengthValue(variant: ShopifyProductVariant) {
+function getProductJacketLengthOptionNames(product: FitProduct) {
+  const optionValues = new Map<string, Set<string>>();
+
+  for (const variant of product.variants) {
+    for (const option of variant.selectedOptions) {
+      if (option.name.toLowerCase().includes("size")) {
+        continue;
+      }
+
+      const values = optionValues.get(option.name) ?? new Set<string>();
+      values.add(option.value);
+      optionValues.set(option.name, values);
+    }
+  }
+
+  return new Set(
+    Array.from(optionValues.entries())
+      .filter(
+        ([name, values]) =>
+          name.toLowerCase().includes("length") ||
+          (values.size > 1 && Array.from(values).every((value) => normalizeJacketLength(value))),
+      )
+      .map(([name]) => name),
+  );
+}
+
+export function isProductJacketLengthOption(product: FitProduct, optionName: string) {
+  return getProductJacketLengthOptionNames(product).has(optionName);
+}
+
+export function getVariantJacketLengthValue(
+  variant: ShopifyProductVariant,
+  lengthOptionNames = new Set<string>(),
+) {
   for (const option of variant.selectedOptions) {
-    if (option.name.toLowerCase().includes("size")) {
+    if (!option.name.toLowerCase().includes("length") && !lengthOptionNames.has(option.name)) {
       continue;
     }
 
@@ -250,25 +319,196 @@ export function getVariantJacketLengthValue(variant: ShopifyProductVariant) {
   return null;
 }
 
-export function findProductSuitVariant(
-  product: ShopifyProduct,
-  suitSize: string,
-  availableOnly = true,
-) {
-  const size = parseSuitSize(suitSize);
+function parsePlainNumericJacketSize(value: string) {
+  const normalizedValue = value
+    .trim()
+    .replace(/^(?:US|USA|American|EU|EUR|European)(?=\s|\d)\s*/i, "")
+    .trim();
 
-  if (!size) {
+  return /^\d+(?:\.\d+)?$/.test(normalizedValue) ? normalizedValue : null;
+}
+
+function getVariantSuitSize(variant: ShopifyProductVariant, lengthOptionNames = new Set<string>()) {
+  const sizeValue = getVariantSizeValue(variant);
+
+  if (!sizeValue) {
     return null;
   }
 
-  return (
-    product.variants.find(
-      (variant) =>
-        (!availableOnly || variant.availableForSale) &&
-        getVariantSizeValue(variant) === size.chest &&
-        getVariantJacketLengthValue(variant) === size.length,
-    ) ?? null
+  const combinedSize = parseSuitSize(sizeValue);
+  const chest = combinedSize?.chest ?? parsePlainNumericJacketSize(sizeValue);
+
+  if (!chest) {
+    return null;
+  }
+
+  return {
+    chest,
+    length: combinedSize?.length ?? getVariantJacketLengthValue(variant, lengthOptionNames),
+  };
+}
+
+function hasSizingMarker(product: FitProduct, system: SuitSizeSystem) {
+  const markerText = [
+    ...product.tags,
+    ...product.variants.flatMap((variant) => variant.selectedOptions.map((option) => option.name)),
+  ].join(" ");
+  const marker =
+    system === "EU"
+      ? /(?:size|sizing)(?:\s*system)?\s*[:=_-]?\s*(?:eu|eur|european)\b|\b(?:eu|eur|european)\s*(?:size|sizing)\b/i
+      : /(?:size|sizing)(?:\s*system)?\s*[:=_-]?\s*(?:us|usa|american)\b|\b(?:us|usa|american)\s*(?:size|sizing)\b/i;
+
+  return marker.test(markerText);
+}
+
+function hasEuropeanSportCoatScale(product: FitProduct) {
+  const isSportCoat =
+    product.productType.trim().toLowerCase() === "sport coat" ||
+    product.collections.some((collection) => collection.handle.toLowerCase() === "sport-jacket") ||
+    product.tags.some((tag) => tag.replace(/\s+/g, "").toLowerCase() === "producttype:sportcoat");
+
+  if (!isSportCoat || !verifiedEuropeanJacketVendors.has(product.vendor.trim().toLowerCase())) {
+    return false;
+  }
+
+  const sizeValues = Array.from(
+    new Set(
+      product.variants.map(getVariantSizeValue).filter((value): value is string => Boolean(value)),
+    ),
   );
+  const numericSizes = sizeValues.map((value) =>
+    /^\d+$/.test(value.trim()) ? Number(value) : Number.NaN,
+  );
+
+  return (
+    numericSizes.length > 0 &&
+    numericSizes.every(
+      (size) => Number.isInteger(size) && size >= 46 && size <= 66 && size % 2 === 0,
+    )
+  );
+}
+
+export function getProductSuitSizeSystem(product: FitProduct): SuitSizeSystem | null {
+  if (!isSuitSizingProduct(product)) {
+    return null;
+  }
+
+  if (hasSizingMarker(product, "US")) {
+    return "US";
+  }
+
+  if (hasSizingMarker(product, "EU") || hasEuropeanSportCoatScale(product)) {
+    return "EU";
+  }
+
+  return "US";
+}
+
+export function productOffersJacketLength(product: FitProduct) {
+  const lengthOptionNames = getProductJacketLengthOptionNames(product);
+
+  return product.variants.some((variant) =>
+    Boolean(getVariantSuitSize(variant, lengthOptionNames)?.length),
+  );
+}
+
+export function convertUsJacketChestToEu(value: string) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  return String(numericValue + 10);
+}
+
+function convertEuJacketChestToUs(value: string) {
+  const numericValue = Number(value);
+
+  if (!Number.isFinite(numericValue)) {
+    return null;
+  }
+
+  return String(numericValue - 10);
+}
+
+export function getUsJacketEquivalentLabel(value: string) {
+  const combinedSize = parseSuitSize(value);
+  const chest = combinedSize?.chest ?? parsePlainNumericJacketSize(value);
+  const usChest = chest ? convertEuJacketChestToUs(chest) : null;
+
+  if (!usChest) {
+    return null;
+  }
+
+  return `US ${usChest}${combinedSize?.length ?? ""}`;
+}
+
+function resolveProductSuitFit(product: FitProduct, suitSize: string, availableOnly = true) {
+  if (getProductSizeKind(product) !== "suit") {
+    return null;
+  }
+
+  const savedSize = parseSuitSize(suitSize);
+  const productSizeSystem = getProductSuitSizeSystem(product);
+
+  if (!savedSize || !productSizeSystem) {
+    return null;
+  }
+
+  const savedUsChest =
+    savedSize.sizeSystem === "EU" ? convertEuJacketChestToUs(savedSize.chest) : savedSize.chest;
+
+  if (!savedUsChest) {
+    return null;
+  }
+
+  const normalizedSavedSize = {
+    ...savedSize,
+    chest: savedUsChest,
+    label: `${savedUsChest}${savedSize.length}`,
+    sizeSystem: "US" as const,
+  };
+  const productChest =
+    productSizeSystem === "EU" ? convertUsJacketChestToEu(savedUsChest) : savedUsChest;
+
+  if (!productChest) {
+    return null;
+  }
+
+  const lengthOptionNames = getProductJacketLengthOptionNames(product);
+  const lengthOffered = product.variants.some((variant) =>
+    Boolean(getVariantSuitSize(variant, lengthOptionNames)?.length),
+  );
+  const variant =
+    product.variants.find((candidate) => {
+      const candidateSize = getVariantSuitSize(candidate, lengthOptionNames);
+
+      return (
+        (!availableOnly || candidate.availableForSale) &&
+        candidateSize?.chest === productChest &&
+        (!lengthOffered || candidateSize.length === normalizedSavedSize.length)
+      );
+    }) ?? null;
+  const productLabel = `${productSizeSystem === "EU" ? "EU " : ""}${productChest}${
+    lengthOffered ? normalizedSavedSize.length : ""
+  }`;
+
+  return {
+    savedSize: normalizedSavedSize,
+    productLabel,
+    productSizeSystem,
+    lengthOffered,
+    variant,
+  };
+}
+
+export function findProductSuitVariant(
+  product: FitProduct,
+  suitSize: string,
+  availableOnly = true,
+) {
+  return resolveProductSuitFit(product, suitSize, availableOnly)?.variant ?? null;
 }
 
 function getJacketLength(heightInches: number): FitEstimate["jacketLength"] {
@@ -385,9 +625,7 @@ export function buildFitProfile(input: FitProfileInput): FitProfile {
         heightInches: input.heightInches!,
       })
     : 0;
-  const normalizedWeight = hasCompleteMeasurements
-    ? clamp(input.weightLbs!, 95, 340)
-    : 0;
+  const normalizedWeight = hasCompleteMeasurements ? clamp(input.weightLbs!, 95, 340) : 0;
   const buildChestAdjustments: Record<FitBuild, number> = {
     slim: 0,
     average: 1,
@@ -412,25 +650,15 @@ export function buildFitProfile(input: FitProfileInput): FitProfile {
   const chest = hasCompleteMeasurements
     ? clamp(
         roundToEven(
-          heightInches * 0.28 +
-            normalizedWeight * 0.095 +
-            buildChestAdjustments[resolvedBuild],
+          heightInches * 0.28 + normalizedWeight * 0.095 + buildChestAdjustments[resolvedBuild],
         ),
         34,
         58,
       )
     : 0;
-  const jacketLength = hasCompleteMeasurements
-    ? getJacketLength(heightInches)
-    : "R";
+  const jacketLength = hasCompleteMeasurements ? getJacketLength(heightInches) : "R";
   const neck = hasCompleteMeasurements
-    ? clamp(
-        roundToHalf(
-          14 + (chest - 34) * 0.25 + buildNeckAdjustments[resolvedBuild],
-        ),
-        14,
-        22,
-      )
+    ? clamp(roundToHalf(14 + (chest - 34) * 0.25 + buildNeckAdjustments[resolvedBuild]), 14, 22)
     : 0;
   const sleeve = hasCompleteMeasurements
     ? heightInches >= 75
@@ -444,27 +672,30 @@ export function buildFitProfile(input: FitProfileInput): FitProfile {
   const waistPrimary = hasCompleteMeasurements
     ? clamp(
         Math.round(
-          normalizedWeight * 0.15 +
-            heightInches * 0.035 +
-            buildWaistAdjustments[resolvedBuild],
+          normalizedWeight * 0.15 + heightInches * 0.035 + buildWaistAdjustments[resolvedBuild],
         ),
         28,
         54,
       )
     : 0;
-  const waist = hasCompleteMeasurements
-    ? `${waistPrimary}/${Math.min(56, waistPrimary + 1)}`
-    : "";
-  const knownSuitSize = cleanKnownSize(input.knownSuitSize);
+  const waist = hasCompleteMeasurements ? `${waistPrimary}/${Math.min(56, waistPrimary + 1)}` : "";
+  const rawKnownSuitSize = cleanKnownSize(input.knownSuitSize);
+  const rawParsedKnownSuitSize = rawKnownSuitSize ? parseSuitSize(rawKnownSuitSize) : null;
+  const normalizedKnownSuitChest =
+    rawParsedKnownSuitSize?.sizeSystem === "EU"
+      ? convertEuJacketChestToUs(rawParsedKnownSuitSize.chest)
+      : rawParsedKnownSuitSize?.chest;
+  const knownSuitSize =
+    rawParsedKnownSuitSize && normalizedKnownSuitChest
+      ? `${normalizedKnownSuitChest}${rawParsedKnownSuitSize.length}`
+      : rawKnownSuitSize;
   const knownTopSize = cleanKnownSize(input.knownTopSize);
   const knownDressShirtSize = cleanKnownSize(input.knownDressShirtSize);
   const knownWaistSize = cleanKnownSize(input.knownWaistSize);
   const shoeSize = cleanKnownSize(input.shoeSize);
   const parsedKnownSuitSize = knownSuitSize ? parseSuitSize(knownSuitSize) : null;
   const numericKnownSuitSize =
-    knownSuitSize && /^\d+(?:\.\d+)?$/.test(knownSuitSize)
-      ? knownSuitSize
-      : null;
+    knownSuitSize && /^\d+(?:\.\d+)?$/.test(knownSuitSize) ? knownSuitSize : null;
   const resolvedJacketChest = Number.parseFloat(
     parsedKnownSuitSize?.chest ?? numericKnownSuitSize ?? String(chest),
   );
@@ -481,9 +712,7 @@ export function buildFitProfile(input: FitProfileInput): FitProfile {
     alpha: knownTopSize || (chest > 0 ? getAlphaSize(chest) : ""),
     dressShirt:
       knownDressShirtSize ||
-      (neck > 0
-        ? `${neck % 1 === 0 ? neck.toFixed(0) : neck.toFixed(1)} x ${sleeve}`
-        : ""),
+      (neck > 0 ? `${neck % 1 === 0 ? neck.toFixed(0) : neck.toFixed(1)} x ${sleeve}` : ""),
     waist: knownWaistSize || waist,
     shoe: shoeSize,
     notes: [
@@ -539,7 +768,7 @@ export function getVariantSizeValue(variant: ShopifyProductVariant) {
   );
 }
 
-export function getProductFitMatches(product: ShopifyProduct, fitSizes: string[]) {
+export function getProductFitMatches(product: FitProduct, fitSizes: string[]) {
   if (fitSizes.length === 0) {
     return [];
   }
@@ -581,7 +810,7 @@ function getAlphaSizeAliases(value: string) {
   return Array.from(sizes);
 }
 
-export function getProfileSizesForProduct(product: ShopifyProduct, profile: FitProfile) {
+export function getProfileSizesForProduct(product: FitProduct, profile: FitProfile) {
   const kind = getProductSizeKind(product);
 
   if (kind === "waist") {
@@ -608,26 +837,21 @@ export function getProfileSizesForProduct(product: ShopifyProduct, profile: FitP
   }
 
   if (kind === "shoe") {
-    return profile.estimate.shoe
-      ? [profile.estimate.shoe, `US ${profile.estimate.shoe}`]
-      : [];
+    return profile.estimate.shoe ? [profile.estimate.shoe, `US ${profile.estimate.shoe}`] : [];
   }
 
   return getAlphaSizeAliases(profile.estimate.alpha);
 }
 
-export function getProductFitMatchesForProfile(
-  product: ShopifyProduct,
-  profile: FitProfile,
-) {
+export function getProductFitMatchesForProfile(product: FitProduct, profile: FitProfile) {
   if (getProductSizeKind(product) === "suit") {
-    const suitSize = parseSuitSize(profile.estimate.suit);
+    const resolution = resolveProductSuitFit(product, profile.estimate.suit);
 
-    if (!suitSize || !findProductSuitVariant(product, suitSize.label)) {
+    if (!resolution?.variant) {
       return [];
     }
 
-    return [suitSize.label];
+    return [resolution.productLabel];
   }
 
   return getProductFitMatches(product, getProfileSizesForProduct(product, profile));
@@ -653,34 +877,37 @@ function getNumericTarget(profile: FitProfile, kind: ProductSizeKind) {
   return Number.NaN;
 }
 
-export function getProductFitRecommendation(product: ShopifyProduct, profile: FitProfile) {
+export function getProductFitRecommendation(
+  product: FitProduct,
+  profile: FitProfile,
+): ProductFitRecommendation | null {
   const sizeKind = getProductSizeKind(product);
 
   if (sizeKind === "suit") {
-    const suitSize = parseSuitSize(profile.estimate.suit);
+    const resolution = resolveProductSuitFit(product, profile.estimate.suit);
 
-    if (!suitSize) {
+    if (!resolution) {
       return null;
     }
 
-    const exactVariant = findProductSuitVariant(product, suitSize.label);
-
     return {
-      label: suitSize.label,
-      variantId: exactVariant?.id ?? null,
+      label: resolution.productLabel,
+      variantId: resolution.variant?.id ?? null,
+      suit: {
+        savedLabel: `US ${resolution.savedSize.label}`,
+        productSizeSystem: resolution.productSizeSystem,
+        converted: resolution.productSizeSystem === "EU",
+        lengthOffered: resolution.lengthOffered,
+      },
     };
   }
 
-  const exactMatches = getProductFitMatches(
-    product,
-    getProfileSizesForProduct(product, profile),
-  );
+  const exactMatches = getProductFitMatches(product, getProfileSizesForProduct(product, profile));
   const exactSize = exactMatches[0];
 
   if (exactSize) {
     const exactVariant = product.variants.find(
-      (variant) =>
-        variant.availableForSale && getVariantSizeValue(variant) === exactSize,
+      (variant) => variant.availableForSale && getVariantSizeValue(variant) === exactSize,
     );
 
     if (exactVariant) {
@@ -709,13 +936,11 @@ export function getProductFitRecommendation(product: ShopifyProduct, profile: Fi
   ).map(([value, numericValue]) => ({ value, number: numericValue }));
 
   const closestSize = numericSizes.sort(
-    (left, right) =>
-      Math.abs(left.number - target) - Math.abs(right.number - target),
+    (left, right) => Math.abs(left.number - target) - Math.abs(right.number - target),
   )[0]?.value;
   const closestVariant = closestSize
     ? product.variants.find(
-        (variant) =>
-          variant.availableForSale && getVariantSizeValue(variant) === closestSize,
+        (variant) => variant.availableForSale && getVariantSizeValue(variant) === closestSize,
       )
     : null;
 

@@ -15,14 +15,17 @@ export function FeaturedBrandGrid({ brands }: FeaturedBrandGridProps) {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Badge variant="gold">Designer Spotlight</Badge>
-            <h2 className="mt-4 font-heading text-4xl leading-tight text-ink sm:text-5xl">Featured Brands We Carry</h2>
+            <h2 className="mt-4 font-heading text-4xl leading-tight text-ink sm:text-5xl">
+              Featured Brands We Carry
+            </h2>
             <p className="mt-4 max-w-2xl text-base leading-8 text-smoke">
-              Curated labels selected for premium construction, strong silhouettes, and modern versatility.
+              Curated labels selected for premium construction, strong silhouettes, and modern
+              versatility.
             </p>
           </div>
           <Link
             href="/designers/all-designer-brands"
-            className="text-sm font-semibold tracking-[0.12em] text-deep-teal uppercase hover:text-gold"
+            className="text-sm font-semibold tracking-[0.12em] text-deep-teal uppercase hover:text-ink"
           >
             View All Brands
           </Link>
@@ -46,7 +49,13 @@ export function FeaturedBrandGrid({ brands }: FeaturedBrandGridProps) {
                 <div className="absolute inset-0 bg-gradient-to-t from-ink/66 via-ink/12 to-transparent" />
                 <div className="absolute right-3 bottom-3 left-3 rounded-xl border border-white/45 bg-white/88 p-2 backdrop-blur-sm">
                   <div className="relative h-10">
-                    <Image src={brand.logo} alt={`${brand.name} logo`} fill sizes="200px" className="object-contain" />
+                    <Image
+                      src={brand.logo}
+                      alt={`${brand.name} logo`}
+                      fill
+                      sizes="200px"
+                      className="object-contain"
+                    />
                   </div>
                 </div>
               </div>

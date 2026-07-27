@@ -11,6 +11,8 @@
   --color-gold: #c7a46a;
   --color-deep-teal: #0f5b5b;
   --color-smoke: #6b7280;
+  --color-product-canvas: #f3f1ed;
+  --color-sale: #8f2632;
   --page-gradient-start: #ffffff;
   --page-gradient-end: #f8fafc;
 
@@ -32,6 +34,8 @@
   --color-gold: var(--color-gold);
   --color-deep-teal: var(--color-deep-teal);
   --color-smoke: var(--color-smoke);
+  --color-product-canvas: var(--color-product-canvas);
+  --color-sale: var(--color-sale);
 }
 
 * {
@@ -93,6 +97,19 @@ summary::-webkit-details-marker {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
   .hero-slide-enter {
     animation: none;
   }

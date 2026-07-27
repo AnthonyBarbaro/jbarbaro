@@ -133,7 +133,7 @@ export default async function LocationDetailPage({
                 <p className="mt-3 text-sm leading-7 text-smoke">{location.address}</p>
                 <a
                   href={formatPhone(location.phone)}
-                  className="mt-2 inline-flex text-sm font-semibold text-deep-teal hover:text-gold"
+                  className="mt-2 inline-flex text-sm font-semibold text-deep-teal hover:text-ink"
                 >
                   {location.phone}
                 </a>

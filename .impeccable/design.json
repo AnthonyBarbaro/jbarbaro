@@ -1,0 +1,333 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-27T18:59:14Z",
+  "title": "Design System: J. Barbaro Clothiers",
+  "extensions": {
+    "colorMeta": {
+      "ink": {
+        "role": "neutral",
+        "displayName": "Midnight Ink",
+        "canonical": "#0b0f14",
+        "tonalRamp": [
+          "oklch(18% 0.018 252)",
+          "oklch(28% 0.016 252)",
+          "oklch(38% 0.014 252)",
+          "oklch(50% 0.012 252)",
+          "oklch(62% 0.01 252)",
+          "oklch(74% 0.008 252)",
+          "oklch(86% 0.005 252)",
+          "oklch(95% 0.002 252)"
+        ]
+      },
+      "ivory": {
+        "role": "neutral",
+        "displayName": "Gallery White",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "oklch(18% 0 0)",
+          "oklch(30% 0 0)",
+          "oklch(42% 0 0)",
+          "oklch(54% 0 0)",
+          "oklch(66% 0 0)",
+          "oklch(78% 0 0)",
+          "oklch(90% 0 0)",
+          "oklch(100% 0 0)"
+        ]
+      },
+      "stone": {
+        "role": "neutral",
+        "displayName": "Fitting-Room Stone",
+        "canonical": "#f4f6f8",
+        "tonalRamp": [
+          "oklch(18% 0.008 250)",
+          "oklch(30% 0.008 250)",
+          "oklch(42% 0.007 250)",
+          "oklch(54% 0.006 250)",
+          "oklch(66% 0.005 250)",
+          "oklch(78% 0.004 250)",
+          "oklch(90% 0.003 250)",
+          "oklch(97% 0.002 250)"
+        ]
+      },
+      "product-canvas": {
+        "role": "neutral",
+        "displayName": "Product Canvas",
+        "canonical": "#f3f1ed",
+        "tonalRamp": [
+          "oklch(18% 0.009 78)",
+          "oklch(30% 0.009 78)",
+          "oklch(42% 0.008 78)",
+          "oklch(54% 0.007 78)",
+          "oklch(66% 0.006 78)",
+          "oklch(78% 0.005 78)",
+          "oklch(90% 0.004 78)",
+          "oklch(96% 0.006 78)"
+        ]
+      },
+      "gold": {
+        "role": "primary",
+        "displayName": "Tailor's Brass",
+        "canonical": "#c7a46a",
+        "tonalRamp": [
+          "oklch(18% 0.055 78)",
+          "oklch(29% 0.067 78)",
+          "oklch(40% 0.078 78)",
+          "oklch(52% 0.087 78)",
+          "oklch(64% 0.09 78)",
+          "oklch(75% 0.082 78)",
+          "oklch(86% 0.058 78)",
+          "oklch(95% 0.025 78)"
+        ]
+      },
+      "deep-teal": {
+        "role": "secondary",
+        "displayName": "Fitting-Room Teal",
+        "canonical": "#0f5b5b",
+        "tonalRamp": [
+          "oklch(18% 0.045 195)",
+          "oklch(28% 0.06 195)",
+          "oklch(38% 0.072 195)",
+          "oklch(50% 0.078 195)",
+          "oklch(62% 0.07 195)",
+          "oklch(74% 0.055 195)",
+          "oklch(86% 0.032 195)",
+          "oklch(95% 0.014 195)"
+        ]
+      },
+      "smoke": {
+        "role": "neutral",
+        "displayName": "Soft Smoke",
+        "canonical": "#6b7280",
+        "tonalRamp": [
+          "oklch(18% 0.018 260)",
+          "oklch(29% 0.021 260)",
+          "oklch(40% 0.024 260)",
+          "oklch(52% 0.026 260)",
+          "oklch(64% 0.023 260)",
+          "oklch(76% 0.018 260)",
+          "oklch(87% 0.011 260)",
+          "oklch(95% 0.005 260)"
+        ]
+      },
+      "sale": {
+        "role": "tertiary",
+        "displayName": "Sale Oxblood",
+        "canonical": "#8f2632",
+        "tonalRamp": [
+          "oklch(18% 0.065 20)",
+          "oklch(28% 0.09 20)",
+          "oklch(38% 0.115 20)",
+          "oklch(50% 0.14 20)",
+          "oklch(62% 0.125 20)",
+          "oklch(74% 0.095 20)",
+          "oklch(86% 0.055 20)",
+          "oklch(95% 0.022 20)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Editorial Display",
+        "purpose": "Hero and campaign statements only."
+      },
+      "headline": {
+        "displayName": "Merchandising Headline",
+        "purpose": "Major category, product, and service section headings."
+      },
+      "title": {
+        "displayName": "Commerce Title",
+        "purpose": "Product names, cards, and action-oriented subheads."
+      },
+      "body": {
+        "displayName": "Retail Body",
+        "purpose": "Descriptions, forms, and helpful guidance."
+      },
+      "label": {
+        "displayName": "Retail Label",
+        "purpose": "Buttons, filters, metadata, badges, and short signposts."
+      }
+    },
+    "shadows": [
+      {
+        "name": "quiet-surface",
+        "value": "0 1px 2px rgba(11, 15, 20, 0.03)",
+        "purpose": "Low ambient separation for cards on white or stone."
+      },
+      {
+        "name": "luxe-ambient",
+        "value": "0 28px 60px -42px rgba(11, 15, 20, 0.38)",
+        "purpose": "Broad editorial lift for featured media surfaces."
+      },
+      {
+        "name": "temporary-layer",
+        "value": "0 30px 70px -40px rgba(11, 15, 20, 0.5)",
+        "purpose": "Dropdowns, search results, drawers, and overlays."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-change",
+        "value": "200ms ease",
+        "purpose": "Default color, border, and control-state transitions."
+      },
+      {
+        "name": "editorial-image",
+        "value": "500ms ease-out",
+        "purpose": "Restrained image zoom and alternate-image transitions."
+      },
+      {
+        "name": "hero-entry",
+        "value": "600ms ease-out",
+        "purpose": "Hero slide entry, disabled when reduced motion is requested."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      },
+      {
+        "name": "2xl",
+        "value": "1536px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The decisive commercial action.",
+      "html": "<button class=\"ds-btn-primary\">SHOP NOW</button>",
+      "css": ".ds-btn-primary { min-height: 44px; padding: 10px 20px; border: 1px solid var(--color-gold); border-radius: 6px; background: var(--color-gold); color: var(--color-ink); font: 600 12px/1.25 var(--font-inter), sans-serif; letter-spacing: .16em; text-transform: uppercase; transition: background-color 200ms ease, border-color 200ms ease, transform 200ms ease; } .ds-btn-primary:hover { background: #d7b979; border-color: #b99354; } .ds-btn-primary:active { transform: scale(.99); } .ds-btn-primary:focus-visible { outline: 4px solid color-mix(in srgb, var(--color-ink) 45%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "A supporting route or lower-priority shopping action.",
+      "html": "<button class=\"ds-btn-secondary\">VIEW DETAILS</button>",
+      "css": ".ds-btn-secondary { min-height: 44px; padding: 10px 20px; border: 1px solid color-mix(in srgb, var(--color-ink) 18%, transparent); border-radius: 6px; background: var(--color-ivory); color: var(--color-ink); font: 600 12px/1.25 var(--font-inter), sans-serif; letter-spacing: .16em; text-transform: uppercase; transition: background-color 200ms ease, border-color 200ms ease; } .ds-btn-secondary:hover { background: color-mix(in srgb, var(--color-stone) 55%, transparent); border-color: color-mix(in srgb, var(--color-ink) 35%, transparent); } .ds-btn-secondary:focus-visible { outline: 4px solid color-mix(in srgb, var(--color-deep-teal) 40%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Service Button",
+      "kind": "button",
+      "refersTo": "button-teal",
+      "description": "A strong fit, guidance, or service action.",
+      "html": "<button class=\"ds-btn-teal\">FIND MY FIT</button>",
+      "css": ".ds-btn-teal { min-height: 44px; padding: 10px 20px; border: 1px solid var(--color-deep-teal); border-radius: 6px; background: var(--color-deep-teal); color: white; font: 600 12px/1.25 var(--font-inter), sans-serif; letter-spacing: .16em; text-transform: uppercase; transition: background-color 200ms ease, border-color 200ms ease; } .ds-btn-teal:hover { background: #136868; border-color: #136868; } .ds-btn-teal:focus-visible { outline: 4px solid color-mix(in srgb, var(--color-deep-teal) 40%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Commerce Button",
+      "kind": "button",
+      "refersTo": "button-commerce",
+      "description": "The tall transactional action used for add-to-bag and checkout.",
+      "html": "<button class=\"ds-btn-commerce\">ADD TO BAG</button>",
+      "css": ".ds-btn-commerce { min-height: 56px; padding: 14px 20px; border: 1px solid var(--color-ink); border-radius: 8px; background: var(--color-ink); color: var(--color-ivory); font: 600 12px/1.25 var(--font-inter), sans-serif; letter-spacing: .16em; text-transform: uppercase; transition: background-color 200ms ease, border-color 200ms ease, transform 200ms ease; } .ds-btn-commerce:hover { background: var(--color-deep-teal); border-color: var(--color-deep-teal); } .ds-btn-commerce:active { transform: scale(.99); } .ds-btn-commerce:focus-visible { outline: 4px solid color-mix(in srgb, var(--color-deep-teal) 40%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Product Search",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "A compact catalog search field with explicit retail language.",
+      "html": "<label class=\"ds-search\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"></circle><path d=\"m21 21-4.3-4.3\"></path></svg><span class=\"ds-sr-only\">Search products</span><input type=\"search\" placeholder=\"Search products, brands, sizes, or colors\"></label>",
+      "css": ".ds-search { display: flex; height: 44px; align-items: center; border: 1px solid color-mix(in srgb, var(--color-ink) 12%, transparent); border-radius: 6px; background: var(--color-ivory); padding: 0 12px; color: var(--color-smoke); } .ds-search:focus-within { border-color: var(--color-deep-teal); box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-deep-teal) 15%, transparent); } .ds-search svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; } .ds-search input { width: 100%; height: 100%; border: 0; outline: 0; background: transparent; padding: 0 12px; color: var(--color-ink); font: 400 14px/1.5 var(--font-inter), sans-serif; } .ds-search input::placeholder { color: var(--color-smoke); } .ds-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }"
+    },
+    {
+      "name": "Product Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The canonical product image, vendor, title, and price presentation.",
+      "html": "<article class=\"ds-product-card\"><div class=\"ds-product-image\">PRODUCT IMAGE</div><div class=\"ds-product-copy\"><p class=\"ds-product-vendor\">DESIGNER</p><h3>Tailored Product Name</h3><p class=\"ds-product-price\">$325.00</p></div></article>",
+      "css": ".ds-product-card { overflow: hidden; border: 1px solid color-mix(in srgb, var(--color-ink) 10%, transparent); border-radius: 8px; background: var(--color-ivory); color: var(--color-ink); box-shadow: 0 1px 2px rgba(11,15,20,.03); transition: border-color 200ms ease, transform 200ms ease; } .ds-product-card:hover { border-color: color-mix(in srgb, var(--color-ink) 25%, transparent); transform: translateY(-2px); } .ds-product-image { display: grid; aspect-ratio: 4/5; place-items: center; border-bottom: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent); background: var(--color-product-canvas); color: var(--color-smoke); font: 600 10px/1.25 var(--font-inter), sans-serif; letter-spacing: .14em; } .ds-product-copy { padding: 16px; } .ds-product-vendor { margin: 0; color: var(--color-smoke); font: 600 10px/1.25 var(--font-inter), sans-serif; letter-spacing: .16em; text-transform: uppercase; } .ds-product-card h3 { margin: 6px 0 0; font: 600 16px/1.5 var(--font-inter), sans-serif; } .ds-product-price { margin: 12px 0 0; font: 700 17px/1.3 var(--font-inter), sans-serif; letter-spacing: -.02em; } .ds-product-card:focus-within { outline: 4px solid color-mix(in srgb, var(--color-deep-teal) 35%, transparent); outline-offset: 2px; }"
+    },
+    {
+      "name": "Retail Badge",
+      "kind": "chip",
+      "description": "A compact merchandising or fit-status signpost.",
+      "html": "<span class=\"ds-badge\">SHOP BY CATEGORY</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; border: 1px solid color-mix(in srgb, var(--color-deep-teal) 95%, transparent); border-radius: 9999px; background: var(--color-deep-teal); padding: 4px 12px; color: white; font: 600 11px/1.25 var(--font-inter), sans-serif; letter-spacing: .14em; text-transform: uppercase; }"
+    },
+    {
+      "name": "Primary Navigation",
+      "kind": "nav",
+      "description": "A restrained storefront navigation row with a clear active state.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Primary\"><a class=\"ds-nav-active\" href=\"#\">Shop</a><a href=\"#\">Suits</a><a href=\"#\">Shirts</a><a href=\"#\">Brands</a></nav>",
+      "css": ".ds-nav { display: flex; min-height: 48px; align-items: center; gap: 28px; border-top: 1px solid color-mix(in srgb, var(--color-ink) 8%, transparent); background: var(--color-ivory); padding: 0 24px; } .ds-nav a { color: color-mix(in srgb, var(--color-ink) 75%, transparent); font: 500 14px/1.5 var(--font-inter), sans-serif; text-decoration: none; transition: color 200ms ease; } .ds-nav a:hover, .ds-nav a:focus-visible { color: var(--color-deep-teal); } .ds-nav a:focus-visible { outline: 3px solid color-mix(in srgb, var(--color-deep-teal) 35%, transparent); outline-offset: 5px; } .ds-nav .ds-nav-active { color: var(--color-deep-teal); font-weight: 600; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Modern Clothier's Floor",
+    "overview": "The interface should feel like entering a well-run independent menswear store: composed at the threshold, merchandise-forward once browsing begins, and personally helpful when fit or occasion creates uncertainty. Editorial type and campaign imagery establish authority; clear product grids, prices, filters, and shopping actions make the experience commercially direct.\n\nLuxury comes from proportion, restraint, product presentation, and knowledgeable service—not from hiding utility or adding ornamental friction. The system is bright and breathable, with dark ink anchoring navigation and trust moments, brass-gold reserved for decisive commercial emphasis, and deep teal carrying fit guidance and service actions.",
+    "keyCharacteristics": [
+      "Merchandise-first layouts with a clear route from discovery to product.",
+      "Editorial serif headlines paired with compact, highly legible commerce typography.",
+      "Restrained gold emphasis and trustworthy deep-teal service cues.",
+      "Bright product surfaces, quiet borders, and low ambient elevation.",
+      "Direct shopping controls supported by human fit expertise."
+    ],
+    "rules": [
+      {
+        "name": "The Two-Accent Rule",
+        "body": "Gold signals decisive commercial emphasis; teal signals guidance and service. Do not use both to compete for the same action.",
+        "section": "colors"
+      },
+      {
+        "name": "The Product-First Canvas Rule",
+        "body": "Product imagery sits on the dedicated warm Product Canvas unless campaign art explicitly calls for a dark editorial treatment.",
+        "section": "colors"
+      },
+      {
+        "name": "The Serif Has a Job Rule",
+        "body": "Use the display face for editorial hierarchy, not for prices, filters, form labels, availability, or cart mechanics.",
+        "section": "typography"
+      },
+      {
+        "name": "The Price Must Scan Rule",
+        "body": "Prices use the sans-serif face with stronger weight and tighter tracking than surrounding metadata.",
+        "section": "typography"
+      },
+      {
+        "name": "The Browse Before Brand Story Rule",
+        "body": "On commerce entry surfaces, category and product discovery appear before extended showroom, history, or service storytelling.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat-at-Rest Rule",
+        "body": "Product cards stay visually quiet at rest and gain emphasis through border, image, or slight position changes on interaction.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Radius by Role Rule",
+        "body": "Controls use medium corners, cards use large corners, and pills communicate metadata or selectable facets.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do put merchandise, categories, prices, filters, and purchase paths ahead of extended brand storytelling on shop surfaces.",
+      "Do use real product and campaign imagery with stable aspect ratios and useful alternative text.",
+      "Do preserve visible focus, 2.75rem minimum targets, and clear hover, loading, disabled, success, and error states.",
+      "Do use gold sparingly for primary commercial emphasis and teal for fit or service guidance.",
+      "Do keep Shopify data and repository content as the source of truth for prices, availability, brands, ratings, and claims."
+    ],
+    "donts": [
+      "Don't turn the site into a generic marketplace or a discount-first visual system.",
+      "Don't hide shopping utilities behind decorative luxury conventions.",
+      "Don't use Playfair Display for dense transactional text, controls, prices, or form mechanics.",
+      "Don't introduce new claims, badges, scarcity messages, testimonials, or promotional prices without real data.",
+      "Don't add new corner, shadow, or accent treatments when an existing component role already fits."
+    ]
+  }
+}

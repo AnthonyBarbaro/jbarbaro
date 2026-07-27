@@ -20,7 +20,11 @@ type HeaderCartButtonProps = {
   onNavigate?: () => void;
 };
 
-export function HeaderCartButton({ className, compact = false, onNavigate }: HeaderCartButtonProps) {
+export function HeaderCartButton({
+  className,
+  compact = false,
+  onNavigate,
+}: HeaderCartButtonProps) {
   const [quantity, setQuantity] = useState<number | null>(null);
   const [isConfigured, setIsConfigured] = useState(true);
 
@@ -80,10 +84,10 @@ export function HeaderCartButton({ className, compact = false, onNavigate }: Hea
         href="/cart"
         onClick={handleCartClick}
         className={cn(
-          "relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors duration-200 hover:border-ink/25 sm:h-10 sm:w-10",
+          "relative inline-flex h-11 w-11 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors duration-200 hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2",
           className,
         )}
-        aria-label="Open shopping bag"
+        aria-label={`Open shopping bag${quantity && quantity > 0 ? `, ${quantity} ${quantity === 1 ? "item" : "items"}` : ""}`}
       >
         <ShoppingBag className="h-4 w-4" />
         {quantity && quantity > 0 ? (
@@ -100,7 +104,7 @@ export function HeaderCartButton({ className, compact = false, onNavigate }: Hea
       href="/cart"
       onClick={handleCartClick}
       className={cn(
-        "relative inline-flex min-h-10 items-center justify-center gap-2 rounded-md border border-ink/18 bg-ivory px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors duration-200 hover:border-ink/30",
+        "relative inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-ink/18 bg-ivory px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors duration-200 hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2",
         className,
       )}
     >

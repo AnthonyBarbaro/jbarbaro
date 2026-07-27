@@ -28,28 +28,48 @@ const sizeClasses: Record<ButtonSize, string> = {
 
 const variantClasses: Record<ButtonVariant, string> = {
   primary:
-    "border border-gold bg-gold text-ink shadow-sm hover:border-[#b99354] hover:bg-[#d7b979] focus-visible:ring-gold/45",
+    "border border-gold bg-gold text-ink shadow-sm hover:border-[#b99354] hover:bg-[#d7b979] focus-visible:ring-deep-teal",
   secondary:
-    "border border-ink/18 bg-ivory text-ink hover:border-ink/35 hover:bg-stone/55 focus-visible:ring-gold/40",
-  teal: "border border-deep-teal bg-deep-teal !text-white shadow-sm hover:border-[#136868] hover:bg-[#136868] focus-visible:ring-deep-teal/40",
+    "border border-ink/18 bg-ivory text-ink hover:border-ink/35 hover:bg-stone/55 focus-visible:ring-deep-teal",
+  teal: "border border-deep-teal bg-deep-teal !text-white shadow-sm hover:border-[#136868] hover:bg-[#136868] focus-visible:ring-ink",
   ghost:
-    "border border-transparent bg-transparent text-ink hover:border-ink/20 hover:bg-stone/55 focus-visible:ring-gold/30",
+    "border border-transparent bg-transparent text-ink hover:border-ink/20 hover:bg-stone/55 focus-visible:ring-deep-teal",
 };
 
 const commonClassName =
-  "inline-flex items-center justify-center gap-2 rounded-md text-center font-semibold leading-tight whitespace-normal uppercase transition-colors duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-md text-center font-semibold leading-tight whitespace-normal uppercase transition-colors duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 focus-visible:ring-offset-ivory disabled:cursor-not-allowed disabled:opacity-60";
 
-export function Button({ className, children, variant = "primary", size = "md", type = "button", ...props }: ButtonProps) {
+export function Button({
+  className,
+  children,
+  variant = "primary",
+  size = "md",
+  type = "button",
+  ...props
+}: ButtonProps) {
   return (
-    <button type={type} className={cn(commonClassName, sizeClasses[size], variantClasses[variant], className)} {...props}>
+    <button
+      type={type}
+      className={cn(commonClassName, sizeClasses[size], variantClasses[variant], className)}
+      {...props}
+    >
       {children}
     </button>
   );
 }
 
-export function ButtonLink({ className, children, variant = "primary", size = "md", ...props }: ButtonLinkProps) {
+export function ButtonLink({
+  className,
+  children,
+  variant = "primary",
+  size = "md",
+  ...props
+}: ButtonLinkProps) {
   return (
-    <Link className={cn(commonClassName, sizeClasses[size], variantClasses[variant], className)} {...props}>
+    <Link
+      className={cn(commonClassName, sizeClasses[size], variantClasses[variant], className)}
+      {...props}
+    >
       {children}
     </Link>
   );

@@ -39,6 +39,7 @@ export function CartDrawer() {
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
 
   const loadCart = useCallback(async (showSpinner: boolean) => {
     if (showSpinner) {
@@ -65,6 +66,8 @@ export function CartDrawer() {
 
   useEffect(() => {
     function handleOpen() {
+      triggerRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setIsOpen(true);
       void loadCart(true);
     }
@@ -100,19 +103,54 @@ export function CartDrawer() {
     const previousOverflow = document.body.style.overflow;
 
     document.body.style.overflow = "hidden";
-    panelRef.current?.focus();
+    const focusFrame = window.requestAnimationFrame(() => {
+      const firstFocusable = panelRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+
+      (firstFocusable ?? panelRef.current)?.focus();
+    });
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        panelRef.current?.focus();
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      triggerRef.current?.focus();
     };
   }, [isOpen]);
 
@@ -121,17 +159,18 @@ export function CartDrawer() {
     setError(null);
 
     try {
-      const response = quantity <= 0
-        ? await fetch("/api/shopify/cart", {
-            method: "DELETE",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lineIds: [lineId] }),
-          })
-        : await fetch("/api/shopify/cart", {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ lines: [{ id: lineId, quantity }] }),
-          });
+      const response =
+        quantity <= 0
+          ? await fetch("/api/shopify/cart", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lineIds: [lineId] }),
+            })
+          : await fetch("/api/shopify/cart", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ lines: [{ id: lineId, quantity }] }),
+            });
 
       const payload = (await response.json()) as CartResponse;
 
@@ -202,7 +241,7 @@ export function CartDrawer() {
           <button
             type="button"
             onClick={() => setIsOpen(false)}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-ink/12 text-ink transition-colors hover:border-gold hover:text-gold"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/12 text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
             aria-label="Close bag"
           >
             <X className="h-4 w-4" />
@@ -210,11 +249,36 @@ export function CartDrawer() {
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
-          {error ? (
-            <div className="mb-4 rounded-md border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-ink">{error}</div>
+          {error && cart ? (
+            <div
+              className="mb-4 rounded-md border border-sale/25 bg-sale/8 px-4 py-3 text-sm text-ink"
+              role="alert"
+            >
+              {error}
+            </div>
           ) : null}
 
-          {isLoading && !cart ? (
+          {error && !cart && !isLoading ? (
+            <div
+              className="flex h-full flex-col items-center justify-center gap-4 py-10 text-center"
+              role="alert"
+            >
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-sale/8 text-sale">
+                <ShoppingBag className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="text-base font-semibold text-ink">We couldn&apos;t load your bag.</p>
+                <p className="mt-1 max-w-xs text-sm leading-6 text-smoke">{error}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void loadCart(true)}
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-ink bg-ink px-5 py-2.5 text-xs font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:border-deep-teal hover:bg-deep-teal"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : isLoading && !cart ? (
             <div className="space-y-3">
               {[0, 1].map((index) => (
                 <div key={index} className="flex gap-4">
@@ -235,8 +299,14 @@ export function CartDrawer() {
                 const isLineMutating = mutatingLineId === line.id;
 
                 return (
-                  <li key={line.id} className={cn("flex gap-4 py-4 transition-opacity", isLineMutating && "opacity-60")}>
-                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-md border border-ink/8 bg-white">
+                  <li
+                    key={line.id}
+                    className={cn(
+                      "flex gap-4 py-4 transition-opacity",
+                      isLineMutating && "opacity-60",
+                    )}
+                  >
+                    <div className="relative h-24 w-20 shrink-0 overflow-hidden rounded-md bg-product-canvas">
                       {line.image ? (
                         <Image
                           src={line.image.url}
@@ -264,7 +334,9 @@ export function CartDrawer() {
                               line.productTitle || "Selected item"
                             )}
                           </p>
-                          {lineMeta ? <p className="mt-0.5 text-xs text-smoke">{lineMeta}</p> : null}
+                          {lineMeta ? (
+                            <p className="mt-0.5 text-xs text-smoke">{lineMeta}</p>
+                          ) : null}
                         </div>
                         <p className="shrink-0 text-sm font-semibold text-ink">
                           {formatMoney(line.totalPrice.amount, line.totalPrice.currencyCode)}
@@ -275,17 +347,19 @@ export function CartDrawer() {
                         <div className="inline-flex items-center rounded-md border border-ink/15 bg-white">
                           <button
                             type="button"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-l-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-l-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
                             disabled={isLineMutating}
                             onClick={() => void updateQuantity(line.id, line.quantity - 1)}
                             aria-label={`Decrease quantity for ${line.productTitle || "item"}`}
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </button>
-                          <span className="min-w-8 text-center text-xs font-semibold text-ink">{line.quantity}</span>
+                          <span className="min-w-9 text-center text-xs font-semibold text-ink">
+                            {line.quantity}
+                          </span>
                           <button
                             type="button"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-r-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
+                            className="inline-flex h-11 w-11 items-center justify-center rounded-r-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
                             disabled={isLineMutating}
                             onClick={() => void updateQuantity(line.id, line.quantity + 1)}
                             aria-label={`Increase quantity for ${line.productTitle || "item"}`}
@@ -296,7 +370,7 @@ export function CartDrawer() {
 
                         <button
                           type="button"
-                          className="text-[11px] font-semibold tracking-[0.12em] text-smoke uppercase transition-colors hover:text-ink disabled:cursor-not-allowed"
+                          className="inline-flex min-h-11 items-center px-2 text-[11px] font-semibold tracking-[0.12em] text-smoke uppercase transition-colors hover:text-ink disabled:cursor-not-allowed"
                           disabled={isLineMutating}
                           onClick={() => void updateQuantity(line.id, 0)}
                         >
@@ -315,7 +389,9 @@ export function CartDrawer() {
               </div>
               <div>
                 <p className="text-base font-semibold text-ink">Your bag is empty</p>
-                <p className="mt-1 text-sm leading-6 text-smoke">Add pieces from the shop and they will appear here.</p>
+                <p className="mt-1 text-sm leading-6 text-smoke">
+                  Add pieces from the shop and they will appear here.
+                </p>
               </div>
               <Link
                 href="/shop"
@@ -336,11 +412,13 @@ export function CartDrawer() {
                 {formatMoney(cart.subtotal.amount, cart.subtotal.currencyCode)}
               </span>
             </div>
-            <p className="mt-1 text-xs leading-5 text-smoke">Shipping and taxes are calculated at checkout.</p>
+            <p className="mt-1 text-xs leading-5 text-smoke">
+              Shipping and taxes are calculated at checkout.
+            </p>
 
             <button
               type="button"
-              disabled={isCheckingOut}
+              disabled={isCheckingOut || Boolean(mutatingLineId)}
               onClick={() => void goToCheckout()}
               className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-md border border-ink bg-ink px-5 py-3 text-sm font-semibold tracking-[0.08em] text-white uppercase transition-colors hover:border-deep-teal hover:bg-deep-teal disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -362,6 +440,12 @@ export function CartDrawer() {
             </p>
           </div>
         ) : null}
+
+        <p className="sr-only" role="status" aria-live="polite">
+          {cart
+            ? `${cart.totalQuantity} ${cart.totalQuantity === 1 ? "item" : "items"} in your bag`
+            : ""}
+        </p>
       </div>
     </>
   );

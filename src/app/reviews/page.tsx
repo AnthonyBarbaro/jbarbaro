@@ -161,7 +161,7 @@ export default async function ReviewsPage() {
                         href={review.googleMapsUri}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="mt-4 inline-flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
+                        className="mt-4 inline-flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
                       >
                         View on Google
                         <ExternalLink className="h-3.5 w-3.5" />
@@ -169,7 +169,7 @@ export default async function ReviewsPage() {
                     ) : (
                       <Link
                         href="/schedule-appointment"
-                        className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-gold"
+                        className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
                       >
                         Book a Similar Experience
                       </Link>

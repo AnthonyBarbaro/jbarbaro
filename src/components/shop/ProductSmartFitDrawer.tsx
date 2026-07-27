@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Ruler, Sparkles, X } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { FieldLabel, Input, Select } from "@/components/ui/Field";
 import {
@@ -13,6 +13,7 @@ import {
   type FitBuild,
   type FitProfile,
   type FitProfileInput,
+  type ProductFitRecommendation,
   type ProductSizeKind,
 } from "@/lib/fit-profile";
 import type { ShopifyProduct } from "@/lib/shopify/types";
@@ -22,7 +23,7 @@ type ProductSmartFitDrawerProps = {
   product: ShopifyProduct;
   open: boolean;
   onClose: () => void;
-  onUseRecommendation: (recommendation: { label: string; variantId: string }) => void;
+  onUseRecommendation: (recommendation: ProductFitRecommendation) => void;
 };
 
 type FitDraft = {
@@ -59,12 +60,9 @@ function getKnownSize(profile: FitProfile, kind: ProductSizeKind) {
 
 function getDraft(profile: FitProfile, kind: ProductSizeKind): FitDraft {
   return {
-    heightFeet:
-      typeof profile.heightFeet === "number" ? String(profile.heightFeet) : "",
-    heightInches:
-      typeof profile.heightInches === "number" ? String(profile.heightInches) : "",
-    weightLbs:
-      typeof profile.weightLbs === "number" ? String(profile.weightLbs) : "",
+    heightFeet: typeof profile.heightFeet === "number" ? String(profile.heightFeet) : "",
+    heightInches: typeof profile.heightInches === "number" ? String(profile.heightInches) : "",
+    weightLbs: typeof profile.weightLbs === "number" ? String(profile.weightLbs) : "",
     build: profile.build ?? "",
     knownSize: getKnownSize(profile, kind),
   };
@@ -103,11 +101,9 @@ function buildInputFromDraft(
     heightInches,
     weightLbs,
     build: draft.build,
-    knownWaistSize:
-      kind === "waist" ? knownSize : currentProfile?.knownWaistSize,
+    knownWaistSize: kind === "waist" ? knownSize : currentProfile?.knownWaistSize,
     knownSuitSize: kind === "suit" ? knownSize : currentProfile?.knownSuitSize,
-    knownDressShirtSize:
-      kind === "shirt" ? knownSize : currentProfile?.knownDressShirtSize,
+    knownDressShirtSize: kind === "shirt" ? knownSize : currentProfile?.knownDressShirtSize,
     shoeSize: kind === "shoe" ? knownSize : currentProfile?.shoeSize,
     knownTopSize: kind === "top" ? knownSize : currentProfile?.knownTopSize,
   };
@@ -123,9 +119,38 @@ export function ProductSmartFitDrawer({
   const [profile, setProfile] = useState<FitProfile | null>(null);
   const [draft, setDraft] = useState<FitDraft>(EMPTY_DRAFT);
   const [isEditing, setIsEditing] = useState(true);
+  const panelRef = useRef<HTMLElement | null>(null);
   const recommendation = profile ? getProductFitRecommendation(product, profile) : null;
   const recommendedSize = recommendation?.label ?? null;
   const recommendationIsAvailable = Boolean(recommendation?.variantId);
+  const recommendationDetail = recommendation
+    ? (() => {
+        const suitRecommendation = recommendation.suit;
+        const equivalence = suitRecommendation?.converted
+          ? `Equivalent to your saved ${suitRecommendation.savedLabel}. `
+          : "";
+
+        if (!recommendationIsAvailable) {
+          if (!suitRecommendation) {
+            return "No exact online match is currently available for this product.";
+          }
+
+          return suitRecommendation.lengthOffered
+            ? `${equivalence}That size and jacket length are not currently available online.`
+            : `${equivalence}That jacket size is not currently available online. This style does not list jacket length separately.`;
+        }
+
+        if (!suitRecommendation) {
+          return "Recommended size available online.";
+        }
+
+        return suitRecommendation.lengthOffered
+          ? `${equivalence}The matching size and jacket length are available online.`
+          : `${equivalence}The matching jacket size is available online. This style does not list jacket length separately.`;
+      })()
+    : sizeKind === "suit"
+      ? "No matching jacket size is currently available for this product."
+      : "No exact online match is currently available for this product.";
 
   useEffect(() => {
     if (!open) {
@@ -154,10 +179,42 @@ export function ProductSmartFitDrawer({
     }
 
     const previousOverflow = document.body.style.overflow;
+    const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusFrame = window.requestAnimationFrame(() => {
+      const firstFocusable = panelRef.current?.querySelector<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+
+      (firstFocusable ?? panelRef.current)?.focus();
+    });
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        panelRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements.at(-1);
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        panelRef.current?.focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     }
 
@@ -165,8 +222,10 @@ export function ProductSmartFitDrawer({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
+      trigger?.focus();
     };
   }, [onClose, open]);
 
@@ -190,10 +249,7 @@ export function ProductSmartFitDrawer({
       return;
     }
 
-    onUseRecommendation({
-      label: recommendation.label,
-      variantId: recommendation.variantId,
-    });
+    onUseRecommendation(recommendation);
   }
 
   if (!open) {
@@ -204,7 +260,7 @@ export function ProductSmartFitDrawer({
     sizeKind === "waist"
       ? "Usual waist size"
       : sizeKind === "suit"
-        ? "Usual suit size"
+        ? "Usual suit size (US)"
         : sizeKind === "shirt"
           ? "Usual shirt size"
           : sizeKind === "shoe"
@@ -220,11 +276,13 @@ export function ProductSmartFitDrawer({
         aria-label="Close Smart Fit"
       />
       <aside
+        ref={panelRef}
         id="product-smart-fit"
         className="fixed inset-y-0 right-0 z-[160] flex h-dvh w-full max-w-[30rem] flex-col bg-white shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-smart-fit-title"
+        tabIndex={-1}
       >
         <div className="flex items-center justify-between gap-3 border-b border-ink/10 px-5 py-4">
           <div className="flex items-center gap-3">
@@ -243,7 +301,7 @@ export function ProductSmartFitDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/10 text-ink transition-colors hover:bg-stone focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/10 text-ink transition-colors hover:bg-stone focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
             aria-label="Close Smart Fit"
           >
             <X className="h-4 w-4" />
@@ -268,26 +326,18 @@ export function ProductSmartFitDrawer({
               >
                 <Sparkles className="mx-auto h-5 w-5 text-deep-teal" />
                 <p className="mt-3 text-[10px] font-semibold tracking-[0.16em] text-smoke uppercase">
-                  {recommendedSize ? "Recommended size" : "Your fit estimate"}
+                  {recommendedSize ? "Recommended product size" : "Your fit estimate"}
                 </p>
                 <p className="mt-2 font-heading text-5xl leading-none text-ink">
                   {recommendedSize ?? getEstimateLabel(profile, sizeKind)}
                 </p>
-                {recommendationIsAvailable ? (
-                  <p className="mt-3 text-xs text-smoke">Exact size and length available online</p>
-                ) : (
-                  <p className="mt-3 text-xs leading-5 text-smoke">
-                    {sizeKind === "suit"
-                      ? "This is your full suit size. That exact size and length is not currently available online."
-                      : "No exact online match is currently available for this product."}
-                  </p>
-                )}
+                <p className="mt-3 text-xs leading-5 text-smoke">{recommendationDetail}</p>
               </div>
 
               <div className="mt-5 grid grid-cols-3 gap-2">
                 <div className="rounded-md border border-ink/10 bg-stone/60 p-3">
                   <p className="text-[9px] font-semibold tracking-[0.12em] text-smoke uppercase">
-                    Suit
+                    Suit (US)
                   </p>
                   <p className="mt-1 text-sm font-semibold text-ink">{profile.estimate.suit}</p>
                 </div>
@@ -433,11 +483,17 @@ export function ProductSmartFitDrawer({
                     }
                     className="mt-2 min-h-12 bg-white"
                     placeholder={
-                      sizeKind === "waist" ? "For example, 34" : "Add a size you already wear"
+                      sizeKind === "waist"
+                        ? "For example, 34"
+                        : sizeKind === "suit"
+                          ? "For example, 40L"
+                          : "Add a size you already wear"
                     }
                   />
                   <p className="mt-2 text-xs leading-5 text-smoke">
-                    If you know it, this takes priority over the estimate.
+                    {sizeKind === "suit"
+                      ? "Enter your usual US jacket size. We’ll convert it when this product uses European sizing."
+                      : "If you know it, this takes priority over the estimate."}
                   </p>
                 </div>
               </div>

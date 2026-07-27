@@ -44,7 +44,7 @@ export function CollectionRail({ collections }: CollectionRailProps) {
         <button
           type="button"
           onClick={() => scrollRail(-1)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/15 bg-white text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/15 bg-white text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
           aria-label="Show previous collections"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -52,7 +52,7 @@ export function CollectionRail({ collections }: CollectionRailProps) {
         <button
           type="button"
           onClick={() => scrollRail(1)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/15 bg-white text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/30"
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/15 bg-white text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
           aria-label="Show more collections"
         >
           <ChevronRight className="h-4 w-4" />

@@ -34,7 +34,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   });
 }
 
-export default async function StyleGuidePostPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function StyleGuidePostPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
   const post = getPostBySlug("style-guide", slug);
 
@@ -62,8 +66,12 @@ export default async function StyleGuidePostPage({ params }: { params: Promise<{
       <WaveSection topWave="B" bottomWave="C" background="ivory">
         <Container>
           <article className="mx-auto max-w-4xl">
-            <p className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase">Style Guide • {formatDate(post.publishedAt)}</p>
-            <h1 className="mt-4 font-heading text-3xl leading-tight text-ink sm:text-5xl lg:text-6xl">{post.title}</h1>
+            <p className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase">
+              Style Guide • {formatDate(post.publishedAt)}
+            </p>
+            <h1 className="mt-4 font-heading text-3xl leading-tight text-ink sm:text-5xl lg:text-6xl">
+              {post.title}
+            </h1>
             <p className="mt-6 text-lg leading-8 text-smoke">{post.description}</p>
 
             <div className="mt-10 rounded-3xl border border-ink/10 bg-ivory p-3 sm:mt-12 sm:px-6 sm:py-6">
@@ -73,9 +81,12 @@ export default async function StyleGuidePostPage({ params }: { params: Promise<{
             <div className="mt-12 grid gap-4 sm:grid-cols-2">
               <Card tone="stone">
                 <CardContent>
-                  <h2 className="font-heading text-2xl text-ink sm:text-3xl">Want Personalized Advice?</h2>
+                  <h2 className="font-heading text-2xl text-ink sm:text-3xl">
+                    Want Personalized Advice?
+                  </h2>
                   <p className="mt-3 text-sm leading-7 text-smoke">
-                    Let our team build a lookbook around your calendar, fit goals, and preferred brands.
+                    Let our team build a lookbook around your calendar, fit goals, and preferred
+                    brands.
                   </p>
                   <ButtonLink href="/schedule-appointment" className="mt-5">
                     Book Appointment
@@ -85,10 +96,13 @@ export default async function StyleGuidePostPage({ params }: { params: Promise<{
               <Card>
                 <CardContent>
                   <h2 className="font-heading text-2xl text-ink sm:text-3xl">Continue Exploring</h2>
-                  <Link href="/style-guide" className="mt-3 block text-sm text-deep-teal hover:text-gold">
+                  <Link
+                    href="/style-guide"
+                    className="mt-3 block text-sm text-deep-teal hover:text-ink"
+                  >
                     Back to Style Guide Index →
                   </Link>
-                  <Link href="/blog" className="mt-2 block text-sm text-deep-teal hover:text-gold">
+                  <Link href="/blog" className="mt-2 block text-sm text-deep-teal hover:text-ink">
                     Browse Blog →
                   </Link>
                 </CardContent>

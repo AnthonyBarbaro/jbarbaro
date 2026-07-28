@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useDeferredValue, useEffect, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useId, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
 import type { ShopifyProductSearchResult } from "@/lib/shopify/types";
@@ -31,6 +31,18 @@ function formatSearchResultPrice(product: ShopifyProductSearchResult) {
   return `${minimumLabel} – ${formatMoney(maximum.amount, maximum.currencyCode)}`;
 }
 
+function formatAvailableSizes(availableSizes: string[], limit: number) {
+  const visibleSizes = availableSizes.slice(0, limit);
+  const remainingCount = availableSizes.length - visibleSizes.length;
+
+  return [
+    ...visibleSizes,
+    remainingCount > 0 ? `+${remainingCount} more` : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" · ");
+}
+
 export function HeaderProductSearch({ className, onNavigate }: HeaderProductSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ShopifyProductSearchResult[]>([]);
@@ -39,6 +51,8 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
   const [searchError, setSearchError] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const resultsId = useId();
+  const statusId = useId();
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -134,7 +148,8 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
           placeholder="Search products, brands, sizes, or colors"
           className="h-11 w-full bg-transparent px-3 text-sm text-ink outline-none placeholder:text-smoke"
           aria-label="Search products"
-          aria-describedby="header-product-search-status"
+          aria-controls={resultsId}
+          aria-describedby={statusId}
         />
         <button
           type="submit"
@@ -146,7 +161,7 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
 
       {(isOpen || isLoading) && deferredQuery.trim().length >= 2 ? (
         <div
-          id="header-product-search-results"
+          id={resultsId}
           className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-[120] overflow-hidden rounded-lg border border-ink/10 bg-ivory shadow-xl shadow-ink/10"
           role="region"
           aria-label="Product search results"
@@ -196,9 +211,32 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
                       {[product.vendor, product.productType].filter(Boolean).join(" • ")}
                     </p>
                     <p className="mt-1 truncate text-sm font-semibold text-ink">{product.title}</p>
-                    <p className="mt-1 text-sm font-bold tracking-[-0.01em] text-ink">
-                      {formatSearchResultPrice(product)}
-                    </p>
+                    {product.availableSizes.length > 0 ? (
+                      <p className="mt-1 truncate text-xs text-smoke">
+                        <span className="sr-only">
+                          Available sizes {product.availableSizes.join(", ")}
+                        </span>
+                        <span aria-hidden="true">
+                          <span className="font-semibold text-ink/75">Sizes</span>{" "}
+                          <span className="sm:hidden">
+                            {formatAvailableSizes(product.availableSizes, 3)}
+                          </span>
+                          <span className="hidden sm:inline">
+                            {formatAvailableSizes(product.availableSizes, 5)}
+                          </span>
+                        </span>
+                      </p>
+                    ) : null}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      {!product.availableForSale ? (
+                        <span className="inline-flex rounded-full bg-ink/85 px-2 py-0.5 text-xs font-semibold tracking-[0.12em] text-white uppercase">
+                          Sold out
+                        </span>
+                      ) : null}
+                      <p className="text-sm font-bold tracking-[-0.01em] text-ink">
+                        {formatSearchResultPrice(product)}
+                      </p>
+                    </div>
                   </div>
                 </Link>
               ))}
@@ -226,7 +264,7 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
         </div>
       ) : null}
 
-      <p id="header-product-search-status" className="sr-only" aria-live="polite">
+      <p id={statusId} className="sr-only" aria-live="polite">
         {searchError
           ? searchError
           : isLoading

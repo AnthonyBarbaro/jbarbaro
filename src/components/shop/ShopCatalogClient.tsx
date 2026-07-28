@@ -256,7 +256,9 @@ export function ShopCatalogClient({
   const pillBarRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortOption>("featured");
-  const [availability, setAvailability] = useState<AvailabilityOption>(DEFAULT_AVAILABILITY);
+  const [availability, setAvailability] = useState<AvailabilityOption>(() =>
+    urlQuery ? "all" : DEFAULT_AVAILABILITY,
+  );
   const [priceFilter, setPriceFilter] = useState<PriceOption>("all");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
@@ -307,7 +309,10 @@ export function ShopCatalogClient({
   const searchableQuery = deferredQuery.trim().toLowerCase();
 
   useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => setQuery(urlQuery));
+    const frameId = window.requestAnimationFrame(() => {
+      setQuery(urlQuery);
+      setAvailability(urlQuery ? "all" : DEFAULT_AVAILABILITY);
+    });
 
     return () => window.cancelAnimationFrame(frameId);
   }, [urlQuery]);
@@ -589,6 +594,7 @@ export function ShopCatalogClient({
   function clearSearch() {
     startTransition(() => {
       setQuery("");
+      setAvailability(DEFAULT_AVAILABILITY);
     });
 
     const url = new URL(window.location.href);
@@ -1143,7 +1149,13 @@ export function ShopCatalogClient({
           </Badge>
         ))}
         {availability !== DEFAULT_AVAILABILITY ? (
-          <Badge variant="neutral">{availability === "in-stock" ? "In stock" : "Sold out"}</Badge>
+          <Badge variant="neutral">
+            {availability === "all"
+              ? "All items"
+              : availability === "in-stock"
+                ? "In stock"
+                : "Sold out"}
+          </Badge>
         ) : null}
         {priceFilter !== "all" ? (
           <Badge variant="neutral">

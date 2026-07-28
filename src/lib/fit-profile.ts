@@ -761,7 +761,9 @@ export function getMatchingProfileSizes(availableSizes: string[], profile: FitPr
   return availableSizes.filter((size) => targetTokens.has(normalizeSizeToken(size)));
 }
 
-export function getVariantSizeValue(variant: ShopifyProductVariant) {
+export function getVariantSizeValue(
+  variant: Pick<ShopifyProductVariant, "selectedOptions">,
+) {
   return (
     variant.selectedOptions.find((option) => option.name.toLowerCase().includes("size"))?.value ??
     null

@@ -2,6 +2,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
+import { getVariantSizeValue } from "@/lib/fit-profile";
 import { storefrontRequest } from "@/lib/shopify/client";
 import { SHOPIFY_STOREFRONT_REVALIDATE_SECONDS } from "@/lib/shopify/config";
 import type {
@@ -11,6 +12,7 @@ import type {
   ShopifyProductPreview,
   ShopifyProductReviewSummary,
   ShopifyProductSearchResult,
+  ShopifyProductVariant,
 } from "@/lib/shopify/types";
 
 type RawProduct = {
@@ -140,9 +142,24 @@ type ProductRecommendationsResponse = {
   productRecommendations: RawProduct[];
 };
 
+type RawPredictiveSearchVariant = Pick<
+  ShopifyProductVariant,
+  "availableForSale" | "selectedOptions"
+>;
+
+type RawPredictiveSearchProduct = Pick<
+  RawProduct,
+  "id" | "handle" | "title" | "vendor" | "productType" | "featuredImage" | "priceRange"
+> & {
+  availableForSale: boolean;
+  variants: {
+    nodes: RawPredictiveSearchVariant[];
+  };
+};
+
 type PredictiveSearchResponse = {
   predictiveSearch: {
-    products: RawProduct[];
+    products: RawPredictiveSearchProduct[];
   };
 };
 
@@ -649,6 +666,16 @@ export async function searchShopProducts(
             title
             vendor
             productType
+            availableForSale
+            variants(first: 100) {
+              nodes {
+                availableForSale
+                selectedOptions {
+                  name
+                  value
+                }
+              }
+            }
             featuredImage {
               url
               altText
@@ -682,6 +709,15 @@ export async function searchShopProducts(
     title: product.title,
     vendor: product.vendor,
     productType: product.productType,
+    availableForSale: product.availableForSale,
+    availableSizes: Array.from(
+      new Set(
+        product.variants.nodes
+          .filter((variant) => variant.availableForSale)
+          .map(getVariantSizeValue)
+          .filter((value): value is string => Boolean(value)),
+      ),
+    ),
     featuredImage: product.featuredImage,
     priceRange: product.priceRange,
   }));

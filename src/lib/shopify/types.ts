@@ -51,7 +51,10 @@ export type ShopifyProduct = {
 export type ShopifyProductSearchResult = Pick<
   ShopifyProduct,
   "id" | "handle" | "title" | "vendor" | "productType" | "featuredImage" | "priceRange"
->;
+> & {
+  availableForSale: boolean;
+  availableSizes: string[];
+};
 
 export type ShopifyProductPreview = Pick<ShopifyProduct, "id" | "handle" | "title">;
 

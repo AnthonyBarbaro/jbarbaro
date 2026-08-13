@@ -126,8 +126,12 @@ export function websiteJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": absoluteUrl("/#website"),
     name: SITE_NAME,
     url: absoluteUrl("/"),
+    publisher: {
+      "@id": absoluteUrl("/#organization"),
+    },
     potentialAction: {
       "@type": "SearchAction",
       target: {

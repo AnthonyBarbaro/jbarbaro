@@ -2,17 +2,19 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ProductDetailClient } from "@/components/shop/ProductDetailClient";
-import { ShopProductCard } from "@/components/shop/ShopProductCard";
+import { ProductRecommendationsClient } from "@/components/shop/ProductRecommendationsClient";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
+import { getProductSizeKind, type ProductSizeKind } from "@/lib/fit-profile";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import {
+  getBestSellingProducts,
+  getProductsByVendor,
   getRecommendedProducts,
   getShopProduct,
   getShopProductPreviews,
-  getShopProducts,
 } from "@/lib/shopify/products";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 
@@ -23,6 +25,70 @@ type ShopProductPageProps = {
 };
 
 export const revalidate = 300;
+
+function isAvailableProduct(product: ShopifyProduct) {
+  return product.variants.some((variant) => variant.availableForSale);
+}
+
+function getUniqueProducts(
+  products: ShopifyProduct[],
+  excludedProduct: ShopifyProduct,
+  excludedIds = new Set<string>(),
+  excludedHandles = new Set<string>(),
+) {
+  const seenIds = new Set(excludedIds);
+  const seenHandles = new Set([excludedProduct.handle, ...excludedHandles]);
+
+  return products.filter((product) => {
+    if (
+      product.id === excludedProduct.id ||
+      seenIds.has(product.id) ||
+      seenHandles.has(product.handle) ||
+      !isAvailableProduct(product)
+    ) {
+      return false;
+    }
+
+    seenIds.add(product.id);
+    seenHandles.add(product.handle);
+    return true;
+  });
+}
+
+const complementarySizeKinds: Record<ProductSizeKind, ProductSizeKind[]> = {
+  suit: ["shirt", "shoe", "waist", "top"],
+  shirt: ["suit", "waist", "shoe", "top"],
+  waist: ["shirt", "suit", "shoe", "top"],
+  shoe: ["waist", "suit", "shirt", "top"],
+  top: ["waist", "suit", "shoe", "shirt"],
+};
+
+function rankOutfitFallbacks(product: ShopifyProduct, candidates: ShopifyProduct[]) {
+  const preferredKinds = complementarySizeKinds[getProductSizeKind(product)];
+  const rankedCandidates = candidates
+    .map((candidate, originalIndex) => ({
+      candidate,
+      originalIndex,
+      kind: getProductSizeKind(candidate),
+      kindPriority: preferredKinds.indexOf(getProductSizeKind(candidate)),
+    }))
+    .filter(({ kindPriority }) => kindPriority >= 0)
+    .sort(
+      (left, right) =>
+        left.kindPriority - right.kindPriority || left.originalIndex - right.originalIndex,
+    );
+  const diverseFirstChoices = preferredKinds.flatMap((kind) => {
+    const match = rankedCandidates.find((entry) => entry.kind === kind);
+
+    return match ? [match] : [];
+  });
+  const firstChoiceIds = new Set(diverseFirstChoices.map(({ candidate }) => candidate.id));
+
+  return [
+    ...diverseFirstChoices,
+    ...rankedCandidates.filter(({ candidate }) => !firstChoiceIds.has(candidate.id)),
+  ].map(({ candidate }) => candidate);
+}
 
 async function loadShopProduct(handle: string) {
   try {
@@ -103,7 +169,7 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
       <WaveSection topWave="A" background="ivory" contentClassName="py-8 sm:py-12 lg:py-16">
         <Container>
           <div className="rounded-[2rem] border border-ink/10 bg-white/88 p-6 sm:p-8">
-            <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
+            <p className="text-xs font-semibold tracking-[0.18em] text-deep-teal uppercase">
               Product temporarily unavailable
             </p>
             <h1 className="mt-3 font-heading text-3xl text-ink sm:text-4xl">
@@ -129,23 +195,54 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
     notFound();
   }
 
-  let relatedProducts: ShopifyProduct[] = [];
+  const [sameBrandResult, outfitMatchResult, fallbackResult] = await Promise.allSettled([
+    product.vendor.trim()
+      ? getProductsByVendor(product.vendor.trim(), 24, true)
+      : Promise.resolve<ShopifyProduct[]>([]),
+    getRecommendedProducts(product.id, product.handle, 10, "COMPLEMENTARY"),
+    getBestSellingProducts(48),
+  ]);
 
-  try {
-    relatedProducts = await getRecommendedProducts(product.id, product.handle, 4);
-
-    if (relatedProducts.length === 0) {
-      relatedProducts = (await getShopProducts(8))
-        .filter((item) => item.handle !== product.handle)
-        .slice(0, 4);
-    }
-  } catch (error) {
-    console.error(`Unable to load related Shopify products for "${product.handle}".`, error);
+  if (sameBrandResult.status === "rejected") {
+    console.error(
+      `Unable to load more products from "${product.vendor}" for "${product.handle}".`,
+      sameBrandResult.reason,
+    );
   }
 
-  relatedProducts = relatedProducts
-    .filter((item) => item.variants.some((variant) => variant.availableForSale))
-    .slice(0, 4);
+  if (outfitMatchResult.status === "rejected") {
+    console.error(
+      `Unable to load complementary Shopify products for "${product.handle}".`,
+      outfitMatchResult.reason,
+    );
+  }
+
+  if (fallbackResult.status === "rejected") {
+    console.error(
+      `Unable to load outfit fallback products for "${product.handle}".`,
+      fallbackResult.reason,
+    );
+  }
+
+  const normalizedVendor = product.vendor.trim().toLocaleLowerCase();
+  const sameBrandCandidates = getUniqueProducts(
+    sameBrandResult.status === "fulfilled"
+      ? sameBrandResult.value.filter(
+          (item) => item.vendor.trim().toLocaleLowerCase() === normalizedVendor,
+        )
+      : [],
+    product,
+  );
+  const merchantOutfitCandidates =
+    outfitMatchResult.status === "fulfilled" ? outfitMatchResult.value : [];
+  const fallbackOutfitCandidates =
+    fallbackResult.status === "fulfilled" ? rankOutfitFallbacks(product, fallbackResult.value) : [];
+  const outfitMatchCandidates = getUniqueProducts(
+    [...merchantOutfitCandidates, ...fallbackOutfitCandidates],
+    product,
+  );
+  const hasRecommendationCandidates =
+    sameBrandCandidates.length > 0 || outfitMatchCandidates.length > 0;
 
   const minPrice = product.priceRange.minVariantPrice;
   const maxPrice = product.priceRange.maxVariantPrice;
@@ -153,6 +250,8 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
+    "@id": absoluteUrl(`/shop/${product.handle}#product`),
+    url: absoluteUrl(`/shop/${product.handle}`),
     name: product.title,
     image: product.images.map((image) => image.url),
     description:
@@ -220,50 +319,13 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
         </Container>
       </WaveSection>
 
-      {relatedProducts.length > 0 ? (
-        <WaveSection topWave="C" background="stone" className="overflow-x-clip">
-          <Container className="overflow-x-clip">
-            <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-              <div className="max-w-2xl">
-                <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
-                  More to Explore
-                </p>
-                <h2 className="mt-3 font-heading text-[2rem] text-ink sm:text-4xl">
-                  Complete the Look
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-smoke">
-                  Curated companion pieces selected to keep the outfit polished, refined, and easy
-                  to finish.
-                </p>
-              </div>
-              <ButtonLink href="/shop" variant="secondary" size="sm" className="w-fit">
-                Shop All
-              </ButtonLink>
-            </div>
-            <div className="mt-8 md:hidden">
-              <div className="overflow-x-hidden">
-                <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-0.5 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  {relatedProducts.map((relatedProduct) => (
-                    <div
-                      key={relatedProduct.id}
-                      className="min-w-[74vw] max-w-[74vw] snap-start sm:min-w-[19rem] sm:max-w-[19rem]"
-                    >
-                      <ShopProductCard
-                        product={relatedProduct}
-                        imageSizes="(max-width: 768px) 74vw, 19rem"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="mt-8 hidden gap-5 md:grid md:grid-cols-2 xl:grid-cols-4">
-              {relatedProducts.map((relatedProduct) => (
-                <ShopProductCard key={relatedProduct.id} product={relatedProduct} />
-              ))}
-            </div>
-          </Container>
-        </WaveSection>
+      {hasRecommendationCandidates ? (
+        <ProductRecommendationsClient
+          key={product.id}
+          product={product}
+          sameBrandCandidates={sameBrandCandidates}
+          outfitMatchCandidates={outfitMatchCandidates}
+        />
       ) : null}
     </div>
   );

@@ -30,6 +30,19 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        source: "/categories/:categorySlug",
+        headers: [
+          {
+            key: "X-Robots-Tag",
+            value: "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+          },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       {
@@ -85,6 +98,51 @@ const nextConfig: NextConfig = {
       {
         source: "/for-men/:categorySlug/",
         destination: "/categories/:categorySlug",
+        permanent: true,
+      },
+      {
+        source: "/categories/all",
+        destination: "/shop",
+        permanent: true,
+      },
+      {
+        source: "/categories/casual-shirts",
+        destination: "/categories/shirts",
+        permanent: true,
+      },
+      {
+        source: "/categories/dress-pants",
+        destination: "/categories/pants",
+        permanent: true,
+      },
+      {
+        source: "/categories/dress-shirts",
+        destination: "/categories/shirts",
+        permanent: true,
+      },
+      {
+        source: "/categories/footwear",
+        destination: "/categories/shoes",
+        permanent: true,
+      },
+      {
+        source: "/categories/sport-jacket",
+        destination: "/categories/sport-coats",
+        permanent: true,
+      },
+      {
+        source: "/categories/suits-sports-coats",
+        destination: "/categories/suits",
+        permanent: true,
+      },
+      {
+        source: "/categories/trousers",
+        destination: "/categories/pants",
+        permanent: true,
+      },
+      {
+        source: "/categories/tuxedo",
+        destination: "/categories/formalwear",
         permanent: true,
       },
       {

@@ -1,6 +1,11 @@
 import "server-only";
 
-import { getMenCategoryByHandle, getMenCategoryHref, menCategories, menCategoryMap } from "@/data/men-categories";
+import {
+  getMenCategoryByHandle,
+  getMenCategoryHref,
+  menCategories,
+  menCategoryMap,
+} from "@/data/men-categories";
 import { getShopifyConfigStatus } from "@/lib/shopify/config";
 import { getShopCollection, getShopCollectionsWithProducts } from "@/lib/shopify/products";
 import type { ShopifyCollection } from "@/lib/shopify/types";
@@ -47,10 +52,15 @@ function buildResolvedCategory({
   const shopifyDescription = shopifyCollection?.description.trim() || "";
   const name = shopifyCollection?.title || editorialCategory?.name || toTitleCase(slug);
   const shortDescription =
-    editorialCategory?.shortDescription || summarizeDescription(shopifyDescription) || fallbackDescription(name);
-  const longDescription = shopifyDescription || editorialCategory?.longDescription || fallbackDescription(name);
-  const source = editorialCategory && shopifyCollection ? "merged" : shopifyCollection ? "shopify" : "editorial";
-  const shopifyCollectionHandle = shopifyCollection?.handle || editorialCategory?.shopifyCollectionHandle?.trim() || undefined;
+    editorialCategory?.shortDescription ||
+    summarizeDescription(shopifyDescription) ||
+    fallbackDescription(name);
+  const longDescription =
+    shopifyDescription || editorialCategory?.longDescription || fallbackDescription(name);
+  const source =
+    editorialCategory && shopifyCollection ? "merged" : shopifyCollection ? "shopify" : "editorial";
+  const shopifyCollectionHandle =
+    shopifyCollection?.handle || editorialCategory?.shopifyCollectionHandle?.trim() || undefined;
 
   return {
     slug,
@@ -64,7 +74,10 @@ function buildResolvedCategory({
   };
 }
 
-function getCollectionHandleCandidates(slugOrHandle: string, editorialCategory: MenCategory | null) {
+function getCollectionHandleCandidates(
+  slugOrHandle: string,
+  editorialCategory: MenCategory | null,
+) {
   return Array.from(
     new Set(
       [editorialCategory?.shopifyCollectionHandle?.trim(), slugOrHandle, editorialCategory?.slug]
@@ -78,21 +91,10 @@ function getEditorialCategoryForCollection(handle: string) {
   return getMenCategoryByHandle(handle) ?? menCategoryMap[handle] ?? null;
 }
 
-async function safeGetShopCollection(handle: string, limit: number) {
-  if (!getShopifyConfigStatus().configured) {
-    return null;
-  }
-
-  try {
-    return await getShopCollection(handle, limit);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown Shopify collection error.";
-    console.error(`Unable to load Shopify collection for "${handle}": ${message}`);
-    return null;
-  }
-}
-
-export async function resolveMenCategories(limit = 24, productLimit = 4): Promise<ResolvedMenCategory[]> {
+export async function resolveMenCategories(
+  limit = 24,
+  productLimit = 4,
+): Promise<ResolvedMenCategory[]> {
   if (!getShopifyConfigStatus().configured) {
     return menCategories.map((category) =>
       buildResolvedCategory({
@@ -119,7 +121,9 @@ export async function resolveMenCategories(limit = 24, productLimit = 4): Promis
     );
   }
 
-  const collectionByHandle = new Map(shopifyCollections.map((collection) => [collection.handle, collection]));
+  const collectionByHandle = new Map(
+    shopifyCollections.map((collection) => [collection.handle, collection]),
+  );
   const usedHandles = new Set<string>();
   const mergedCategories = menCategories.flatMap((category) => {
     const matchedCollection = getCollectionHandleCandidates(category.slug, category)
@@ -156,7 +160,10 @@ export async function resolveMenCategories(limit = 24, productLimit = 4): Promis
   return [...mergedCategories, ...shopifyOnlyCategories];
 }
 
-export async function resolveMenCategory(slugOrHandle: string, productLimit = 8): Promise<ResolvedMenCategory | null> {
+export async function resolveMenCategory(
+  slugOrHandle: string,
+  productLimit = 8,
+): Promise<ResolvedMenCategory | null> {
   const editorialCategory = menCategoryMap[slugOrHandle] ?? getMenCategoryByHandle(slugOrHandle);
 
   if (!getShopifyConfigStatus().configured) {
@@ -170,7 +177,7 @@ export async function resolveMenCategory(slugOrHandle: string, productLimit = 8)
   }
 
   for (const handle of getCollectionHandleCandidates(slugOrHandle, editorialCategory)) {
-    const shopifyCollection = await safeGetShopCollection(handle, productLimit);
+    const shopifyCollection = await getShopCollection(handle, productLimit);
 
     if (shopifyCollection) {
       return buildResolvedCategory({

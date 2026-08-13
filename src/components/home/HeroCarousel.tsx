@@ -2,10 +2,9 @@
 
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import type { HeroSlide } from "@/types/site";
 import { cn } from "@/lib/utils";
 
@@ -60,6 +59,10 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isInteractionPaused, setIsInteractionPaused] = useState(false);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const metadataBadges = badges.filter(
+    ({ label }) => !/j\.\s*barbaro clothiers|since\s+1998/i.test(label.trim()),
+  );
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -94,14 +97,70 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
   const activeSlide = slides[activeIndex];
   const nextSlide = slides.length > 1 ? slides[(activeIndex + 1) % slides.length] : null;
   const renderedSlides = nextSlide ? [activeSlide, nextSlide] : [activeSlide];
-  const slideCounter = `${String(activeIndex + 1).padStart(2, "0")} / ${String(slides.length).padStart(2, "0")}`;
-  const fallbackSecondaryCta = secondaryCta ?? { label: "Book Appointment", href: "/schedule-appointment" };
+  const fallbackSecondaryCta = secondaryCta ?? {
+    label: "Book Appointment",
+    href: "/schedule-appointment",
+  };
+
+  function showPreviousSlide() {
+    setActiveIndex((current) => (current - 1 + slides.length) % slides.length);
+  }
+
+  function showNextSlide() {
+    setActiveIndex((current) => (current + 1) % slides.length);
+  }
+
+  function handleTouchStart(event: ReactTouchEvent<HTMLElement>) {
+    if (event.touches.length !== 1) {
+      touchStartRef.current = null;
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    setIsInteractionPaused(true);
+  }
+
+  function handleTouchEnd(event: ReactTouchEvent<HTMLElement>) {
+    const touchStart = touchStartRef.current;
+    const touchEnd = event.changedTouches[0];
+
+    touchStartRef.current = null;
+    setIsInteractionPaused(false);
+
+    if (!touchStart || !touchEnd || slides.length < 2) {
+      return;
+    }
+
+    const horizontalDistance = touchStart.x - touchEnd.clientX;
+    const verticalDistance = Math.abs(touchStart.y - touchEnd.clientY);
+
+    if (Math.abs(horizontalDistance) < 48 || Math.abs(horizontalDistance) <= verticalDistance) {
+      return;
+    }
+
+    if (horizontalDistance > 0) {
+      showNextSlide();
+    } else {
+      showPreviousSlide();
+    }
+  }
+
+  function handleTouchCancel() {
+    touchStartRef.current = null;
+    setIsInteractionPaused(false);
+  }
 
   return (
     <section
-      className="relative overflow-hidden bg-[#0b0f14] text-white"
+      aria-label="Featured collections"
+      aria-roledescription="carousel"
+      className="relative touch-pan-y overflow-hidden bg-[#0b0f14] text-white"
       onMouseEnter={() => setIsInteractionPaused(true)}
       onMouseLeave={() => setIsInteractionPaused(false)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchCancel}
       onFocusCapture={() => setIsInteractionPaused(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -140,20 +199,20 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
         <>
           <button
             type="button"
-            onClick={() => setActiveIndex((current) => (current - 1 + slides.length) % slides.length)}
+            onClick={showPreviousSlide}
             className="absolute top-1/2 left-5 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md border border-white/20 bg-[#0b0f14]/72 text-white transition-colors hover:border-gold hover:text-gold 2xl:inline-flex"
             aria-label="Previous slide"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-5 w-5" aria-hidden />
           </button>
 
           <button
             type="button"
-            onClick={() => setActiveIndex((current) => (current + 1) % slides.length)}
+            onClick={showNextSlide}
             className="absolute top-1/2 right-5 z-20 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-md border border-white/20 bg-[#0b0f14]/72 text-white transition-colors hover:border-gold hover:text-gold 2xl:inline-flex"
             aria-label="Next slide"
           >
-            <ChevronRight className="h-5 w-5" />
+            <ChevronRight className="h-5 w-5" aria-hidden />
           </button>
         </>
       ) : null}
@@ -161,28 +220,20 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
       <div className="relative z-10 mx-auto flex min-h-[520px] max-w-7xl items-end px-4 py-12 sm:min-h-[580px] sm:items-center sm:px-6 sm:py-16 lg:min-h-[620px] lg:px-8 lg:py-20">
         <div className="w-full">
           <div className="max-w-3xl">
-            <div className="flex flex-wrap items-center gap-2.5">
-              {badges.map((badge, index) =>
-                index === 0 ? (
-                  <Badge
-                    key={badge.label}
-                    variant="gold"
-                    className="border-gold/95 bg-gold px-4 py-1.5 text-[0.72rem] font-bold tracking-[0.12em] text-ink shadow-[0_8px_24px_-12px_rgba(0,0,0,0.85)] sm:text-xs"
-                  >
-                    {badge.label}
-                  </Badge>
-                ) : (
-                  <span
-                    key={badge.label}
-                    className="rounded-full border border-ivory/20 bg-ivory/8 px-3.5 py-1.5 text-[0.68rem] font-semibold tracking-[0.12em] text-ivory/82 uppercase backdrop-blur-sm sm:text-[11px]"
-                  >
-                    {badge.label}
-                  </span>
-                ),
-              )}
-              <span className="rounded-md border border-white/18 bg-[#0b0f14]/45 px-3.5 py-1.5 text-[0.68rem] font-semibold tracking-[0.16em] text-white/82 uppercase backdrop-blur-sm sm:text-[11px]">
-                {slideCounter}
-              </span>
+            <div className="flex flex-nowrap items-center gap-1.5 overflow-hidden sm:gap-2">
+              {metadataBadges.map((badge, index) => (
+                <span
+                  key={badge.label}
+                  className={cn(
+                    "shrink-0 whitespace-nowrap border px-2.5 py-1 text-xs font-semibold tracking-[0.1em] uppercase backdrop-blur-sm sm:px-3 sm:py-1.5 sm:tracking-[0.12em]",
+                    index === 0
+                      ? "border-gold bg-gold font-bold text-ink shadow-[0_8px_24px_-12px_rgba(0,0,0,0.85)]"
+                      : "border-white/25 border-l-2 border-l-gold/90 bg-[#0b0f14]/55 text-ivory/82",
+                  )}
+                >
+                  {badge.label}
+                </span>
+              ))}
             </div>
 
             <h1 className="mt-6 max-w-4xl text-balance font-heading text-[2.8rem] leading-[0.98] sm:text-6xl lg:text-7xl">
@@ -220,7 +271,7 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
                   key={slide.id}
                   type="button"
                   onClick={() => setActiveIndex(index)}
-                  aria-label={`Show ${slide.title}`}
+                  aria-label={`Show slide ${index + 1}: ${slide.title}`}
                   aria-current={index === activeIndex ? "true" : undefined}
                   className="group inline-flex h-11 w-11 items-center justify-center"
                 >
@@ -235,10 +286,14 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
               <button
                 type="button"
                 onClick={() => setIsPaused((paused) => !paused)}
-                className="ml-1 inline-flex h-11 items-center justify-center gap-2 rounded-md border border-white/25 bg-ink/45 px-3 text-[10px] font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:border-gold hover:text-gold"
+                className="ml-1 inline-flex h-11 items-center justify-center gap-2 rounded-md border border-white/25 bg-ink/45 px-3 text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:border-gold hover:text-gold"
                 aria-label={isPaused ? "Play slideshow" : "Pause slideshow"}
               >
-                {isPaused ? <Play className="h-3.5 w-3.5" aria-hidden /> : <Pause className="h-3.5 w-3.5" aria-hidden />}
+                {isPaused ? (
+                  <Play className="h-3.5 w-3.5" aria-hidden />
+                ) : (
+                  <Pause className="h-3.5 w-3.5" aria-hidden />
+                )}
                 {isPaused ? "Play" : "Pause"}
               </button>
             </div>

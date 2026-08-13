@@ -7,7 +7,6 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
-import { brandMap } from "@/data/brands";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import { getShopBrandBySlug, getShopBrands } from "@/lib/shopify/brands";
 import { getProductsByVendor } from "@/lib/shopify/products";
@@ -43,7 +42,7 @@ export async function generateMetadata({ params }: ShopBrandPageProps): Promise<
         title: `Shop ${brand.name} Online`,
         description: `Shop ${brand.name} menswear online at J. Barbaro Clothiers. ${brand.productCount} item${brand.productCount === 1 ? "" : "s"} available with secure checkout.`,
         path: `/shop/brands/${brand.slug}`,
-        image: brand.image?.url,
+        image: brand.presentation?.image ?? brand.image?.url,
       });
     }
   } catch (error) {
@@ -67,7 +66,7 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
     brand = await getShopBrandBySlug(brandSlug);
 
     if (brand) {
-      products = await getProductsByVendor(brand.name, 250);
+      products = await getProductsByVendor(brand.vendor, 250, true);
     }
   } catch (error) {
     storefrontAvailable = false;
@@ -101,7 +100,7 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
     notFound();
   }
 
-  const aboutBrand = brandMap[brand.slug] ?? null;
+  const aboutBrand = brand.presentation;
   const itemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
@@ -139,7 +138,7 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
         <Container className="py-6 sm:py-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">Brand</p>
+              <p className="text-xs font-semibold tracking-[0.18em] text-deep-teal uppercase">Brand</p>
               <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-ink sm:text-3xl">{brand.name}</h1>
               <p className="mt-2 text-sm leading-6 text-smoke sm:text-base">
                 {products.length} item{products.length === 1 ? "" : "s"} available to shop online.
@@ -147,7 +146,7 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
             </div>
             <div className="flex flex-wrap gap-3">
               {aboutBrand ? (
-                <ButtonLink href={`/collection-brand/${brand.slug}`} variant="secondary" size="sm">
+                <ButtonLink href={`/collection-brand/${aboutBrand.slug}`} variant="secondary" size="sm">
                   About {brand.name}
                 </ButtonLink>
               ) : null}

@@ -33,7 +33,11 @@ export default async function DesignersHubPage() {
     console.error("Unable to load Shopify brands for /designers.", error);
   }
 
-  const shoppableSlugs = new Set(shopBrands.map((brand) => brand.slug));
+  const shoppableEditorialSlugs = new Set(
+    shopBrands
+      .map((brand) => brand.presentation?.slug)
+      .filter((slug): slug is string => Boolean(slug)),
+  );
   const spotlightShopBrands = shopBrands.slice(0, 8);
   const brandListJsonLd = {
     "@context": "https://schema.org",
@@ -45,7 +49,7 @@ export default async function DesignersHubPage() {
         url: absoluteUrl(`/shop/brands/${brand.slug}`),
       })),
       ...featuredBrands
-        .filter((brand) => !shoppableSlugs.has(brand.slug))
+        .filter((brand) => !shoppableEditorialSlugs.has(brand.slug))
         .map((brand) => ({
           name: brand.name,
           url: absoluteUrl(`/collection-brand/${brand.slug}`),
@@ -109,7 +113,15 @@ export default async function DesignersHubPage() {
                   className="group overflow-hidden rounded-lg border border-ink/10 bg-white transition-colors duration-200 hover:border-gold/50"
                 >
                   <div className="relative aspect-[4/3] border-b border-ink/8 bg-white">
-                    {brand.image ? (
+                    {brand.presentation?.logo ? (
+                      <Image
+                        src={brand.presentation.logo}
+                        alt=""
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                        className="object-contain p-5 transition-transform duration-500 group-hover:scale-[1.05]"
+                      />
+                    ) : brand.image ? (
                       <Image
                         src={brand.image.url}
                         alt={`${brand.name} product available online`}
@@ -132,7 +144,7 @@ export default async function DesignersHubPage() {
                         Shop {brand.productCount} item{brand.productCount === 1 ? "" : "s"}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full border border-deep-teal/20 bg-deep-teal/8 px-2.5 py-1 text-[10px] font-semibold tracking-[0.1em] text-deep-teal uppercase">
+                    <span className="shrink-0 rounded-full border border-deep-teal/20 bg-deep-teal/8 px-2.5 py-1 text-xs font-semibold tracking-[0.1em] text-deep-teal uppercase">
                       Online
                     </span>
                   </div>
@@ -178,8 +190,8 @@ export default async function DesignersHubPage() {
                   </div>
                   <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 p-4">
                     <h3 className="text-xs font-semibold tracking-[0.12em] text-white uppercase">{brand.name}</h3>
-                    {shoppableSlugs.has(brand.slug) ? (
-                      <span className="rounded-full bg-white/92 px-2 py-0.5 text-[9px] font-semibold tracking-[0.1em] text-deep-teal uppercase">
+                    {shoppableEditorialSlugs.has(brand.slug) ? (
+                      <span className="rounded-full bg-white/92 px-2 py-0.5 text-xs font-semibold tracking-[0.1em] text-deep-teal uppercase">
                         Shop Online
                       </span>
                     ) : null}

@@ -180,7 +180,10 @@ export function isSuitSizingProduct(product: FitProduct) {
     .join(" ")
     .toLowerCase();
 
-  return /suit|jacket|blazer|sport coat|overcoat/.test(productText);
+  return (
+    !/\b(?:dress|tux|tuxedo)?\s*shirts?\b/.test(productText) &&
+    /suit|tuxedo|jacket|blazer|sport coat|overcoat/.test(productText)
+  );
 }
 
 export function getProductSizeKind(product: FitProduct): ProductSizeKind {
@@ -761,9 +764,7 @@ export function getMatchingProfileSizes(availableSizes: string[], profile: FitPr
   return availableSizes.filter((size) => targetTokens.has(normalizeSizeToken(size)));
 }
 
-export function getVariantSizeValue(
-  variant: Pick<ShopifyProductVariant, "selectedOptions">,
-) {
+export function getVariantSizeValue(variant: Pick<ShopifyProductVariant, "selectedOptions">) {
   return (
     variant.selectedOptions.find((option) => option.name.toLowerCase().includes("size"))?.value ??
     null

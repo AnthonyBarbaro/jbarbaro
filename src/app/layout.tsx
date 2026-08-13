@@ -33,6 +33,7 @@ export const revalidate = 300;
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": absoluteUrl("/#organization"),
   name: siteSettings.siteName,
   url: SITE_URL,
   description: siteSettings.siteDescription,

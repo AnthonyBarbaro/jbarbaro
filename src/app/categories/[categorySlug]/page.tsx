@@ -1,19 +1,17 @@
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import { Suspense } from "react";
-import { CalendarDays, ShoppingBag } from "lucide-react";
 
 import { ShopCatalogClient } from "@/components/shop/ShopCatalogClient";
 import { SeoJsonLd } from "@/components/SeoJsonLd";
-import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
-import { absoluteUrl, buildMetadata } from "@/lib/seo";
+import { menCategoryMap } from "@/data/men-categories";
+import { absoluteUrl, buildMetadata, defaultKeywords } from "@/lib/seo";
 import { resolveMenCategories, resolveMenCategory } from "@/lib/shopify/men-categories";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const categoryRedirects: Record<string, string> = {
   all: "/shop",
@@ -26,6 +24,25 @@ const categoryRedirects: Record<string, string> = {
   trousers: "/categories/pants",
   tuxedo: "/categories/formalwear",
 };
+
+function getCategoryDisplayName(slug: string, fallbackName: string) {
+  return menCategoryMap[slug]?.name ?? fallbackName;
+}
+
+function getCategoryKeywords(slug: string, fallbackName: string) {
+  const name = getCategoryDisplayName(slug, fallbackName);
+  const normalizedName = name.toLocaleLowerCase();
+
+  return Array.from(
+    new Set([
+      `men's ${normalizedName}`,
+      `shop ${normalizedName} online`,
+      `${normalizedName} Metro Detroit`,
+      `${name} at J. Barbaro Clothiers`,
+      ...defaultKeywords,
+    ]),
+  );
+}
 
 export async function generateStaticParams() {
   const categories = await resolveMenCategories(40, 1);
@@ -44,10 +61,17 @@ export async function generateMetadata({ params }: { params: Promise<{ categoryS
     return {};
   }
 
+  const categoryName = getCategoryDisplayName(category.slug, category.name);
+  const categoryImage =
+    category.shopifyCollection?.image?.url ??
+    category.shopifyCollection?.products[0]?.featuredImage?.url;
+
   return buildMetadata({
-    title: `Shop ${category.name}`,
+    title: `Shop Men's ${categoryName} Online`,
     description: category.longDescription,
     path: category.href,
+    image: categoryImage,
+    keywords: getCategoryKeywords(category.slug, category.name),
   });
 }
 
@@ -60,7 +84,7 @@ export default async function MenCategoryPage({
   const redirectPath = categoryRedirects[categorySlug];
 
   if (redirectPath) {
-    redirect(redirectPath);
+    permanentRedirect(redirectPath);
   }
 
   const category = await resolveMenCategory(categorySlug, 250);
@@ -70,90 +94,81 @@ export default async function MenCategoryPage({
   }
 
   const products = category.shopifyCollection?.products ?? [];
-  const relatedCategories = (await resolveMenCategories(24, 1))
-    .filter((item) => item.href !== category.href)
-    .slice(0, 8);
+  const categoryName = getCategoryDisplayName(category.slug, category.name);
   const heroDescription =
     category.shopifyCollection?.description.trim() || category.longDescription;
-  const crumbs = [
-    { name: "Home", href: "/" },
-    { name: "Categories", href: "/categories" },
-    { name: category.name, href: category.href },
-  ];
+  const productListId = absoluteUrl(`${category.href}#products`);
+  const breadcrumbId = absoluteUrl(`${category.href}#breadcrumb`);
+  const categoryBreadcrumbJsonLd = {
+    ...breadcrumbJsonLd([
+      { name: "Home", path: "/" },
+      { name: "Categories", path: "/categories" },
+      { name: categoryName, path: category.href },
+    ]),
+    "@id": breadcrumbId,
+  };
   const productItemListJsonLd = {
     "@context": "https://schema.org",
     "@type": "ItemList",
-    name: `${category.name} products`,
-    itemListElement: products.map((product, index) => ({
+    "@id": productListId,
+    name: `${categoryName} products`,
+    numberOfItems: products.length,
+    itemListOrder: "https://schema.org/ItemListUnordered",
+    itemListElement: products.slice(0, 36).map((product, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      name: product.title,
-      url: absoluteUrl(`/shop/${product.handle}`),
+      item: {
+        "@id": absoluteUrl(`/shop/${product.handle}#product`),
+        name: product.title,
+        url: absoluteUrl(`/shop/${product.handle}`),
+      },
     })),
+  };
+  const categoryPageJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": absoluteUrl(`${category.href}#collection`),
+    url: absoluteUrl(category.href),
+    name: `Shop Men's ${categoryName} Online`,
+    description: heroDescription,
+    inLanguage: "en-US",
+    isPartOf: {
+      "@id": absoluteUrl("/#website"),
+    },
+    publisher: {
+      "@id": absoluteUrl("/#organization"),
+    },
+    breadcrumb: {
+      "@id": breadcrumbId,
+    },
+    mainEntity: {
+      "@id": productListId,
+    },
   };
 
   return (
     <>
-      <SeoJsonLd
-        data={[
-          breadcrumbJsonLd([
-            { name: "Home", path: "/" },
-            { name: "Categories", path: "/categories" },
-            { name: category.name, path: category.href },
-          ]),
-          productItemListJsonLd,
-        ]}
-      />
-      <Breadcrumbs items={crumbs} />
-
+      <SeoJsonLd data={[categoryBreadcrumbJsonLd, categoryPageJsonLd, productItemListJsonLd]} />
       <section className="border-b border-ink/10 bg-ivory">
-        <Container className="py-8 sm:py-10 lg:py-12">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div>
-              <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
-                Category
-              </p>
-              <h1 className="mt-3 font-heading text-4xl text-ink sm:text-5xl">
-                Shop {category.name}
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-7 text-smoke">{heroDescription}</p>
-              <p className="mt-3 text-sm text-smoke">
-                {products.length} {products.length === 1 ? "item" : "items"} loaded from this
-                category.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <ButtonLink href="/shop" variant="secondary" className="w-full sm:w-auto">
-                <ShoppingBag className="mr-2 h-4 w-4" />
-                Shop All
-              </ButtonLink>
-              <ButtonLink href="/schedule-appointment" className="w-full sm:w-auto">
-                <CalendarDays className="mr-2 h-4 w-4" />
-                Book Appointment
-              </ButtonLink>
-            </div>
-          </div>
-
-          {relatedCategories.length > 0 ? (
-            <div className="mt-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
-              {relatedCategories.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="inline-flex min-h-11 shrink-0 items-center rounded-md border border-ink/10 bg-white px-4 text-xs font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-deep-teal hover:text-deep-teal"
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          ) : null}
+        <Container className="py-6 sm:py-8">
+          <h1 className="font-heading text-4xl text-ink sm:text-5xl">{categoryName}</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-smoke">{heroDescription}</p>
+          <p className="mt-2 text-sm text-smoke">
+            {products.length} {products.length === 1 ? "item" : "items"}
+          </p>
         </Container>
       </section>
 
-      <section className="bg-stone/45 py-8 sm:py-10 lg:py-12">
+      <section
+        className="bg-stone/45 py-6 sm:py-8 lg:py-10"
+        aria-labelledby="category-products-heading"
+      >
+        <h2 id="category-products-heading" className="sr-only">
+          Shop {categoryName} products
+        </h2>
         {products.length > 0 ? (
           <Suspense fallback={null}>
-            <ShopCatalogClient products={products} />
+            <ShopCatalogClient products={products} productHeadingLevel="h3" />
           </Suspense>
         ) : (
           <Container>

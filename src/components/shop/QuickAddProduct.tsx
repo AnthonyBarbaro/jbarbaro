@@ -256,7 +256,7 @@ export function QuickAddProduct({
     const storedRecommendation = storedProfile
       ? getProductFitRecommendation(fitProduct, storedProfile)
       : null;
-    const activePreferredVariantId = [storedRecommendation?.variantId, preferredVariantId].find(
+    const activePreferredVariantId = [preferredVariantId, storedRecommendation?.variantId].find(
       (variantId) =>
         Boolean(
           variantId &&
@@ -488,7 +488,7 @@ export function QuickAddProduct({
                                 {usJacketEquivalent ? (
                                   <span
                                     className={cn(
-                                      "mt-0.5 text-[10px] font-medium",
+                                      "mt-0.5 text-xs font-medium",
                                       isSelected ? "text-white/70" : "text-smoke",
                                     )}
                                   >

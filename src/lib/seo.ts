@@ -51,7 +51,20 @@ export function buildMetadata({
     title,
     description,
     keywords,
-    robots,
+    creator: siteSettings.siteOwner,
+    publisher: siteSettings.siteName || SITE_NAME,
+    category: "Menswear",
+    robots: robots ?? {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
     alternates: {
       canonical: canonicalUrl,
     },
@@ -89,6 +102,21 @@ export function getDefaultSiteMetadata(): Metadata {
       template: `%s | ${siteName}`,
     },
     description: siteDescription,
+    keywords: defaultKeywords,
+    creator: siteSettings.siteOwner,
+    publisher: siteName,
+    category: "Menswear",
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
     alternates: {
       canonical: SITE_URL,
     },

@@ -142,6 +142,8 @@ type ProductRecommendationsResponse = {
   productRecommendations: RawProduct[];
 };
 
+export type ProductRecommendationIntent = "RELATED" | "COMPLEMENTARY";
+
 type RawPredictiveSearchVariant = Pick<
   ShopifyProductVariant,
   "availableForSale" | "selectedOptions"
@@ -321,6 +323,23 @@ function normalizeCollection(collection: RawCollection): ShopifyCollection {
   };
 }
 
+async function fetchWithRetry<T>(
+  request: () => Promise<T>,
+  shouldRetry: (value: T) => boolean,
+): Promise<T> {
+  try {
+    const value = await request();
+
+    if (!shouldRetry(value)) {
+      return value;
+    }
+  } catch {
+    // Retry once below; if it also fails, the second error remains visible to the caller.
+  }
+
+  return request();
+}
+
 async function fetchShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductsResponse, { limit: number }>({
     query: `
@@ -348,7 +367,11 @@ export async function getShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   return getShopProductsCached(limit);
 }
 
-async function fetchProductsByVendor(vendor: string, limit = 60): Promise<ShopifyProduct[]> {
+async function fetchProductsByVendor(
+  vendor: string,
+  limit = 60,
+  availableOnly = false,
+): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductsResponse, { limit: number; query: string }>({
     query: `
       query ProductsByVendor($limit: Int!, $query: String!) {
@@ -361,19 +384,27 @@ async function fetchProductsByVendor(vendor: string, limit = 60): Promise<Shopif
     `,
     variables: {
       limit,
-      query: `vendor:'${vendor.replace(/'/g, "\\'")}'`,
+      query: `vendor:'${vendor.replace(/'/g, "\\'")}'${availableOnly ? " AND available_for_sale:true" : ""}`,
     },
   });
 
   return data.products.nodes.map(normalizeProduct);
 }
 
-const getProductsByVendorCached = unstable_cache(fetchProductsByVendor, ["shopify-products-by-vendor"], {
-  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
-});
+const getProductsByVendorCached = unstable_cache(
+  fetchProductsByVendor,
+  ["shopify-products-by-vendor"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
 
-export async function getProductsByVendor(vendor: string, limit = 60): Promise<ShopifyProduct[]> {
-  return getProductsByVendorCached(vendor, limit);
+export async function getProductsByVendor(
+  vendor: string,
+  limit = 60,
+  availableOnly = false,
+): Promise<ShopifyProduct[]> {
+  return getProductsByVendorCached(vendor, limit, availableOnly);
 }
 
 async function fetchBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
@@ -436,7 +467,7 @@ export async function getShopProduct(handle: string): Promise<ShopifyProduct | n
   return getShopProductCached(handle);
 }
 
-async function fetchShopCollection(handle: string, limit = 12): Promise<ShopifyCollection | null> {
+async function requestShopCollection(handle: string, limit: number): Promise<RawCollection | null> {
   const data = await storefrontRequest<CollectionResponse, { handle: string; limit: number }>({
     query: `
       query ShopCollection($handle: String!, $limit: Int!) {
@@ -465,11 +496,16 @@ async function fetchShopCollection(handle: string, limit = 12): Promise<ShopifyC
     },
   });
 
-  if (!data.collection) {
-    return null;
-  }
+  return data.collection;
+}
 
-  return normalizeCollection(data.collection);
+async function fetchShopCollection(handle: string, limit = 12): Promise<ShopifyCollection | null> {
+  const collection = await fetchWithRetry(
+    () => requestShopCollection(handle, limit),
+    (result) => limit > 1 && (!result || result.products.nodes.length === 0),
+  );
+
+  return collection ? normalizeCollection(collection) : null;
 }
 
 const getShopCollectionCached = unstable_cache(fetchShopCollection, ["shopify-collection"], {
@@ -518,10 +554,10 @@ export async function getShopCollections(limit = 8): Promise<ShopifyCollectionPr
   return getShopCollectionsCached(limit);
 }
 
-async function fetchShopCollectionsWithProducts(
-  limit = 8,
-  productLimit = 4,
-): Promise<ShopifyCollection[]> {
+async function requestShopCollectionsWithProducts(
+  limit: number,
+  productLimit: number,
+): Promise<RawCollection[]> {
   const data = await storefrontRequest<
     CollectionsWithProductsResponse,
     { limit: number; productLimit: number }
@@ -555,7 +591,23 @@ async function fetchShopCollectionsWithProducts(
     },
   });
 
-  return data.collections.nodes.map(normalizeCollection);
+  return data.collections.nodes;
+}
+
+async function fetchShopCollectionsWithProducts(
+  limit = 8,
+  productLimit = 4,
+): Promise<ShopifyCollection[]> {
+  const collections = await fetchWithRetry(
+    () => requestShopCollectionsWithProducts(limit, productLimit),
+    (results) =>
+      limit > 0 &&
+      (results.length === 0 ||
+        (productLimit > 0 &&
+          results.every((collection) => collection.products.nodes.length === 0))),
+  );
+
+  return collections.map(normalizeCollection);
 }
 
 const getShopCollectionsWithProductsCached = unstable_cache(
@@ -609,18 +661,23 @@ export async function getShopProductPreviews(limit = 100): Promise<ShopifyProduc
 async function fetchRecommendedProducts(
   productId: string,
   excludeHandle: string,
-  limit = 4,
+  limit = 10,
+  intent: ProductRecommendationIntent = "RELATED",
 ): Promise<ShopifyProduct[]> {
-  const data = await storefrontRequest<ProductRecommendationsResponse, { productId: string }>({
+  const data = await storefrontRequest<
+    ProductRecommendationsResponse,
+    { productId: string; intent: ProductRecommendationIntent }
+  >({
     query: `
-      query ProductRecommendations($productId: ID!) {
-        productRecommendations(productId: $productId) {
+      query ProductRecommendations($productId: ID!, $intent: ProductRecommendationIntent!) {
+        productRecommendations(productId: $productId, intent: $intent) {
           ${productFields}
         }
       }
     `,
     variables: {
       productId,
+      intent,
     },
   });
 
@@ -641,9 +698,10 @@ const getRecommendedProductsCached = unstable_cache(
 export async function getRecommendedProducts(
   productId: string,
   excludeHandle: string,
-  limit = 4,
+  limit = 10,
+  intent: ProductRecommendationIntent = "RELATED",
 ): Promise<ShopifyProduct[]> {
-  return getRecommendedProductsCached(productId, excludeHandle, limit);
+  return getRecommendedProductsCached(productId, excludeHandle, limit, intent);
 }
 
 export async function searchShopProducts(

@@ -35,6 +35,7 @@ export type MenCategory = {
 export type Brand = {
   slug: string;
   name: string;
+  shopifyVendor?: string;
   image: string;
   logo: string;
   featured: boolean;

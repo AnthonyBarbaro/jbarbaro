@@ -10,14 +10,16 @@ import {
   type FitProfile,
 } from "@/lib/fit-profile";
 import { getProductSales } from "@/lib/shopify/product-merchandising";
-import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
+import type { ShopifyProduct } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
 type ShopProductCardProps = {
   product: ShopifyProduct;
   fitProfile?: FitProfile | null;
   imageSizes?: string;
-  saleOnly?: boolean;
+  preferredVariantId?: string | null;
+  sizeAvailabilityLabel?: string | null;
+  headingLevel?: "h2" | "h3" | "h4";
 };
 
 function getSecondaryImage(product: ShopifyProduct) {
@@ -28,55 +30,35 @@ function getSecondaryImage(product: ShopifyProduct) {
   );
 }
 
-function getVariantPriceRange(
-  variants: ShopifyProductVariant[],
-  fallback: ShopifyProduct["priceRange"],
-) {
-  const pricedVariants = variants
-    .filter((variant) => Number.isFinite(Number(variant.price.amount)))
-    .sort((left, right) => Number(left.price.amount) - Number(right.price.amount));
-  const minimum = pricedVariants[0];
-  const maximum = pricedVariants.at(-1);
-
-  return minimum && maximum
-    ? {
-        minVariantPrice: minimum.price,
-        maxVariantPrice: maximum.price,
-      }
-    : fallback;
-}
-
 export function ShopProductCard({
   product,
   fitProfile = null,
   imageSizes = "(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw",
-  saleOnly = false,
+  preferredVariantId = null,
+  sizeAvailabilityLabel = null,
+  headingLevel = "h2",
 }: ShopProductCardProps) {
+  const ProductHeading = headingLevel;
   const availableVariants = product.variants.filter((variant) => variant.availableForSale);
   const productSales = getProductSales(product);
   const productSale = productSales[0] ?? null;
-  const quickAddVariants = saleOnly ? productSales.map((sale) => sale.variant) : product.variants;
-  const quickAddPriceRange = saleOnly
-    ? getVariantPriceRange(quickAddVariants, product.priceRange)
-    : product.priceRange;
   const fitRecommendation = fitProfile ? getProductFitRecommendation(product, fitProfile) : null;
-  const quickAddPreferredVariantId =
-    fitRecommendation?.variantId &&
-    quickAddVariants.some((variant) => variant.id === fitRecommendation.variantId)
-      ? fitRecommendation.variantId
-      : null;
+  const quickAddPreferredVariantId = [preferredVariantId, fitRecommendation?.variantId].find(
+    (variantId) =>
+      Boolean(
+        variantId &&
+        product.variants.some((variant) => variant.availableForSale && variant.id === variantId),
+      ),
+  );
   const jacketSizeSystem = getProductSuitSizeSystem(product);
   const hasPriceRange =
     product.priceRange.minVariantPrice.amount !== product.priceRange.maxVariantPrice.amount;
-  const priceLabel =
-    saleOnly && productSale
-      ? formatMoney(productSale.variant.price.amount, productSale.variant.price.currencyCode)
-      : hasPriceRange
-        ? `${formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode)} - ${formatMoney(product.priceRange.maxVariantPrice.amount, product.priceRange.maxVariantPrice.currencyCode)}`
-        : formatMoney(
-            product.priceRange.minVariantPrice.amount,
-            product.priceRange.minVariantPrice.currencyCode,
-          );
+  const priceLabel = hasPriceRange
+    ? `${formatMoney(product.priceRange.minVariantPrice.amount, product.priceRange.minVariantPrice.currencyCode)} - ${formatMoney(product.priceRange.maxVariantPrice.amount, product.priceRange.maxVariantPrice.currencyCode)}`
+    : formatMoney(
+        product.priceRange.minVariantPrice.amount,
+        product.priceRange.minVariantPrice.currencyCode,
+      );
   const compareAtPrice = productSale?.variant.compareAtPrice
     ? formatMoney(
         productSale.variant.compareAtPrice.amount,
@@ -113,9 +95,9 @@ export function ShopProductCard({
               Save {salePercent}%
             </span>
           ) : null}
-          {fitMatchLabel ? (
+          {sizeAvailabilityLabel || fitMatchLabel ? (
             <span className="absolute right-3 bottom-3 z-[2] rounded-md bg-deep-teal px-2.5 py-1 text-xs font-semibold tracking-[0.12em] text-white uppercase shadow-sm">
-              Your size {fitMatchLabel}
+              {sizeAvailabilityLabel ?? `Your size ${fitMatchLabel}`}
             </span>
           ) : null}
 
@@ -159,9 +141,9 @@ export function ShopProductCard({
             </p>
           ) : null}
 
-          <h2 className="mt-1.5 line-clamp-2 text-base leading-5 font-semibold tracking-[-0.01em] text-ink transition-colors group-hover:text-deep-teal sm:leading-6">
+          <ProductHeading className="mt-1.5 line-clamp-2 text-base leading-5 font-semibold tracking-[-0.01em] text-ink transition-colors group-hover:text-deep-teal sm:leading-6">
             {product.title}
-          </h2>
+          </ProductHeading>
 
           <div className="mt-auto flex flex-wrap items-baseline gap-2 pr-14 pt-3 sm:pr-16">
             <p
@@ -188,12 +170,11 @@ export function ShopProductCard({
             tags: product.tags,
             collections: product.collections,
             featuredImage: product.featuredImage,
-            priceRange: quickAddPriceRange,
-            variants: quickAddVariants,
+            priceRange: product.priceRange,
+            variants: product.variants,
           }}
           preferredVariantId={quickAddPreferredVariantId}
           jacketSizeSystem={jacketSizeSystem}
-          fitVariants={saleOnly ? product.variants : undefined}
         />
       </div>
     </Card>

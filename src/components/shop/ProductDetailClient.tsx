@@ -24,11 +24,11 @@ import {
   useRef,
   useState,
 } from "react";
-import { useRouter } from "next/navigation";
 
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { ProductSmartFitDrawer } from "@/components/shop/ProductSmartFitDrawer";
 import { brandSlug } from "@/lib/shopify/brand-slug";
+import { publishProductSelection, type ProductSelectionDetail } from "@/lib/shop-product-selection";
 import {
   FIT_PROFILE_STORAGE_KEY,
   getProductFitRecommendation,
@@ -157,10 +157,9 @@ function getPrimaryCollection(product: ShopifyProduct) {
 }
 
 const shopifyRichTextClassName =
-  "[&_a]:font-semibold [&_a]:text-deep-teal [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-ink [&_b]:font-semibold [&_b]:text-ink [&_blockquote]:border-l-2 [&_blockquote]:border-gold/60 [&_blockquote]:pl-4 [&_blockquote]:italic [&_em]:italic [&_h2]:mt-8 [&_h2]:font-heading [&_h2]:text-[1.35rem] [&_h2]:text-ink [&_h3]:mt-7 [&_h3]:font-heading [&_h3]:text-[1.15rem] [&_h3]:text-ink [&_li]:leading-8 [&_li]:marker:text-gold [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:text-[0.98rem] [&_p]:leading-8 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 max-w-none space-y-4 text-smoke";
+  "[&_a]:font-semibold [&_a]:text-deep-teal [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-ink [&_b]:font-semibold [&_b]:text-ink [&_blockquote]:border-l-2 [&_blockquote]:border-gold/60 [&_blockquote]:pl-4 [&_blockquote]:italic [&_em]:italic [&_h2]:mt-8 [&_h2]:font-heading [&_h2]:text-xl [&_h2]:text-ink [&_h3]:mt-7 [&_h3]:font-heading [&_h3]:text-lg [&_h3]:text-ink [&_li]:leading-8 [&_li]:marker:text-gold [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:text-base [&_p]:leading-8 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 max-w-none space-y-4 text-smoke";
 
 export function ProductDetailClient({ product }: ProductDetailClientProps) {
-  const router = useRouter();
   const initialVariant =
     product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
   const images = getProductImages(product);
@@ -528,31 +527,6 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     changeZoom(event.deltaY < 0 ? IMAGE_ZOOM_STEP : -IMAGE_ZOOM_STEP);
   }
 
-  function goBack() {
-    if (typeof window === "undefined") {
-      router.push("/shop");
-      return;
-    }
-
-    const referrer = document.referrer;
-    let isSameOriginReferrer = false;
-
-    if (referrer) {
-      try {
-        isSameOriginReferrer = new URL(referrer).origin === window.location.origin;
-      } catch {
-        isSameOriginReferrer = false;
-      }
-    }
-
-    if (isSameOriginReferrer && window.history.length > 1) {
-      router.back();
-      return;
-    }
-
-    router.push("/shop");
-  }
-
   function handleOptionChange(optionName: string, optionValue: string) {
     setSmartFitRecommendation(null);
     setSelectedOptions((current) => {
@@ -611,6 +585,16 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
       window.cancelAnimationFrame(frameId);
     };
   }, [product]);
+
+  useEffect(() => {
+    const detail: ProductSelectionDetail = {
+      productId: product.id,
+      variantId: selectedVariant?.id ?? null,
+      selectedOptions: selectedVariant?.selectedOptions ?? [],
+    };
+
+    publishProductSelection(detail);
+  }, [product.id, selectedVariant]);
 
   useEffect(() => {
     const node = buyBoxRef.current;
@@ -718,15 +702,13 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
       <div className="grid min-w-0 gap-7 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:gap-10 xl:grid-cols-[minmax(0,1.2fr)_minmax(25rem,0.8fr)] xl:gap-14">
         <section className="min-w-0 space-y-4">
           <div className="flex items-center justify-between gap-3">
-            <button
-              type="button"
-              onClick={goBack}
-              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-ink/10 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30 hover:bg-stone/50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
-              aria-label="Go back to previous page"
+            <Link
+              href="/shop"
+              className="-ml-2 inline-flex min-h-11 w-fit items-center gap-2 rounded-md px-2 text-sm font-semibold text-deep-teal transition-colors hover:bg-white hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20 focus-visible:ring-offset-2 focus-visible:ring-offset-ivory"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back to shop
-            </button>
+              <ArrowLeft className="h-4 w-4" aria-hidden />
+              Shop
+            </Link>
           </div>
 
           <div className="relative overflow-hidden rounded-[1rem] border border-ink/8 bg-product-canvas">
@@ -757,7 +739,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   Image coming soon
                 </div>
               )}
-              <div className="pointer-events-none absolute top-3 right-3 rounded-full border border-ink/10 bg-white/90 px-3 py-1.5 text-[10px] font-medium text-ink backdrop-blur sm:top-4 sm:right-4">
+              <div className="pointer-events-none absolute top-3 right-3 rounded-full border border-ink/10 bg-white/90 px-3 py-1.5 text-xs font-medium text-ink backdrop-blur sm:top-4 sm:right-4">
                 {selectedImageIndex + 1} / {Math.max(images.length, 1)}
               </div>
             </div>
@@ -787,7 +769,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               <button
                 type="button"
                 onClick={openLightbox}
-                className="absolute bottom-3 left-1/2 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-full border border-ink/10 bg-white/92 px-4 py-2 text-[10px] font-semibold tracking-[0.12em] whitespace-nowrap text-ink uppercase shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal sm:bottom-4"
+                className="absolute bottom-3 left-1/2 inline-flex min-h-11 -translate-x-1/2 items-center gap-2 rounded-full border border-ink/10 bg-white/92 px-4 py-2 text-xs font-semibold tracking-[0.12em] whitespace-nowrap text-ink uppercase shadow-sm backdrop-blur transition-colors hover:border-ink/30 hover:bg-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal sm:bottom-4"
                 aria-label="Zoom product image"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
@@ -831,7 +813,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
           <div className="space-y-5 lg:sticky lg:top-28">
             <header>
               {product.vendor || metaCategoryLabel ? (
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase">
+                <p className="text-xs font-semibold tracking-[0.16em] text-smoke uppercase">
                   {product.vendor ? (
                     <Link
                       href={`/shop/brands/${brandSlug(product.vendor)}`}
@@ -845,7 +827,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 </p>
               ) : null}
 
-              <h1 className="mt-3 text-balance font-heading text-[2rem] leading-[1.08] text-ink sm:text-[2.55rem] lg:text-[2.8rem]">
+              <h1 className="mt-3 text-balance font-heading text-4xl leading-[1.08] text-ink sm:text-5xl">
                 {product.title}
               </h1>
 
@@ -867,7 +849,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 <div className="flex flex-wrap items-baseline gap-3">
                   <p
                     className={cn(
-                      "text-[1.75rem] font-semibold sm:text-[2rem]",
+                      "text-3xl font-semibold sm:text-4xl",
                       compareAtPrice ? "text-sale" : "text-ink",
                     )}
                   >
@@ -879,7 +861,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                     </p>
                   ) : null}
                   {salePercent ? (
-                    <span className="rounded-full bg-sale px-2.5 py-1 text-[10px] font-semibold tracking-[0.12em] text-white uppercase">
+                    <span className="rounded-full bg-sale px-2.5 py-1 text-xs font-semibold tracking-[0.12em] text-white uppercase">
                       Save {salePercent}%
                     </span>
                   ) : null}
@@ -986,7 +968,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                                 {usJacketEquivalent ? (
                                   <span
                                     className={cn(
-                                      "mt-0.5 text-[10px] font-medium",
+                                      "mt-0.5 text-xs font-medium",
                                       isSelected ? "text-white/70" : "text-smoke",
                                     )}
                                   >
@@ -1035,19 +1017,17 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               <div className="mt-5 grid grid-cols-3 divide-x divide-ink/10 border-y border-ink/10 py-3">
                 <div className="flex flex-col items-center gap-1.5 px-2 text-center">
                   <HelpCircle className="h-4 w-4 text-deep-teal" />
-                  <span className="text-[10px] font-semibold leading-4 text-ink">Fit guidance</span>
+                  <span className="text-xs font-semibold leading-4 text-ink">Fit guidance</span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 px-2 text-center">
                   <Truck className="h-4 w-4 text-deep-teal" />
-                  <span className="text-[10px] font-semibold leading-4 text-ink">
+                  <span className="text-xs font-semibold leading-4 text-ink">
                     Shipping at checkout
                   </span>
                 </div>
                 <div className="flex flex-col items-center gap-1.5 px-2 text-center">
                   <CreditCard className="h-4 w-4 text-deep-teal" />
-                  <span className="text-[10px] font-semibold leading-4 text-ink">
-                    Shopify checkout
-                  </span>
+                  <span className="text-xs font-semibold leading-4 text-ink">Shopify checkout</span>
                 </div>
               </div>
             </div>
@@ -1115,7 +1095,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-smoke">{product.title}</p>
               {selectedOptionSummary ? (
-                <p className="truncate text-[11px] font-semibold text-deep-teal">
+                <p className="truncate text-xs font-semibold text-deep-teal">
                   {selectedOptionSummary}
                 </p>
               ) : null}
@@ -1154,7 +1134,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               <button
                 type="button"
                 onClick={closeLightbox}
-                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/8 px-4 py-2 text-[11px] font-semibold tracking-[0.12em] uppercase transition-colors hover:border-white/40 hover:bg-white/12 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/15 bg-white/8 px-4 py-2 text-xs font-semibold tracking-[0.12em] uppercase transition-colors hover:border-white/40 hover:bg-white/12 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40"
                 aria-label="Close image viewer"
               >
                 <X className="h-4 w-4" />
@@ -1176,7 +1156,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                 <button
                   type="button"
                   onClick={resetViewer}
-                  className="min-w-14 text-center text-[11px] font-semibold tabular-nums text-white"
+                  className="min-w-14 text-center text-xs font-semibold tabular-nums text-white"
                   aria-label="Reset image zoom"
                 >
                   {Math.round(zoomLevel * 100)}%
@@ -1252,7 +1232,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               ) : null}
 
               <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-4">
-                <p className="rounded-full bg-ink/75 px-3 py-2 text-center text-[10px] font-medium tracking-[0.05em] text-white backdrop-blur">
+                <p className="rounded-full bg-ink/75 px-3 py-2 text-center text-xs font-medium tracking-[0.05em] text-white backdrop-blur">
                   {zoomLevel > MIN_IMAGE_ZOOM
                     ? "Drag to explore · Pinch or scroll to zoom · Tap 100% to reset"
                     : `Double tap, pinch, or scroll to zoom${hasMultipleImages ? " · Swipe for more" : ""}`}

@@ -209,12 +209,17 @@ export default defineConfig({
             list: true,
             ui: objectListUi("Brand", "name", "slug"),
             fields: [
-              textField("slug", "Slug"),
-              textField("name", "Name"),
-              imageField("image", "Image"),
-              imageField("logo", "Logo"),
+              { ...textField("slug", "Editorial Slug"), required: true },
+              { ...textField("name", "Display Name"), required: true },
+              {
+                ...textField("shopifyVendor", "Exact Shopify Vendor"),
+                description:
+                  "Optional. Copy the Vendor value from Shopify exactly to connect this presentation to online products.",
+              },
+              { ...imageField("image", "Image"), required: true },
+              { ...imageField("logo", "Logo"), required: true },
               { type: "boolean", name: "featured", label: "Featured" },
-              textField("description", "Description", true),
+              { ...textField("description", "Description", true), required: true },
             ],
           },
         ],

@@ -33,12 +33,14 @@ import { FieldLabel, Input, Select } from "@/components/ui/Field";
 import {
   buildFitProfile,
   FIT_PROFILE_STORAGE_KEY,
+  getProductSizeKind,
   getProductFitMatchesForProfile,
   parseFitProfile,
   type FitBuild,
   type FitEstimate,
   type FitProfile,
   type FitProfileInput,
+  type ProductSizeKind,
 } from "@/lib/fit-profile";
 import { getProductSale } from "@/lib/shopify/product-merchandising";
 import type { ShopifyProduct } from "@/lib/shopify/types";
@@ -48,6 +50,7 @@ type ShopCatalogClientProps = {
   products: ShopifyProduct[];
   bestSellers?: ShopifyProduct[];
   newArrivals?: ShopifyProduct[];
+  productHeadingLevel?: "h2" | "h3" | "h4";
 };
 
 type FacetKey = "availability" | "price" | "brand" | "size" | "length" | "color";
@@ -56,6 +59,7 @@ type FacetPill = { key: FacetKey; label: string; activeCount: number };
 type SortOption = "featured" | "newest" | "price-low" | "price-high" | "title-asc";
 type AvailabilityOption = "all" | "in-stock" | "sold-out";
 type PriceOption = "all" | "under-100" | "100-250" | "250-500" | "500-plus";
+type SizeSelections = Record<ProductSizeKind, string[]>;
 type FitDraftInput = Omit<
   FitProfileInput,
   "build" | "heightFeet" | "heightInches" | "weightLbs"
@@ -68,6 +72,21 @@ type FitDraftInput = Omit<
 const DEFAULT_AVAILABILITY: AvailabilityOption = "in-stock";
 const INITIAL_VISIBLE_PRODUCTS = 36;
 const PRODUCT_LOAD_STEP = 36;
+const sizeGroupDefinitions: Array<{
+  kind: ProductSizeKind;
+  label: string;
+  badgeLabel: string;
+}> = [
+  { kind: "shirt", label: "Shirt Size", badgeLabel: "Shirt" },
+  { kind: "suit", label: "Jacket Size", badgeLabel: "Jacket" },
+  { kind: "waist", label: "Pant Size", badgeLabel: "Pant" },
+  { kind: "shoe", label: "Shoe Size", badgeLabel: "Shoe" },
+  { kind: "top", label: "General / Other Size", badgeLabel: "General / Other" },
+];
+const knownColorPattern =
+  /\b(?:black|blue|brown|burgundy|camel|charcoal|cognac|cream|ecru|gold|gray|green|grey|indigo|ivory|khaki|maroon|multi(?:color)?|navy|olive|orange|pink|purple|red|royal|sage|silver|tan|taupe|tobacco|white|wine|yellow)\b/i;
+const allowedColorValuePattern =
+  /^(?:(?:black|blue|brown|burgundy|camel|charcoal|cognac|cream|dark|ecru|gold|gray|green|grey|heather|indigo|ivory|khaki|light|maroon|medium|multi|multicolor|navy|off|olive|orange|pink|purple|red|royal|sage|silver|tan|taupe|tobacco|white|wine|yellow|and)[\s/&,+-]*)+$/i;
 const DEFAULT_FIT_INPUT: FitDraftInput = {
   heightFeet: "",
   heightInches: "",
@@ -173,11 +192,15 @@ function matchesVariantSelections(
     (variant) =>
       (!requireAvailable || variant.availableForSale) &&
       activeSelections.every((selection) =>
-        variant.selectedOptions.some(
-          (option) =>
-            option.name.toLowerCase().includes(selection.optionName) &&
-            selection.selectedValues.includes(option.value),
-        ),
+        variant.selectedOptions.some((option) => {
+          const normalizedOptionName = option.name.trim().toLowerCase();
+          const matchesOptionName =
+            selection.optionName === "color"
+              ? normalizedOptionName === "color" || normalizedOptionName === "colour"
+              : normalizedOptionName.includes(selection.optionName);
+
+          return matchesOptionName && selection.selectedValues.includes(option.value);
+        }),
       ),
   );
 }
@@ -211,6 +234,45 @@ function getOptionValues(products: ShopifyProduct[], optionName: string) {
   ).sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
 }
 
+function isFacetableColorValue(value: string) {
+  const normalizedValue = value.trim();
+
+  return (
+    normalizedValue.length > 0 &&
+    knownColorPattern.test(normalizedValue) &&
+    allowedColorValuePattern.test(normalizedValue)
+  );
+}
+
+function getProductColorValues(product: ShopifyProduct) {
+  return Array.from(
+    new Set(
+      product.variants.flatMap((variant) =>
+        variant.selectedOptions
+          .filter(
+            (option) =>
+              /^(?:color|colour)$/i.test(option.name.trim()) && isFacetableColorValue(option.value),
+          )
+          .map((option) => option.value),
+      ),
+    ),
+  );
+}
+
+function createEmptySizeSelections(): SizeSelections {
+  return {
+    waist: [],
+    suit: [],
+    shirt: [],
+    shoe: [],
+    top: [],
+  };
+}
+
+function getSelectedSizeCount(selections: SizeSelections) {
+  return Object.values(selections).reduce((count, values) => count + values.length, 0);
+}
+
 function getProductAwareSmartFitSizes(products: ShopifyProduct[], profile: FitProfile | null) {
   if (!profile) {
     return [];
@@ -225,6 +287,10 @@ function arraysEqual(left: string[], right: string[]) {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
+function sizeSelectionsEqual(left: SizeSelections, right: SizeSelections) {
+  return sizeGroupDefinitions.every(({ kind }) => arraysEqual(left[kind], right[kind]));
+}
+
 function pluralize(count: number, singular: string, plural = `${singular}s`) {
   return count === 1 ? singular : plural;
 }
@@ -237,7 +303,9 @@ export function ShopCatalogClient({
   products,
   bestSellers = [],
   newArrivals = [],
+  productHeadingLevel = "h2",
 }: ShopCatalogClientProps) {
+  const TopPicksHeading = productHeadingLevel;
   const searchParams = useSearchParams();
   const urlQuery = searchParams.get("q")?.trim() || "";
   const urlTopPicksId = searchParams.get("top");
@@ -262,7 +330,7 @@ export function ShopCatalogClient({
   const [priceFilter, setPriceFilter] = useState<PriceOption>("all");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
-  const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
+  const [selectedSizes, setSelectedSizes] = useState<SizeSelections>(createEmptySizeSelections);
   const [selectedLengths, setSelectedLengths] = useState<string[]>([]);
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [fitProfile, setFitProfile] = useState<FitProfile | null>(null);
@@ -299,14 +367,37 @@ export function ShopCatalogClient({
     () => Array.from(new Set(products.map((product) => product.vendor).filter(Boolean))).sort(),
     [products],
   );
-  const sizes = useMemo(() => getOptionValues(products, "size"), [products]);
+  const sizeGroups = useMemo(
+    () =>
+      sizeGroupDefinitions
+        .map((group) => ({
+          ...group,
+          values: getOptionValues(
+            products.filter((product) => getProductSizeKind(product) === group.kind),
+            "size",
+          ),
+        }))
+        .filter((group) => group.values.length > 0),
+    [products],
+  );
   const lengths = useMemo(() => getOptionValues(products, "length"), [products]);
-  const colors = useMemo(() => getOptionValues(products, "color"), [products]);
+  const productColors = useMemo(
+    () => new Map(products.map((product) => [product.id, getProductColorValues(product)])),
+    [products],
+  );
+  const colors = useMemo(
+    () =>
+      Array.from(new Set(Array.from(productColors.values()).flat())).sort((left, right) =>
+        left.localeCompare(right),
+      ),
+    [productColors],
+  );
   const smartFitSizes = useMemo(
     () => getProductAwareSmartFitSizes(products, fitProfile),
     [fitProfile, products],
   );
   const searchableQuery = deferredQuery.trim().toLowerCase();
+  const hasDeferredManualSizeSelections = getSelectedSizeCount(deferredSelectedSizes) > 0;
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
@@ -387,7 +478,7 @@ export function ShopCatalogClient({
 
       if (matchingSizes.length > 0) {
         setSmartFitEnabled(true);
-        setSelectedSizes([]);
+        setSelectedSizes(createEmptySizeSelections());
         setSelectedLengths([]);
       }
     });
@@ -420,18 +511,23 @@ export function ShopCatalogClient({
       smartFitEnabled && fitProfile
         ? getProductFitMatchesForProfile(product, fitProfile).length > 0
         : true;
-    const matchesOptions = matchesVariantSelections(
-      product,
-      [
-        {
-          optionName: "size",
-          selectedValues: smartFitEnabled ? [] : deferredSelectedSizes,
-        },
-        { optionName: "length", selectedValues: deferredSelectedLengths },
-        { optionName: "color", selectedValues: deferredSelectedColors },
-      ],
-      deferredAvailability === "in-stock",
-    );
+    const productSizeSelections = deferredSelectedSizes[getProductSizeKind(product)];
+    const matchesSelectedSizeGroup =
+      smartFitEnabled || !hasDeferredManualSizeSelections || productSizeSelections.length > 0;
+    const matchesOptions =
+      matchesSelectedSizeGroup &&
+      matchesVariantSelections(
+        product,
+        [
+          {
+            optionName: "size",
+            selectedValues: smartFitEnabled ? [] : productSizeSelections,
+          },
+          { optionName: "length", selectedValues: deferredSelectedLengths },
+          { optionName: "color", selectedValues: deferredSelectedColors },
+        ],
+        deferredAvailability === "in-stock",
+      );
 
     return (
       matchesQuery &&
@@ -488,14 +584,17 @@ export function ShopCatalogClient({
     });
   }
 
-  function toggleSize(size: string) {
+  function toggleSize(kind: ProductSizeKind, size: string) {
     shouldScrollToResultsRef.current = false;
     setSmartFitEnabled(false);
 
     startTransition(() => {
-      setSelectedSizes((current) =>
-        current.includes(size) ? current.filter((item) => item !== size) : [...current, size],
-      );
+      setSelectedSizes((current) => ({
+        ...current,
+        [kind]: current[kind].includes(size)
+          ? current[kind].filter((item) => item !== size)
+          : [...current[kind], size],
+      }));
     });
   }
 
@@ -509,7 +608,7 @@ export function ShopCatalogClient({
     shouldScrollToResultsRef.current = false;
 
     startTransition(() => {
-      setSelectedSizes([]);
+      setSelectedSizes(createEmptySizeSelections());
       setSelectedLengths([]);
       setSmartFitEnabled(matchingSizes.length > 0);
     });
@@ -553,7 +652,7 @@ export function ShopCatalogClient({
 
     if (smartFitEnabled) {
       startTransition(() => {
-        setSelectedSizes([]);
+        setSelectedSizes(createEmptySizeSelections());
       });
     }
   }
@@ -615,7 +714,7 @@ export function ShopCatalogClient({
       setPriceFilter("all");
       setSelectedTypes([]);
       setSelectedVendors([]);
-      setSelectedSizes([]);
+      setSelectedSizes(createEmptySizeSelections());
       setSelectedLengths([]);
       setSelectedColors([]);
       setSmartFitEnabled(false);
@@ -628,7 +727,7 @@ export function ShopCatalogClient({
     priceFilter !== "all" ||
     selectedTypes.length > 0 ||
     selectedVendors.length > 0 ||
-    selectedSizes.length > 0 ||
+    getSelectedSizeCount(selectedSizes) > 0 ||
     selectedLengths.length > 0 ||
     selectedColors.length > 0 ||
     smartFitEnabled ||
@@ -641,13 +740,13 @@ export function ShopCatalogClient({
     priceFilter !== deferredPriceFilter ||
     !arraysEqual(selectedTypes, deferredSelectedTypes) ||
     !arraysEqual(selectedVendors, deferredSelectedVendors) ||
-    !arraysEqual(selectedSizes, deferredSelectedSizes) ||
+    !sizeSelectionsEqual(selectedSizes, deferredSelectedSizes) ||
     !arraysEqual(selectedLengths, deferredSelectedLengths) ||
     !arraysEqual(selectedColors, deferredSelectedColors);
   const activeFilterCount =
     selectedTypes.length +
     selectedVendors.length +
-    selectedSizes.length +
+    getSelectedSizeCount(selectedSizes) +
     selectedLengths.length +
     selectedColors.length +
     (smartFitEnabled ? 1 : 0) +
@@ -1016,26 +1115,33 @@ export function ShopCatalogClient({
               </div>
             ) : null}
 
-            {sizes.length > 0 ? (
-              <div>
+            {sizeGroups.length > 0 ? (
+              <div className="space-y-5">
                 <p className="text-sm font-medium text-ink/90">Size</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {sizes.map((size) => (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => toggleSize(size)}
-                      aria-pressed={selectedSizes.includes(size)}
-                      className={`min-h-11 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
-                        selectedSizes.includes(size)
-                          ? "border-deep-teal bg-deep-teal text-white shadow-[0_18px_34px_-24px_rgba(15,91,91,0.75)]"
-                          : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-deep-teal hover:text-deep-teal"
-                      }`}
-                    >
-                      {size}
-                    </button>
-                  ))}
-                </div>
+                {sizeGroups.map((group) => (
+                  <fieldset key={group.kind}>
+                    <legend className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
+                      {group.label}
+                    </legend>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {group.values.map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => toggleSize(group.kind, size)}
+                          aria-pressed={selectedSizes[group.kind].includes(size)}
+                          className={`min-h-11 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
+                            selectedSizes[group.kind].includes(size)
+                              ? "border-deep-teal bg-deep-teal text-white shadow-[0_18px_34px_-24px_rgba(15,91,91,0.75)]"
+                              : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-deep-teal hover:text-deep-teal"
+                          }`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
               </div>
             ) : null}
 
@@ -1132,11 +1238,13 @@ export function ShopCatalogClient({
           </Badge>
         ))}
         {!smartFitEnabled
-          ? selectedSizes.map((size) => (
-              <Badge key={size} variant="neutral">
-                Size {size}
-              </Badge>
-            ))
+          ? sizeGroupDefinitions.flatMap((group) =>
+              selectedSizes[group.kind].map((size) => (
+                <Badge key={`${group.kind}-${size}`} variant="neutral">
+                  {group.badgeLabel} {size}
+                </Badge>
+              )),
+            )
           : null}
         {selectedLengths.map((length) => (
           <Badge key={length} variant="neutral">
@@ -1239,7 +1347,7 @@ export function ShopCatalogClient({
                   <Ruler className="h-5 w-5" />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-semibold tracking-[0.16em] text-deep-teal uppercase">
+                  <p className="text-xs font-semibold tracking-[0.16em] text-deep-teal uppercase">
                     Smart Fit
                   </p>
                   <h2 className="truncate text-lg font-semibold text-ink">
@@ -1283,7 +1391,7 @@ export function ShopCatalogClient({
                         autoCapitalize="characters"
                         className="mt-2 min-h-12 bg-white text-base"
                       />
-                      <p className="mt-1.5 text-[11px] leading-4 text-smoke">
+                      <p className="mt-1.5 text-xs leading-4 text-smoke">
                         Chest + length. We convert EU-sized sport coats.
                       </p>
                     </div>
@@ -1303,7 +1411,7 @@ export function ShopCatalogClient({
                         inputMode="numeric"
                         className="mt-2 min-h-12 bg-white text-base"
                       />
-                      <p className="mt-1.5 text-[11px] text-smoke">Waist size</p>
+                      <p className="mt-1.5 text-xs text-smoke">Waist size</p>
                     </div>
 
                     <div>
@@ -1321,7 +1429,7 @@ export function ShopCatalogClient({
                         autoCapitalize="characters"
                         className="mt-2 min-h-12 bg-white text-base"
                       />
-                      <p className="mt-1.5 text-[11px] text-smoke">S, M, L, XL</p>
+                      <p className="mt-1.5 text-xs text-smoke">S, M, L, XL</p>
                     </div>
 
                     <div>
@@ -1339,7 +1447,7 @@ export function ShopCatalogClient({
                         inputMode="decimal"
                         className="mt-2 min-h-12 bg-white text-base"
                       />
-                      <p className="mt-1.5 text-[11px] text-smoke">US size</p>
+                      <p className="mt-1.5 text-xs text-smoke">US size</p>
                     </div>
 
                     <div className="col-span-2">
@@ -1356,7 +1464,7 @@ export function ShopCatalogClient({
                         placeholder="16 x 34/35"
                         className="mt-2 min-h-12 bg-white text-base"
                       />
-                      <p className="mt-1.5 text-[11px] text-smoke">Neck × sleeve, if known</p>
+                      <p className="mt-1.5 text-xs text-smoke">Neck × sleeve, if known</p>
                     </div>
                   </div>
 
@@ -1506,7 +1614,7 @@ export function ShopCatalogClient({
                             "col-span-2",
                         )}
                       >
-                        <p className="text-[10px] font-semibold tracking-[0.14em] text-smoke uppercase">
+                        <p className="text-xs font-semibold tracking-[0.14em] text-smoke uppercase">
                           {item.label}
                         </p>
                         <p className="mt-1.5 text-lg font-semibold text-ink">{item.value}</p>
@@ -1589,7 +1697,7 @@ export function ShopCatalogClient({
               )}
             >
               <div className="flex items-center justify-between gap-3">
-                <span className="inline-flex min-h-8 items-center rounded-full bg-white px-3 py-1 text-[10px] font-semibold tracking-[0.16em] text-ink uppercase shadow-sm">
+                <span className="inline-flex min-h-8 items-center rounded-full bg-white px-3 py-1 text-xs font-semibold tracking-[0.16em] text-ink uppercase shadow-sm">
                   Smart Fit Profile
                 </span>
                 {isDrawer ? (
@@ -1602,14 +1710,14 @@ export function ShopCatalogClient({
                     <X className="h-4 w-4" />
                   </button>
                 ) : fitProfile ? (
-                  <span className="rounded-full bg-deep-teal px-3 py-1 text-[10px] font-semibold tracking-[0.14em] text-white uppercase">
+                  <span className="rounded-full bg-deep-teal px-3 py-1 text-xs font-semibold tracking-[0.14em] text-white uppercase">
                     Saved
                   </span>
                 ) : null}
               </div>
 
               <div>
-                <p className="text-[11px] font-semibold tracking-[0.16em] text-white/70 uppercase">
+                <p className="text-xs font-semibold tracking-[0.16em] text-white/70 uppercase">
                   Starting estimate
                 </p>
                 <p className="mt-2 text-4xl font-semibold tracking-normal text-white sm:text-5xl">
@@ -1625,7 +1733,7 @@ export function ShopCatalogClient({
                       key={item.label}
                       className="min-w-0 rounded-md border border-white/14 bg-white/10 px-3 py-2 backdrop-blur"
                     >
-                      <p className="text-[9px] font-semibold tracking-[0.14em] text-white/58 uppercase">
+                      <p className="text-xs font-semibold tracking-[0.14em] text-white/58 uppercase">
                         {item.label}
                       </p>
                       <p className="mt-1 truncate text-sm font-semibold text-white">{item.value}</p>
@@ -1639,7 +1747,7 @@ export function ShopCatalogClient({
           <div className={cn("min-w-0 p-4 sm:p-6", isDrawer ? "pb-7" : "lg:p-7")}>
             <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
               <div className="min-w-0">
-                <p className="inline-flex min-h-7 items-center rounded-full border border-deep-teal/20 bg-deep-teal/8 px-3 text-[10px] font-semibold tracking-[0.16em] text-deep-teal uppercase">
+                <p className="inline-flex min-h-7 items-center rounded-full border border-deep-teal/20 bg-deep-teal/8 px-3 text-xs font-semibold tracking-[0.16em] text-deep-teal uppercase">
                   Smart Fit
                 </p>
                 <h2 className="mt-3 text-2xl font-semibold tracking-normal text-ink sm:text-3xl">
@@ -1662,7 +1770,7 @@ export function ShopCatalogClient({
                     type="button"
                     onClick={() => applySmartFit()}
                     className={cn(
-                      "inline-flex min-h-10 items-center justify-center rounded-md border border-deep-teal bg-deep-teal px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:bg-[#136868]",
+                      "inline-flex min-h-10 items-center justify-center rounded-md border border-deep-teal bg-deep-teal px-4 py-2 text-xs font-semibold tracking-[0.14em] text-white uppercase transition-colors hover:bg-[#136868]",
                       isDrawer && "col-span-2",
                     )}
                   >
@@ -1672,14 +1780,14 @@ export function ShopCatalogClient({
                   <button
                     type="button"
                     onClick={() => setIsFitEditorOpen((current) => !current)}
-                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/15 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30 hover:bg-stone"
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/15 bg-white px-4 py-2 text-xs font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30 hover:bg-stone"
                   >
                     {isFitEditorOpen ? "Hide Form" : "Edit"}
                   </button>
                   <button
                     type="button"
                     onClick={clearFitProfile}
-                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/12 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-smoke uppercase transition-colors hover:border-ink/30 hover:text-ink"
+                    className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/12 bg-white px-4 py-2 text-xs font-semibold tracking-[0.14em] text-smoke uppercase transition-colors hover:border-ink/30 hover:text-ink"
                   >
                     Clear
                   </button>
@@ -1702,7 +1810,7 @@ export function ShopCatalogClient({
                     className="min-h-[5.5rem] min-w-0 rounded-md border border-ink/8 bg-stone px-3 py-3"
                   >
                     <div className="flex items-center justify-between gap-2 text-smoke">
-                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase">
+                      <p className="text-xs font-semibold tracking-[0.14em] uppercase">
                         {item.label}
                       </p>
                       <Icon className="h-4 w-4 shrink-0" />
@@ -1824,7 +1932,7 @@ export function ShopCatalogClient({
                 <div className="mt-5 rounded-md border border-ink/10 bg-stone p-3">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-[11px] font-semibold tracking-[0.14em] text-deep-teal uppercase">
+                      <p className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase">
                         Known sizes
                       </p>
                       <p className="mt-1 text-xs leading-5 text-smoke">
@@ -1835,7 +1943,7 @@ export function ShopCatalogClient({
                     <button
                       type="button"
                       onClick={() => setIsManualSizeEditorOpen((current) => !current)}
-                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/15 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30"
+                      className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/15 bg-white px-4 py-2 text-xs font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30"
                     >
                       {isManualSizeEditorOpen
                         ? "Hide Known Sizes"
@@ -1966,7 +2074,7 @@ export function ShopCatalogClient({
                 <button
                   type="button"
                   onClick={() => setIsFitEditorOpen(true)}
-                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/15 bg-white px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30 hover:bg-stone"
+                  className="inline-flex min-h-10 items-center justify-center rounded-md border border-ink/15 bg-white px-4 py-2 text-xs font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-ink/30 hover:bg-stone"
                 >
                   Update Profile
                 </button>
@@ -2016,7 +2124,7 @@ export function ShopCatalogClient({
           </span>
         </span>
 
-        <span className="shrink-0 rounded-md border border-gold/90 bg-gold px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-ink uppercase">
+        <span className="shrink-0 rounded-md border border-gold/90 bg-gold px-3 py-1.5 text-xs font-semibold tracking-[0.14em] text-ink uppercase">
           {launcherAction}
         </span>
       </button>
@@ -2085,9 +2193,9 @@ export function ShopCatalogClient({
     return (
       <section id="top-picks" className="mb-6 scroll-mt-28" aria-label="Top picks">
         <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-lg font-semibold tracking-[-0.01em] text-ink sm:text-xl">
+          <TopPicksHeading className="text-lg font-semibold tracking-[-0.01em] text-ink sm:text-xl">
             Top Picks
-          </h2>
+          </TopPicksHeading>
         </div>
 
         <div
@@ -2146,7 +2254,7 @@ export function ShopCatalogClient({
                   ) : null}
                 </div>
                 {product.vendor ? (
-                  <p className="mt-2 truncate text-[10px] font-semibold tracking-[0.14em] text-smoke uppercase">
+                  <p className="mt-2 truncate text-xs font-semibold tracking-[0.14em] text-smoke uppercase">
                     {product.vendor}
                   </p>
                 ) : null}
@@ -2175,14 +2283,14 @@ export function ShopCatalogClient({
     {
       key: "size",
       label: "Size",
-      activeCount: smartFitEnabled ? 0 : selectedSizes.length,
+      activeCount: smartFitEnabled ? 0 : getSelectedSizeCount(selectedSizes),
     },
     { key: "length", label: "Length", activeCount: selectedLengths.length },
     { key: "color", label: "Color", activeCount: selectedColors.length },
   ];
   const facetPills = facetPillOptions.filter((pill) => {
     if (pill.key === "brand") return vendors.length > 0;
-    if (pill.key === "size") return sizes.length > 0;
+    if (pill.key === "size") return sizeGroups.length > 0;
     if (pill.key === "length") return lengths.length > 0;
     if (pill.key === "color") return colors.length > 0;
     return true;
@@ -2197,7 +2305,7 @@ export function ShopCatalogClient({
       if (key === "color") setSelectedColors([]);
 
       if (key === "size") {
-        setSelectedSizes([]);
+        setSelectedSizes(createEmptySizeSelections());
         setSmartFitEnabled(false);
       }
     });
@@ -2285,9 +2393,40 @@ export function ShopCatalogClient({
       );
     }
 
-    const values = key === "size" ? sizes : key === "length" ? lengths : colors;
-    const selected =
-      key === "size" ? selectedSizes : key === "length" ? selectedLengths : selectedColors;
+    if (key === "size") {
+      return (
+        <div className="max-h-[28rem] space-y-5 overflow-y-auto pr-1 [scrollbar-width:thin]">
+          {sizeGroups.map((group) => (
+            <fieldset key={group.kind}>
+              <legend className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
+                {group.label}
+              </legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {group.values.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => toggleSize(group.kind, value)}
+                    aria-pressed={selectedSizes[group.kind].includes(value)}
+                    className={cn(
+                      "min-h-11 rounded-full border px-3.5 text-xs font-semibold tracking-[0.08em] uppercase transition-colors",
+                      selectedSizes[group.kind].includes(value)
+                        ? "border-deep-teal bg-deep-teal text-white"
+                        : "border-ink/15 bg-white text-ink hover:border-ink/40",
+                    )}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+          ))}
+        </div>
+      );
+    }
+
+    const values = key === "length" ? lengths : colors;
+    const selected = key === "length" ? selectedLengths : selectedColors;
 
     return (
       <div className="flex max-h-64 flex-wrap gap-2 overflow-y-auto pr-1 [scrollbar-width:thin]">
@@ -2296,9 +2435,7 @@ export function ShopCatalogClient({
             key={value}
             type="button"
             onClick={() => {
-              if (key === "size") {
-                toggleSize(value);
-              } else if (key === "length") {
+              if (key === "length") {
                 toggleValue(selectedLengths, value, setSelectedLengths);
               } else {
                 toggleValue(selectedColors, value, setSelectedColors);
@@ -2361,7 +2498,7 @@ export function ShopCatalogClient({
             <SlidersHorizontal className="h-4 w-4" />
             All Filters
             {activeFilterCount > 0 ? (
-              <span className="rounded-full bg-deep-teal px-2 py-0.5 text-[10px] font-semibold text-white">
+              <span className="rounded-full bg-deep-teal px-2 py-0.5 text-xs font-semibold text-white">
                 {activeFilterCount}
               </span>
             ) : null}
@@ -2406,7 +2543,7 @@ export function ShopCatalogClient({
             >
               {pill.label}
               {pill.activeCount > 0 ? (
-                <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-[10px] font-semibold">
+                <span className="rounded-full bg-white/20 px-1.5 py-0.5 text-xs font-semibold">
                   {pill.activeCount}
                 </span>
               ) : null}
@@ -2590,6 +2727,7 @@ export function ShopCatalogClient({
                   key={product.id}
                   product={product}
                   fitProfile={smartFitEnabled ? fitProfile : null}
+                  headingLevel={productHeadingLevel}
                   imageSizes={
                     mobileLayout === "grid"
                       ? "(max-width: 640px) 50vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"

@@ -158,7 +158,9 @@ Both locations note closure on Easter, Thanksgiving, and Christmas Day.
 
 ### `content/site/brands.json`
 
-Designer brands used for brand directory and dynamic brand pages:
+Designer brand presentation used for directories and dynamic brand pages. Editors can add and
+reorder brands in Tina; `shopifyVendor` optionally joins a brand to the exact Shopify Vendor value
+without making Tina the source of product availability or counts:
 
 7 Downie St., 7 For All Mankind, AG Jeans, Alberto, Brax, Canali, Ermenegildo Zegna, Eton, Fradi, Gimos, Giorgio Armani, Hagen, Holebrook USA, Jack Victor, Joe's Jeans, L.B.M., Luigi Bianchi, Michael Kors, Monfrere, Paige, Pal Zileri, Ravazzolo, Robert Graham, Stenstroms, SWIMS, Tateossian, Ted Baker, Zanella.
 
@@ -311,20 +313,26 @@ Important behavior: if Shopify is not configured, `resolveMenCategory` returns n
 
 ### `/shop` - `src/app/shop/page.tsx`
 
-Shop catalog page. It loads up to 24 products with `getShopProducts`.
+Merchandise-first shop catalog page. It loads products with `getShopProducts`, keeps a compact
+department rail on mobile only, and begins directly with the catalog on larger screens rather than
+duplicating the global navigation or showing a promotional masthead or separate sale rail.
 
 If Shopify loads:
 
 - filters available/in-stock products
 - renders `ShopCatalogClient`
-- provides link to `/cart`
+- preserves product-level compare-at pricing and sale badges
 
 If Shopify fails:
 
 - shows catalog-refresh fallback messaging
-- links to `/for-men`
+- links to the main category routes
 
-`ShopCatalogClient` supports query search, sorting, availability filter, price buckets, type/vendor/size/color filters, mobile filters, grid density, and product cards.
+`ShopCatalogClient` supports query search, sorting, availability and price filters, type/vendor
+filters, category-aware shirt/jacket/pant/shoe/general size groups, validated variant colors, mobile
+filters, grid density, and product cards. Malformed Shopify `Color` values such as shirt-fit,
+neckline, row, and numeric codes are rejected; the Color control stays hidden until a recognizable
+color value exists.
 
 ### `/shop/[handle]` - `src/app/shop/[handle]/page.tsx`
 
@@ -336,8 +344,13 @@ Each product page:
 - generates Open Graph/Twitter metadata from product data
 - emits Product JSON-LD
 - renders `ProductDetailClient`
-- loads recommended products via `getRecommendedProducts`, with `getShopProducts` fallback
-- shows "Complete the Look" related products
+- loads a candidate pool from the same Shopify vendor
+- prioritizes merchant-configured `COMPLEMENTARY` recommendations, with category-affinity best
+  sellers as an available-inventory fallback
+- filters matching product types to the size currently selected on the source product and uses a
+  saved Smart Fit profile for cross-category sizing when available
+- shows up to three products in each labeled group using two columns on mobile and three on larger
+  screens; candidates without a matching in-stock size are omitted rather than padded
 
 If Shopify is temporarily unavailable, it renders a friendly unavailable state instead of immediately 404ing. If Shopify is available but the product is missing, it calls `notFound()`.
 
@@ -539,9 +552,19 @@ Product and collection queries:
 - `getShopCollectionsWithProducts`
 - `getShopProductPreviews`
 - `getRecommendedProducts`
+- `getProductsByVendor`
 - `searchShopProducts`
 
 Uses `unstable_cache` with 300-second revalidation for most reads. Search is no-store.
+Category routes render dynamically. The cached collection loader retries a thrown or suspiciously
+empty first response before a value can enter the cache. A repeated failure reaches the category
+error boundary instead of being presented as a real zero-product category.
+
+### `src/lib/shopify/brands.ts`
+
+Builds the online brand directory from all paginated, available Shopify products. Tina-managed
+presentation is attached by exact `shopifyVendor`, with a legacy slug match as fallback. Shopify
+remains authoritative for online membership and product counts.
 
 ### `src/lib/shopify/men-categories.ts`
 

@@ -185,21 +185,8 @@ export default async function HomePage() {
         }
       />
 
-      <WaveSection topWave="A" background="ivory">
+      <WaveSection topWave="A" background="ivory" contentClassName="py-10 sm:py-12 lg:py-14">
         <Container>
-          <div>
-            <div>
-              <Badge variant="teal">Shop by Category</Badge>
-              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
-                Start with what you need.
-              </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-                Browse the online floor by wardrobe need, then narrow by brand, size, color, and
-                availability.
-              </p>
-            </div>
-          </div>
-
           <CollectionRail collections={categories} />
         </Container>
       </WaveSection>
@@ -252,7 +239,7 @@ export default async function HomePage() {
             <>
               <div className="mt-12 flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[11px] font-semibold tracking-[0.18em] text-deep-teal uppercase">
+                  <p className="text-xs font-semibold tracking-[0.18em] text-deep-teal uppercase">
                     New Arrivals
                   </p>
                   <h2 className="mt-2 font-heading text-3xl text-ink sm:text-4xl">
@@ -266,9 +253,22 @@ export default async function HomePage() {
                   Shop New Arrivals
                 </Link>
               </div>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div
+                role="list"
+                aria-label="Fresh on the Floor products"
+                className="mt-6 -mr-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pr-4 pb-3 [scrollbar-width:none] sm:mr-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pr-0 sm:pb-0 xl:grid-cols-4 [&::-webkit-scrollbar]:hidden"
+              >
                 {newArrivals.map((product) => (
-                  <ShopProductCard key={product.id} product={product} />
+                  <div
+                    key={product.id}
+                    role="listitem"
+                    className="w-[82%] max-w-80 shrink-0 snap-start sm:w-auto sm:max-w-none sm:snap-none"
+                  >
+                    <ShopProductCard
+                      product={product}
+                      imageSizes="(max-width: 639px) 82vw, (max-width: 1279px) 50vw, 25vw"
+                    />
+                  </div>
                 ))}
               </div>
             </>
@@ -293,7 +293,7 @@ export default async function HomePage() {
                 {["Walk-ins welcome", "Personal fittings", "Tailoring available"].map((item) => (
                   <span
                     key={item}
-                    className="rounded-full border border-deep-teal/15 bg-deep-teal/7 px-3 py-1.5 text-[10px] font-semibold tracking-[0.12em] text-deep-teal uppercase"
+                    className="rounded-full border border-deep-teal/15 bg-deep-teal/7 px-3 py-1.5 text-xs font-semibold tracking-[0.12em] text-deep-teal uppercase"
                   >
                     {item}
                   </span>
@@ -360,7 +360,7 @@ export default async function HomePage() {
                     className="object-cover transition-transform duration-500 group-hover:scale-[1.025]"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/78 via-ink/12 to-transparent" />
-                  <span className="absolute top-4 left-4 rounded-full border border-white/25 bg-ink/45 px-3 py-1.5 text-[10px] font-semibold tracking-[0.14em] text-white uppercase backdrop-blur">
+                  <span className="absolute top-4 left-4 rounded-full border border-white/25 bg-ink/45 px-3 py-1.5 text-xs font-semibold tracking-[0.14em] text-white uppercase backdrop-blur">
                     {location.photoLabel}
                   </span>
                   <h3 className="absolute inset-x-0 bottom-0 p-5 font-heading text-3xl text-white sm:text-4xl">
@@ -507,7 +507,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-2 gap-3">
               {[
                 {
                   title: "Expert fit guidance",
@@ -535,13 +535,17 @@ export default async function HomePage() {
                 return (
                   <div
                     key={item.title}
-                    className="rounded-lg border border-ink/10 bg-white p-5 shadow-sm shadow-ink/[0.03]"
+                    className="rounded-lg border border-ink/10 bg-white p-4 shadow-sm shadow-ink/[0.03] sm:p-5"
                   >
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-deep-teal/10 text-deep-teal">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-deep-teal/10 text-deep-teal sm:h-10 sm:w-10">
                       <Icon className="h-4.5 w-4.5" />
                     </span>
-                    <h3 className="mt-4 text-base font-semibold text-ink">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-6 text-smoke">{item.copy}</p>
+                    <h3 className="mt-3 text-sm leading-5 font-semibold text-ink sm:mt-4 sm:text-base sm:leading-6">
+                      {item.title}
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-5 text-smoke sm:mt-2 sm:leading-6">
+                      {item.copy}
+                    </p>
                   </div>
                 );
               })}

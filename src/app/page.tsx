@@ -172,37 +172,42 @@ export default async function HomePage() {
         }
       />
 
-      <WaveSection topWave="A" background="ivory" contentClassName="py-10 sm:py-12 lg:py-14">
-        <Container>
-          <CollectionRail collections={categories} />
-        </Container>
+      <WaveSection topWave="A" background="ivory" padded={false} className="border-b border-ink/15">
+        <CollectionRail collections={categories} />
       </WaveSection>
 
-      <WaveSection topWave="C" background="stone">
-        <Container>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <WaveSection
+        topWave="C"
+        background="stone"
+        contentClassName="py-8 sm:py-10 lg:py-12"
+        className="border-b border-ink/15 bg-[#f1eee7]"
+      >
+        <Container className="max-w-none px-0">
+          <div className="flex flex-col gap-4 px-4 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
             <div>
-              <Badge variant="gold">Featured Products</Badge>
-              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">Best Sellers</h2>
+              <p className="text-xs font-semibold tracking-[0.2em] text-ink/60 uppercase">
+                The J. Barbaro Edit
+              </p>
+              <h2 className="mt-2 font-heading text-4xl text-ink sm:text-5xl">Best Sellers</h2>
             </div>
             <ButtonLink
               href="/shop?top=best#top-picks"
               variant="secondary"
-              className="w-full sm:w-auto"
+              className="w-full rounded-none border-ink/25 bg-transparent hover:bg-ivory sm:w-auto"
             >
               Shop Best Sellers
             </ButtonLink>
           </div>
 
           {bestSellers.length > 0 ? (
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="mt-6 grid grid-cols-2 gap-px border-y border-ink/10 bg-ink/10 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 min-[100rem]:grid-cols-7 min-[120rem]:grid-cols-8">
               {bestSellers.map((product) => (
                 <ShopProductCard
                   key={product.id}
                   product={product}
                   headingLevel="h3"
                   imagePresentation="filled"
-                  imageSizes="(max-width: 639px) 50vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 230px"
+                  imageSizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, (max-width: 1599px) 20vw, 14vw"
                 />
               ))}
             </div>
@@ -229,13 +234,13 @@ export default async function HomePage() {
               {newArrivals.map((product) => (
                 <li
                   key={product.id}
-                  className="w-[82vw] max-w-80 shrink-0 snap-start sm:w-[calc((100%_-_1rem)/2)] sm:max-w-none md:w-[calc((100%_-_2rem)/3)] lg:w-[calc((100%_-_3rem)/4)] xl:w-[calc((100%_-_4rem)/5)]"
+                  className="w-[76vw] shrink-0 snap-start sm:w-[42vw] md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw] min-[100rem]:w-[14.285vw]"
                 >
                   <ShopProductCard
                     product={product}
                     headingLevel="h3"
                     imagePresentation="filled"
-                    imageSizes="(max-width: 639px) 82vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 230px"
+                    imageSizes="(max-width: 639px) 76vw, (max-width: 767px) 42vw, (max-width: 1023px) 30vw, (max-width: 1279px) 23vw, (max-width: 1535px) 19vw, 15vw"
                   />
                 </li>
               ))}
@@ -245,7 +250,7 @@ export default async function HomePage() {
       </WaveSection>
 
       <WaveSection topWave="C" background="ivory">
-        <Container>
+        <Container className="max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="max-w-3xl">
               <Badge variant="teal">Partridge Creek</Badge>
@@ -293,7 +298,7 @@ export default async function HomePage() {
       </WaveSection>
 
       <WaveSection topWave="C" background="stone">
-        <Container>
+        <Container className="max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="max-w-3xl">
               <Badge variant="teal">Visit J. Barbaro</Badge>
@@ -454,7 +459,7 @@ export default async function HomePage() {
       </WaveSection>
 
       <WaveSection topWave="A" background="ivory">
-        <Container>
+        <Container className="max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
           <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
             <div>
               <Badge variant="gold">Why J. Barbaro</Badge>

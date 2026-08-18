@@ -44,7 +44,7 @@ function RailArrowButton({
       type="button"
       onClick={() => onClick(direction)}
       disabled={disabled}
-      className={`group h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ink/15 bg-white text-ink shadow-[0_14px_30px_-22px_rgba(11,15,20,0.65)] transition-[color,border-color,box-shadow,transform] duration-200 hover:scale-[1.04] hover:border-deep-teal hover:text-deep-teal hover:shadow-[0_18px_34px_-22px_rgba(11,15,20,0.8)] active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-ink/8 disabled:text-smoke/30 disabled:shadow-none disabled:hover:scale-100 ${className}`}
+      className={`group h-11 w-11 shrink-0 items-center justify-center border border-ink/20 bg-transparent text-ink transition-colors duration-200 hover:bg-ink hover:text-ivory focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal disabled:cursor-not-allowed disabled:border-ink/8 disabled:text-smoke/30 disabled:hover:bg-transparent ${className}`}
       aria-label={label}
       aria-controls={railId}
     >
@@ -279,7 +279,7 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
         }
       }}
     >
-      <div className="mt-12 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mt-10 flex flex-col gap-4 border-t border-ink/15 px-4 pt-6 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
         <div>
           <p className="text-xs font-semibold tracking-[0.18em] text-deep-teal uppercase">
             New Arrivals
@@ -289,7 +289,7 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
           </h2>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
           <Link
             href="/shop?top=new#top-picks"
             className="inline-flex min-h-11 items-center px-1 text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
@@ -319,19 +319,31 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
               <span>{prefersReducedMotion ? "Motion off" : isUserPaused ? "Play" : "Pause"}</span>
             </button>
           ) : null}
+
+          {itemCount > 1 ? (
+            <div className="flex items-center gap-px" role="group" aria-label="Browse new arrivals">
+              <RailArrowButton
+                direction={-1}
+                disabled={!hasOverflow}
+                railId={railId}
+                onClick={handleArrowClick}
+                willWrap={!canScrollPrevious && hasOverflow}
+                className="inline-flex"
+              />
+              <RailArrowButton
+                direction={1}
+                disabled={!hasOverflow}
+                railId={railId}
+                onClick={handleArrowClick}
+                willWrap={!canScrollNext && hasOverflow}
+                className="inline-flex"
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div className="relative mt-6">
-        <RailArrowButton
-          direction={-1}
-          disabled={!hasOverflow}
-          railId={railId}
-          onClick={handleArrowClick}
-          willWrap={!canScrollPrevious && hasOverflow}
-          className="absolute top-1/2 -left-5 z-20 hidden -translate-y-1/2 sm:inline-flex xl:-left-6"
-        />
-
+      <div className="relative mt-4">
         <ul
           id={railId}
           ref={railRef}
@@ -345,31 +357,13 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
           }}
           onPointerUp={() => setIsPointerActive(false)}
           onPointerCancel={() => setIsPointerActive(false)}
-          className="-mx-4 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto overscroll-x-contain px-4 pb-3 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory scroll-px-0 gap-px overflow-x-auto overscroll-x-contain bg-ink/10 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {children}
         </ul>
-
-        <RailArrowButton
-          direction={1}
-          disabled={!hasOverflow}
-          railId={railId}
-          onClick={handleArrowClick}
-          willWrap={!canScrollNext && hasOverflow}
-          className="absolute top-1/2 -right-5 z-20 hidden -translate-y-1/2 sm:inline-flex xl:-right-6"
-        />
       </div>
 
-      <div className="mt-2 flex items-center justify-between gap-3 sm:justify-center">
-        <RailArrowButton
-          direction={-1}
-          disabled={!hasOverflow}
-          railId={railId}
-          onClick={handleArrowClick}
-          willWrap={!canScrollPrevious && hasOverflow}
-          className="inline-flex sm:hidden"
-        />
-
+      <div className="mt-3 flex items-center justify-center px-4 sm:px-6">
         <div
           className="h-1 max-w-36 flex-1 overflow-hidden rounded-full bg-ink/10 sm:max-w-44"
           aria-hidden
@@ -379,15 +373,6 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
             style={{ transform: `scaleX(${scrollProgress})` }}
           />
         </div>
-
-        <RailArrowButton
-          direction={1}
-          disabled={!hasOverflow}
-          railId={railId}
-          onClick={handleArrowClick}
-          willWrap={!canScrollNext && hasOverflow}
-          className="inline-flex sm:hidden"
-        />
       </div>
     </section>
   );

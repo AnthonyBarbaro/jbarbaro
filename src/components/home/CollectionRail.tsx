@@ -31,7 +31,7 @@ export function CollectionRail({ collections }: CollectionRailProps) {
 
     rail.scrollBy({
       left: direction * Math.max(rail.clientWidth * 0.82, 260),
-      behavior: "smooth",
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
     });
   }
 
@@ -40,10 +40,10 @@ export function CollectionRail({ collections }: CollectionRailProps) {
   }
 
   return (
-    <section aria-labelledby={`${railId}-heading`}>
-      <div className="flex items-center justify-between gap-3 border-b border-ink/10 pb-3">
-        <h2 id={`${railId}-heading`} className="font-heading text-2xl text-ink sm:text-4xl">
-          Shop Categories
+    <section aria-labelledby={`${railId}-heading`} className="bg-[#f8f5ee]">
+      <div className="flex items-center justify-between gap-3 border-b border-ink/15 px-4 py-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+        <h2 id={`${railId}-heading`} className="font-heading text-3xl text-ink sm:text-4xl">
+          Categories
         </h2>
 
         <div className="flex shrink-0 items-center gap-2">
@@ -60,15 +60,11 @@ export function CollectionRail({ collections }: CollectionRailProps) {
             />
           </Link>
 
-          <div
-            className="hidden items-center gap-2 border-l border-ink/12 pl-3 sm:flex"
-            role="group"
-            aria-label="Browse shop categories"
-          >
+          <div className="flex items-center gap-px" role="group" aria-label="Browse categories">
             <button
               type="button"
               onClick={() => scrollRail(-1)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-ink/15 bg-white text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
+              className="inline-flex h-11 w-11 items-center justify-center border border-ink/20 bg-transparent text-ink transition-colors duration-200 hover:bg-ink hover:text-ivory focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
               aria-label="Show previous categories"
               aria-controls={railId}
             >
@@ -77,7 +73,7 @@ export function CollectionRail({ collections }: CollectionRailProps) {
             <button
               type="button"
               onClick={() => scrollRail(1)}
-              className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-ink/15 bg-white text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
+              className="inline-flex h-11 w-11 items-center justify-center border border-ink/20 bg-transparent text-ink transition-colors duration-200 hover:bg-ink hover:text-ivory focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
               aria-label="Show more categories"
               aria-controls={railId}
             >
@@ -91,37 +87,32 @@ export function CollectionRail({ collections }: CollectionRailProps) {
         id={railId}
         ref={railRef}
         aria-label="Shop all collections"
-        className="mt-4 -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto overscroll-x-contain scroll-smooth px-4 pb-3 [scrollbar-width:none] sm:mx-0 sm:mt-5 sm:px-0 [&::-webkit-scrollbar]:hidden"
+        className="flex snap-x snap-mandatory scroll-px-0 gap-px overflow-x-auto overscroll-x-contain bg-ink/15 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {collections.map((collection) => (
           <li
             key={collection.slug}
-            className="w-[78vw] max-w-[19rem] shrink-0 snap-start sm:w-[17rem] lg:w-[15rem] xl:w-[12.5rem]"
+            className="w-[76vw] shrink-0 snap-start sm:w-[42vw] md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw]"
           >
             <Link
               href={collection.href}
-              className="group block h-full rounded-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
+              className="group block h-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-deep-teal"
             >
-              <Card className="h-full overflow-hidden bg-white transition-[border-color,transform,box-shadow] duration-300 group-hover:-translate-y-1 group-hover:border-gold/50 group-hover:shadow-[0_20px_44px_-34px_rgba(11,15,20,0.45)]">
+              <Card className="h-full overflow-hidden rounded-none border-0 bg-white transition-[filter] duration-300 group-hover:brightness-[0.96] motion-reduce:transition-none">
                 <div className="relative aspect-[4/5] bg-stone">
                   <Image
                     src={collection.image}
                     alt={`${collection.name} collection`}
                     fill
                     sizes="(max-width: 639px) 78vw, (max-width: 1024px) 17rem, 15rem"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                    className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink/88 via-ink/16 to-transparent" />
-                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold tracking-[0.16em] text-gold uppercase">
-                        Shop
-                      </p>
-                      <h3 className="mt-1 font-heading text-2xl leading-tight text-white sm:text-3xl">
-                        {collection.name}
-                      </h3>
-                    </div>
-                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-gold bg-gold text-ink shadow-sm transition-transform group-hover:translate-x-1">
+                  <div className="absolute inset-0 bg-gradient-to-t from-ink/92 via-ink/12 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 sm:p-5">
+                    <h3 className="min-w-0 font-heading text-3xl leading-none text-white">
+                      {collection.name}
+                    </h3>
+                    <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center border border-white/55 bg-ivory text-ink transition-[background-color,color,transform] duration-200 group-hover:-translate-y-0.5 group-hover:bg-gold">
                       <ArrowRight className="h-4 w-4" aria-hidden />
                     </span>
                   </div>

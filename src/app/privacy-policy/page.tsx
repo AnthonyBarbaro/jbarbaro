@@ -6,7 +6,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Privacy Policy",
   description:
-    "Review the J. Barbaro Clothiers privacy policy for website usage, forms, and appointment requests.",
+    "Review the J. Barbaro Clothiers privacy policy for website usage, cookies, browser storage, forms, and appointment requests.",
   path: "/privacy-policy",
 });
 
@@ -26,6 +26,18 @@ export default function PrivacyPolicyPage() {
                 We collect contact details you submit through forms, including name, email, phone,
                 and appointment preferences. We also collect basic technical data required to secure
                 and operate the site.
+              </p>
+            </section>
+            <section>
+              <h2 className="font-heading text-2xl text-ink sm:text-3xl">
+                Cookies & Browser Storage
+              </h2>
+              <p className="mt-3 text-sm leading-7 text-smoke">
+                We use a first-party cookie for essential shopping-cart functionality. It retains
+                your Shopify cart identifier for up to 30 days. If you choose Smart Fit, the fit
+                details you enter are saved in your browser’s local storage so your preferences can
+                be reused. They remain there until you remove the profile or clear your browser
+                storage.
               </p>
             </section>
             <section>

@@ -51,6 +51,7 @@ type RawCartLine = {
         product: {
           title: string;
           handle: string;
+          productType: string;
           variants: {
             nodes: RawProductVariant[];
           };
@@ -149,6 +150,7 @@ const CART_FRAGMENT = `
             product {
               title
               handle
+              productType
               variants(first: 100) {
                 nodes {
                   id
@@ -208,6 +210,7 @@ function normalizeCart(cart: RawCart): ShopifyCartSnapshot {
       variantTitle: line.merchandise?.title ?? null,
       productTitle: line.merchandise?.product.title ?? null,
       productHandle: line.merchandise?.product.handle ?? null,
+      productType: line.merchandise?.product.productType ?? null,
       selectedOptions: line.merchandise?.selectedOptions ?? [],
       image: line.merchandise?.image ?? null,
       unitPrice: toCartMoney(line.cost.amountPerQuantity),

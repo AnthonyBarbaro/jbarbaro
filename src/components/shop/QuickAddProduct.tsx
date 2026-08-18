@@ -15,6 +15,7 @@ import {
   type SuitSizeSystem,
 } from "@/lib/fit-profile";
 import { openShopifyCartDrawer } from "@/lib/shopify/cart-events";
+import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
 import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
@@ -67,12 +68,20 @@ function getOptionGroups(product: QuickAddProductData) {
 }
 
 type OptionGroup = ReturnType<typeof getOptionGroups>[number];
+type OptionPresentation = ReturnType<typeof getProductOptionPresentation>;
 
 function getOptionGroupLabel(
   product: QuickAddProductData,
   group: OptionGroup,
+  optionPresentation: OptionPresentation,
   jacketSizeSystem?: SuitSizeSystem | null,
 ) {
+  const importedLabel = optionPresentation.getLabel(group.name);
+
+  if (importedLabel !== group.name) {
+    return importedLabel;
+  }
+
   if (jacketSizeSystem === "EU" && /size/i.test(group.name)) {
     return "EU Jacket Size";
   }
@@ -171,6 +180,7 @@ export function QuickAddProduct({
     : null;
   const initialVariant = preferredVariant ?? availableVariants[0];
   const optionGroups = useMemo(() => getOptionGroups(product), [product]);
+  const optionPresentation = getProductOptionPresentation(fitProduct);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
     getInitialSelectedOptions(product, optionGroups, preferredVariantId),
@@ -309,9 +319,16 @@ export function QuickAddProduct({
     }
 
     setSelectedOptions(nextSelectedOptions);
+    const clearedGroupLabels = clearedGroups.map((name) => {
+      const group = optionGroups.find((candidate) => candidate.name === name);
+
+      return group
+        ? getOptionGroupLabel(fitProduct, group, optionPresentation, jacketSizeSystem)
+        : name;
+    });
     setSelectionNotice(
-      clearedGroups.length > 0
-        ? `Select ${clearedGroups.join(" and ")} again for this combination.`
+      clearedGroupLabels.length > 0
+        ? `Select ${clearedGroupLabels.join(" and ")} again for this combination.`
         : "",
     );
   }
@@ -344,14 +361,24 @@ export function QuickAddProduct({
     .map((group) => {
       const value = selectedOptions[group.name];
 
-      return value && jacketSizeSystem === "EU" && /size/i.test(group.name) ? `EU ${value}` : value;
+      if (!value) {
+        return value;
+      }
+
+      return jacketSizeSystem === "EU" && /size/i.test(group.name)
+        ? `EU ${value}`
+        : optionPresentation.getSummaryPart(group.name, value);
     })
     .filter((value): value is string => Boolean(value))
     .join(" · ");
   const missingOptionGroups = optionGroups.filter((group) => !selectedOptions[group.name]);
   const selectionPrompt =
     missingOptionGroups.length > 0
-      ? `Select ${missingOptionGroups.map((group) => group.name).join(" and ")}`
+      ? `Select ${missingOptionGroups
+          .map((group) =>
+            getOptionGroupLabel(fitProduct, group, optionPresentation, jacketSizeSystem),
+          )
+          .join(" and ")}`
       : "Choose an available combination";
 
   return (
@@ -446,61 +473,74 @@ export function QuickAddProduct({
                   </div>
 
                   <div className="mt-6 space-y-6">
-                    {optionGroups.map((group) => (
-                      <fieldset key={group.name}>
-                        <legend className="text-xs font-semibold tracking-[0.12em] text-ink uppercase">
-                          Select {getOptionGroupLabel(fitProduct, group, jacketSizeSystem)}
-                        </legend>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {group.values.map((value) => {
-                            const isAvailable =
-                              getAvailableVariantsForOption(product, group.name, value).length > 0;
-                            const isSelected = selectedOptions[group.name] === value;
-                            const usJacketEquivalent =
-                              jacketSizeSystem === "EU" && /size/i.test(group.name)
-                                ? getUsJacketEquivalentLabel(value)
-                                : null;
+                    {optionGroups.map((group) => {
+                      const displayGroupLabel = getOptionGroupLabel(
+                        fitProduct,
+                        group,
+                        optionPresentation,
+                        jacketSizeSystem,
+                      );
 
-                            return (
-                              <button
-                                key={value}
-                                type="button"
-                                onClick={() => selectOption(group.name, value)}
-                                disabled={!isAvailable}
-                                aria-pressed={isSelected}
-                                aria-label={
-                                  jacketSizeSystem === "EU" && /size/i.test(group.name)
-                                    ? `European jacket size ${value}${
-                                        usJacketEquivalent
-                                          ? `, equivalent to ${usJacketEquivalent}`
-                                          : ""
-                                      }`
-                                    : undefined
-                                }
-                                className={cn(
-                                  "inline-flex min-h-11 min-w-11 flex-col items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-ink/8 disabled:bg-stone/60 disabled:text-smoke/45 disabled:line-through",
-                                  isSelected
-                                    ? "border-ink bg-ink text-white"
-                                    : "border-ink/15 bg-white text-ink hover:border-deep-teal hover:text-deep-teal",
-                                )}
-                              >
-                                <span>{value}</span>
-                                {usJacketEquivalent ? (
-                                  <span
-                                    className={cn(
-                                      "mt-0.5 text-xs font-medium",
-                                      isSelected ? "text-white/70" : "text-smoke",
-                                    )}
-                                  >
-                                    {usJacketEquivalent}
-                                  </span>
-                                ) : null}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </fieldset>
-                    ))}
+                      return (
+                        <fieldset key={group.name}>
+                          <legend className="text-xs font-semibold tracking-[0.12em] text-ink uppercase">
+                            Select {displayGroupLabel}
+                          </legend>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {group.values.map((value) => {
+                              const displayValue = optionPresentation.getValue(group.name, value);
+                              const isAvailable =
+                                getAvailableVariantsForOption(product, group.name, value).length >
+                                0;
+                              const isSelected = selectedOptions[group.name] === value;
+                              const usJacketEquivalent =
+                                jacketSizeSystem === "EU" && /size/i.test(group.name)
+                                  ? getUsJacketEquivalentLabel(value)
+                                  : null;
+
+                              return (
+                                <button
+                                  key={value}
+                                  type="button"
+                                  onClick={() => selectOption(group.name, value)}
+                                  disabled={!isAvailable}
+                                  aria-pressed={isSelected}
+                                  aria-label={
+                                    jacketSizeSystem === "EU" && /size/i.test(group.name)
+                                      ? `European jacket size ${value}${
+                                          usJacketEquivalent
+                                            ? `, equivalent to ${usJacketEquivalent}`
+                                            : ""
+                                        }`
+                                      : `${displayGroupLabel} ${displayValue}${
+                                          isAvailable ? "" : ", sold out"
+                                        }`
+                                  }
+                                  className={cn(
+                                    "inline-flex min-h-11 min-w-11 flex-col items-center justify-center rounded-md border px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-ink/8 disabled:bg-stone/60 disabled:text-smoke/45 disabled:line-through",
+                                    isSelected
+                                      ? "border-ink bg-ink text-white"
+                                      : "border-ink/15 bg-white text-ink hover:border-deep-teal hover:text-deep-teal",
+                                  )}
+                                >
+                                  <span>{displayValue}</span>
+                                  {usJacketEquivalent ? (
+                                    <span
+                                      className={cn(
+                                        "mt-0.5 text-xs font-medium",
+                                        isSelected ? "text-white/70" : "text-smoke",
+                                      )}
+                                    >
+                                      {usJacketEquivalent}
+                                    </span>
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </fieldset>
+                      );
+                    })}
                     <p className="sr-only" role="status" aria-live="polite">
                       {selectionNotice}
                     </p>

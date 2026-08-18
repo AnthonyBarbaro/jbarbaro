@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Download, ExternalLink, Sparkles, Users } from "lucide-react";
+import { Download, ExternalLink, Ruler, Store } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
@@ -140,7 +140,7 @@ export default function SuitTuxedoRentalsPage() {
       <WaveSection topWave="A" background="ink">
         <Container className="grid gap-4 lg:grid-cols-3">
           {rentalsPage.featureCards.map((card, index) => {
-            const Icon = index === 0 ? Users : Sparkles;
+            const Icon = index === 0 ? Store : Ruler;
 
             return (
               <Card key={card.title} className="bg-ivory text-ink">

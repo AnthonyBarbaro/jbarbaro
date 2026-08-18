@@ -7,7 +7,11 @@ import {
   menCategoryMap,
 } from "@/data/men-categories";
 import { getShopifyConfigStatus } from "@/lib/shopify/config";
-import { getShopCollection, getShopCollectionsWithProducts } from "@/lib/shopify/products";
+import {
+  getAllShopCollection,
+  getShopCollection,
+  getShopCollectionsWithProducts,
+} from "@/lib/shopify/products";
 import type { ShopifyCollection } from "@/lib/shopify/types";
 import { toTitleCase } from "@/lib/utils";
 import type { MenCategory } from "@/types/site";
@@ -163,6 +167,7 @@ export async function resolveMenCategories(
 export async function resolveMenCategory(
   slugOrHandle: string,
   productLimit = 8,
+  includeAllProducts = false,
 ): Promise<ResolvedMenCategory | null> {
   const editorialCategory = menCategoryMap[slugOrHandle] ?? getMenCategoryByHandle(slugOrHandle);
 
@@ -177,7 +182,9 @@ export async function resolveMenCategory(
   }
 
   for (const handle of getCollectionHandleCandidates(slugOrHandle, editorialCategory)) {
-    const shopifyCollection = await getShopCollection(handle, productLimit);
+    const shopifyCollection = includeAllProducts
+      ? await getAllShopCollection(handle)
+      : await getShopCollection(handle, productLimit);
 
     if (shopifyCollection) {
       return buildResolvedCategory({

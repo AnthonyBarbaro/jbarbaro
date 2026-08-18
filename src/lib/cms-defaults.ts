@@ -6,7 +6,15 @@ import type { NavItem } from "@/data/navigation";
 import { primaryNavigation } from "@/data/navigation";
 import { serviceHighlights, appointmentServices } from "@/data/services";
 import { socialLinks } from "@/data/social";
-import { tailoredSwatches, tailoringFaqs, tailoringHeroImage, tailoringInsetImage, tailoringOptions, tailoringPillars, tailoringSteps } from "@/data/tailored";
+import {
+  tailoredSwatches,
+  tailoringFaqs,
+  tailoringHeroImage,
+  tailoringInsetImage,
+  tailoringOptions,
+  tailoringPillars,
+  tailoringSteps,
+} from "@/data/tailored";
 import { aggregateRating, testimonials } from "@/data/testimonials";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_OWNER } from "@/lib/constants";
 import type { Brand, Location, MenCategory, SocialLink, Testimonial } from "@/types/site";
@@ -353,13 +361,11 @@ export const defaultNavigation: NavigationContent = {
     { label: "Appointments", href: "/schedule-appointment" },
     { label: "Locations", href: "/locations" },
   ],
-  headerCtas: [
-    { label: "Book Appointment", href: "/schedule-appointment" },
-  ],
+  headerCtas: [{ label: "Book Appointment", href: "/schedule-appointment" }],
   footerShoppingLinks: [
     { label: "Shop", href: "/shop" },
     { label: "Categories", href: "/categories" },
-    { label: "Designers", href: "/designers" },
+    { label: "Brands", href: "/shop/brands" },
     { label: "Tuxedo Rentals", href: "/suit-tuxedo-rentals" },
     { label: "Wedding Registration", href: "/register-your-wedding" },
     { label: "Appointments", href: "/schedule-appointment" },
@@ -442,7 +448,7 @@ export const defaultHomePage: HomePageContent = {
       "Explore the labels we rely on for refined tailoring, polished sportswear, and wardrobe longevity.",
     buttons: [
       { label: "View Featured Designers", href: "/designers/featured-designers" },
-      { label: "Browse All Designers", href: "/designers/all-designer-brands" },
+      { label: "Shop All Brands", href: "/shop/brands" },
     ],
   },
   appointmentPriority: {
@@ -483,12 +489,10 @@ export const defaultAboutPage: AboutPageContent = {
     title: "Luxury Menswear with Human-Centered Service",
     paragraphs: [
       {
-        copy:
-          "J. Barbaro Clothiers serves Metro Detroit clients who value craftsmanship, presentation, and confidence. From first consultation through final fitting, every recommendation is designed around your goals.",
+        copy: "J. Barbaro Clothiers serves Metro Detroit clients who value craftsmanship, presentation, and confidence. From first consultation through final fitting, every recommendation is designed around your goals.",
       },
       {
-        copy:
-          "We support executives, entrepreneurs, and event clients with full wardrobe strategy: tailored clothing, premium casualwear, and formalwear coordination.",
+        copy: "We support executives, entrepreneurs, and event clients with full wardrobe strategy: tailored clothing, premium casualwear, and formalwear coordination.",
       },
     ],
     exploreLinks: [
@@ -499,17 +503,16 @@ export const defaultAboutPage: AboutPageContent = {
     ],
   },
   founderSpotlight: {
-    image: "/images/remote/www.macombnowmagazine.com/wp-content/uploads/2017/09/fashion_bombaro.jpg",
+    image:
+      "/images/remote/www.macombnowmagazine.com/wp-content/uploads/2017/09/fashion_bombaro.jpg",
     badge: "Founder Spotlight",
     title: "Jason Barbaro",
     paragraphs: [
       {
-        copy:
-          "Jason Barbaro founded J. Barbaro Clothiers with a simple principle: every client deserves expert fit guidance, elevated service, and wardrobe recommendations built around real life, not trends alone.",
+        copy: "Jason Barbaro founded J. Barbaro Clothiers with a simple principle: every client deserves expert fit guidance, elevated service, and wardrobe recommendations built around real life, not trends alone.",
       },
       {
-        copy:
-          "That founder-led mindset still drives the business today across both Metro Detroit locations, from tailored clothing and luxury menswear to wedding and formalwear styling.",
+        copy: "That founder-led mindset still drives the business today across both Metro Detroit locations, from tailored clothing and luxury menswear to wedding and formalwear styling.",
       },
     ],
     buttons: [
@@ -520,23 +523,19 @@ export const defaultAboutPage: AboutPageContent = {
   pillars: [
     {
       title: "Personal Guidance",
-      description:
-        "Styling consultations rooted in fit, context, and your day-to-day lifestyle.",
+      description: "Styling consultations rooted in fit, context, and your day-to-day lifestyle.",
     },
     {
       title: "Tailored Precision",
-      description:
-        "Alteration and made-to-fit services designed for confidence and movement.",
+      description: "Alteration and made-to-fit services designed for confidence and movement.",
     },
     {
       title: "Curated Brands",
-      description:
-        "Seasonal collections chosen for fabric quality, drape, and modern versatility.",
+      description: "Seasonal collections chosen for fabric quality, drape, and modern versatility.",
     },
     {
       title: "Long-Term Partnership",
-      description:
-        "We help clients evolve wardrobes over time instead of one-off purchases.",
+      description: "We help clients evolve wardrobes over time instead of one-off purchases.",
     },
   ],
   bottomCtaLabel: "Schedule a Styling Session",
@@ -574,7 +573,8 @@ export const defaultContactPage: ContactPageContent = {
     "Contact J. Barbaro Clothiers for appointments, gift cards, tailoring questions, and menswear support.",
   hero: {
     title: "Contact Us",
-    description: "Questions, gift cards, or fit support. Send a message or choose a location below.",
+    description:
+      "Questions, gift cards, or fit support. Send a message or choose a location below.",
     ctaPrimary: { label: "Book Appointment Instead", href: "/schedule-appointment" },
   },
   supportCard: {
@@ -608,7 +608,7 @@ export const defaultReviewsPage: ReviewsPageContent = {
 export const defaultSchedulePage: SchedulePageContent = {
   metaTitle: "Schedule Appointment",
   metaDescription:
-    "Schedule a menswear appointment at J. Barbaro Clothiers. Choose location, service type, and preferred date/time.",
+    "Schedule a menswear appointment at The Mall at Partridge Creek. Choose a service type and preferred date/time.",
   hero: {
     title: "Schedule an Appointment",
     description:
@@ -646,25 +646,25 @@ export const defaultRentalsPage: RentalsPageContent = {
   ],
   featureCards: [
     {
-      title: "Wedding Party Coordination",
+      title: "Choose Your Look In Store",
       description:
-        "Keep every groomsman aligned with a consistent style direction and sizing process.",
+        "Meet with our formalwear team to compare rental and purchase options, coordinate accessories, and plan around your event.",
     },
     {
-      title: "Luxury Fit Standards",
+      title: "Measurements & Fit Checks",
       description:
-        "We focus on clean silhouette, event-appropriate styling, and final-detail polish.",
+        "Visit your preferred showroom for measurements, fitting guidance, and a final review before pickup.",
     },
   ],
   closingCard: {
-    title: "Ready to Start?",
+    title: "Plan Your Store Visit",
     description:
-      "Register your wedding party today and our team will follow up with the next steps.",
+      "Choose a Metro Detroit showroom and book ahead so our team can prepare for your size, event, and timeline.",
     buttons: [
-      { label: "Register Wedding", href: "/register-your-wedding" },
-      { label: "Browse Categories", href: "/categories" },
+      { label: "Schedule Appointment", href: "/schedule-appointment" },
+      { label: "View Store Locations", href: "/locations" },
     ],
-    footerLinkLabel: "Go to Registration",
+    footerLinkLabel: "Register Your Wedding",
     footerLinkHref: "/register-your-wedding",
   },
 };
@@ -710,7 +710,7 @@ export const defaultDesignersPage: DesignersPageContent = {
     title: "Designer Collections",
     description:
       "We curate globally respected menswear labels selected for quality, fit consistency, and wardrobe longevity.",
-    ctaPrimary: { label: "Browse All Designers", href: "/designers/all-designer-brands" },
+    ctaPrimary: { label: "Shop All Products", href: "/shop" },
   },
   cards: [
     {
@@ -722,12 +722,11 @@ export const defaultDesignersPage: DesignersPageContent = {
       buttonHref: "/designers/featured-designers",
     },
     {
-      badge: "Directory",
-      title: "All Designer Brands",
-      description:
-        "Use search and A-Z filtering to quickly find every designer available in-store.",
-      buttonLabel: "Browse A-Z",
-      buttonHref: "/designers/all-designer-brands",
+      badge: "Shop Brands",
+      title: "Shop by Brand",
+      description: "Search and filter designer brands represented in the online shop.",
+      buttonLabel: "Shop All Brands",
+      buttonHref: "/shop/brands",
     },
     {
       title: "Need Brand Recommendations?",

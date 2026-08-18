@@ -71,8 +71,13 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/designers/all-designer-brands",
+        destination: "/shop/brands",
+        permanent: true,
+      },
+      {
         source: "/designers/all-designer-brands/",
-        destination: "/designers/all-designer-brands",
+        destination: "/shop/brands",
         permanent: true,
       },
       {

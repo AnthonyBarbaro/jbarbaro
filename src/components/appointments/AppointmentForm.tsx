@@ -68,8 +68,9 @@ function formatSelectedDate(dateValue: string) {
 
 export function AppointmentForm({ locations, services }: AppointmentFormProps) {
   const quickDates = useMemo(() => getUpcomingDates(8), []);
+  const selectedLocation = locations[0];
+  const locationSlug = selectedLocation?.slug ?? "";
 
-  const [locationSlug, setLocationSlug] = useState(locations[0]?.slug || "");
   const [serviceType, setServiceType] = useState(services[0] || "");
   const [preferredDate, setPreferredDate] = useState("");
   const [preferredTimeWindow, setPreferredTimeWindow] = useState("");
@@ -83,11 +84,12 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
   const [notes, setNotes] = useState("");
   const [submission, setSubmission] = useState<SubmissionState>({ status: "idle" });
 
-  const selectedLocation = locations.find((location) => location.slug === locationSlug);
   const selectedDateLabel = formatSelectedDate(preferredDate);
   const submissionFeedback =
     submission.status === "success" || submission.status === "error" ? submission.message : "";
   const canSubmit =
+    locationSlug.length > 0 &&
+    serviceType.trim().length > 0 &&
     name.trim().length > 0 &&
     email.trim().length > 0 &&
     phone.trim().length > 0 &&
@@ -135,7 +137,11 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
         setTimeSlots(slots);
         setPreferredTimeWindow((current) => (slots.includes(current) ? current : ""));
         setSlotStatus("ready");
-        setSlotMessage(slots.length === 0 ? payload.message || "No appointment times are available for this date." : "");
+        setSlotMessage(
+          slots.length === 0
+            ? payload.message || "No appointment times are available for this date."
+            : "",
+        );
       } catch (error) {
         if (cancelled) {
           return;
@@ -204,7 +210,8 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
 
       setSubmission({
         status: "success",
-        message: payload.message || `Appointment request submitted. Reference ${payload.reference}.`,
+        message:
+          payload.message || `Appointment request submitted. Reference ${payload.reference}.`,
       });
       setPreferredTimeWindow("");
       setNotes("");
@@ -223,48 +230,38 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="rounded-2xl border border-ink/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.97),rgba(231,222,211,0.52))] p-3 sm:p-4">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">Showroom</label>
-                  <p className="text-xs text-smoke/85">Choose your preferred in-store location.</p>
+                  <p className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
+                    Appointment Showroom
+                  </p>
+                  {selectedLocation ? (
+                    <>
+                      <p className="mt-1 text-sm font-semibold text-ink">{selectedLocation.name}</p>
+                      <p className="mt-1 text-xs text-smoke/85">{selectedLocation.phone}</p>
+                    </>
+                  ) : (
+                    <p className="mt-1 text-sm text-ink">Appointment scheduling is unavailable.</p>
+                  )}
                 </div>
-                <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                  Step 1
+                <span className="rounded-full border border-deep-teal/20 bg-deep-teal/8 px-2.5 py-1 text-xs font-semibold tracking-[0.08em] text-deep-teal uppercase">
+                  In Store
                 </span>
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                {locations.map((location) => {
-                  const selected = locationSlug === location.slug;
-                  return (
-                    <button
-                      key={location.slug}
-                      type="button"
-                      onClick={() => {
-                        setLocationSlug(location.slug);
-                        setPreferredTimeWindow("");
-                      }}
-                      className={selected
-                        ? "rounded-2xl border border-gold/50 bg-ink px-3 py-3 text-left text-ivory shadow-[0_10px_22px_rgba(15,23,42,0.3)] transition"
-                        : "rounded-2xl border border-ink/10 bg-white px-3 py-3 text-left text-smoke transition hover:border-ink/20 hover:text-ink"}
-                    >
-                      <p className="text-sm font-semibold">{location.name}</p>
-                      <p className={selected ? "mt-1 text-xs text-ivory/80" : "mt-1 text-xs text-smoke/85"}>
-                        {location.phone}
-                      </p>
-                    </button>
-                  );
-                })}
               </div>
             </div>
 
             <div className="space-y-2 rounded-2xl border border-ink/10 bg-white/90 p-3 sm:p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">Service Type</label>
-                  <p className="text-xs text-smoke/85">Select what you need during your in-person appointment.</p>
+                  <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
+                    Service Type
+                  </label>
+                  <p className="text-xs text-smoke/85">
+                    Select what you need during your in-person appointment.
+                  </p>
                 </div>
                 <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                  Step 2
+                  Step 1
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -275,9 +272,11 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                       key={service}
                       type="button"
                       onClick={() => setServiceType(service)}
-                      className={selected
-                        ? "rounded-2xl border border-gold/45 bg-gold/18 px-3 py-2.5 text-left text-ink transition"
-                        : "rounded-2xl border border-ink/10 bg-white px-3 py-2.5 text-left text-smoke transition hover:border-ink/20 hover:text-ink"}
+                      className={
+                        selected
+                          ? "rounded-2xl border border-gold/45 bg-gold/18 px-3 py-2.5 text-left text-ink transition"
+                          : "rounded-2xl border border-ink/10 bg-white px-3 py-2.5 text-left text-smoke transition hover:border-ink/20 hover:text-ink"
+                      }
                     >
                       <span className="text-sm font-semibold">{service}</span>
                     </button>
@@ -288,9 +287,11 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
 
             <div className="space-y-2 rounded-2xl border border-ink/10 bg-white/90 p-3 sm:p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">Pick a Date *</label>
+                <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
+                  Pick a Date *
+                </label>
                 <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                  Step 3
+                  Step 2
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -304,11 +305,15 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                         setPreferredDate(date.value);
                         setPreferredTimeWindow("");
                       }}
-                      className={selected
-                        ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-white transition"
-                        : "rounded-2xl border border-ink/10 bg-white px-3 py-2 text-left text-smoke transition hover:border-ink/20 hover:text-ink"}
+                      className={
+                        selected
+                          ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-white transition"
+                          : "rounded-2xl border border-ink/10 bg-white px-3 py-2 text-left text-smoke transition hover:border-ink/20 hover:text-ink"
+                      }
                     >
-                      <div className="text-[11px] font-semibold tracking-[0.08em] uppercase">{date.weekday}</div>
+                      <div className="text-[11px] font-semibold tracking-[0.08em] uppercase">
+                        {date.weekday}
+                      </div>
                       <div className="text-sm font-semibold">{date.label}</div>
                     </button>
                   );
@@ -336,11 +341,15 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
             <div className="space-y-2 rounded-2xl border border-ink/10 bg-white/90 p-3 sm:p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">Pick a Time *</label>
-                  <p className="text-xs text-smoke/85">Live slot availability for in-store appointments.</p>
+                  <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
+                    Pick a Time *
+                  </label>
+                  <p className="text-xs text-smoke/85">
+                    Live slot availability for in-store appointments.
+                  </p>
                 </div>
                 <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                  Step 4
+                  Step 3
                 </span>
               </div>
 
@@ -361,12 +370,16 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                         key={slot}
                         type="button"
                         onClick={() => setPreferredTimeWindow(slot)}
-                        className={selected
-                          ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-white transition"
-                          : "rounded-2xl border border-ink/10 bg-white px-3 py-2 text-left text-smoke transition hover:border-ink/20 hover:text-ink"}
+                        className={
+                          selected
+                            ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-white transition"
+                            : "rounded-2xl border border-ink/10 bg-white px-3 py-2 text-left text-smoke transition hover:border-ink/20 hover:text-ink"
+                        }
                       >
                         <div className="text-sm font-semibold">{slot}</div>
-                        <div className={selected ? "text-xs text-white/85" : "text-xs text-smoke/85"}>
+                        <div
+                          className={selected ? "text-xs text-white/85" : "text-xs text-smoke/85"}
+                        >
                           Local store time
                         </div>
                       </button>
@@ -380,19 +393,25 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
 
             {selectedDateLabel && preferredTimeWindow ? (
               <div className="rounded-2xl border border-deep-teal/25 bg-deep-teal/8 px-3 py-2.5">
-                <p className="text-[11px] font-semibold tracking-[0.08em] text-deep-teal uppercase">Selected In-Store Appointment</p>
+                <p className="text-[11px] font-semibold tracking-[0.08em] text-deep-teal uppercase">
+                  Selected In-Store Appointment
+                </p>
                 <p className="text-sm font-semibold text-ink">
                   {selectedDateLabel} at {preferredTimeWindow}
                 </p>
-                <p className="text-xs text-smoke">{selectedLocation?.name || "Selected location"}</p>
+                <p className="text-xs text-smoke">
+                  {selectedLocation?.name || "Selected location"}
+                </p>
               </div>
             ) : null}
 
             <div className="rounded-2xl border border-ink/10 bg-white/90 p-3 sm:p-4">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">Contact Details *</label>
+                <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
+                  Contact Details *
+                </label>
                 <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                  Step 5
+                  Step 4
                 </span>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -447,7 +466,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                 }
               >
                 {submission.status === "idle"
-                  ? "Required: location, service, date, time, name, email, and phone."
+                  ? "Required: service, date, time, name, email, and phone."
                   : submissionFeedback}
               </p>
               <Button type="submit" disabled={!canSubmit}>
@@ -465,7 +484,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
             <ul className="mt-4 space-y-3 text-sm leading-7 text-smoke">
               <li className="flex items-start gap-2">
                 <MapPin className="mt-1 h-4 w-4 text-deep-teal" />
-                Dedicated showroom appointment at your selected location.
+                Dedicated showroom appointment at The Mall at Partridge Creek.
               </li>
               <li className="flex items-start gap-2">
                 <CalendarClock className="mt-1 h-4 w-4 text-deep-teal" />
@@ -491,7 +510,8 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
           <CardContent>
             <h3 className="font-heading text-2xl sm:text-3xl">Need Help Choosing Service?</h3>
             <p className="mt-3 text-sm leading-7 text-ivory/80">
-              Choose the closest service now. Our team can adjust details when confirming your appointment.
+              Choose the closest service now. Our team can adjust details when confirming your
+              appointment.
             </p>
           </CardContent>
         </Card>

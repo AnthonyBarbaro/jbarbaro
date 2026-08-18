@@ -88,6 +88,7 @@ export type ShopifyCartSnapshot = {
     variantTitle: string | null;
     productTitle: string | null;
     productHandle: string | null;
+    productType: string | null;
     selectedOptions: { name: string; value: string }[];
     image: {
       url: string;

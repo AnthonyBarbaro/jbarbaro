@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { locationMap } from "@/data/locations";
+import { appointmentLocationMap } from "@/data/locations";
 import { sendAppointmentEmails } from "@/lib/email";
 import { getHolidayName, isClosedHoliday } from "@/lib/holidays";
 import { getAvailableTimeSlots } from "@/lib/hours";
@@ -36,14 +36,17 @@ type LiveAvailabilitySuccess = {
   message?: string;
 };
 
+const INVALID_APPOINTMENT_LOCATION_MESSAGE =
+  "Appointments are currently available at The Mall at Partridge Creek only.";
+
 async function getLiveAvailability(
   locationSlug: string,
   isoDate: string,
 ): Promise<LiveAvailabilityError | LiveAvailabilitySuccess> {
-  const location = locationMap[locationSlug];
+  const location = appointmentLocationMap[locationSlug];
 
   if (!location) {
-    return { error: "Invalid location selected." } as LiveAvailabilityError;
+    return { error: INVALID_APPOINTMENT_LOCATION_MESSAGE } as LiveAvailabilityError;
   }
 
   const selectedDate = new Date(`${isoDate}T00:00:00`);
@@ -70,7 +73,10 @@ async function getLiveAvailability(
     location,
     selectedDate,
     availableSlots: allSlots,
-    message: allSlots.length === 0 ? "No appointment times are available for this date. Please choose another day." : undefined,
+    message:
+      allSlots.length === 0
+        ? "No appointment times are available for this date. Please choose another day."
+        : undefined,
   } as LiveAvailabilitySuccess;
 }
 
@@ -107,10 +113,10 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = parsed.data;
-    const location = locationMap[payload.locationSlug];
+    const location = appointmentLocationMap[payload.locationSlug];
 
     if (!location) {
-      return NextResponse.json({ message: "Invalid location selected." }, { status: 400 });
+      return NextResponse.json({ message: INVALID_APPOINTMENT_LOCATION_MESSAGE }, { status: 400 });
     }
 
     const preferredDate = new Date(`${payload.preferredDate}T00:00:00`);
@@ -138,7 +144,8 @@ export async function POST(request: NextRequest) {
     if (!liveAvailability.availableSlots.includes(payload.preferredTimeWindow)) {
       return NextResponse.json(
         {
-          message: "That appointment time is not available for the selected date. Please choose another available slot.",
+          message:
+            "That appointment time is not available for the selected date. Please choose another available slot.",
           availableSlots: liveAvailability.availableSlots,
         },
         { status: 400 },

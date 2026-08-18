@@ -4,6 +4,7 @@ import { MapPin, Phone, Ruler, ShieldCheck, Store, Tags } from "lucide-react";
 
 import { CollectionRail } from "@/components/home/CollectionRail";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
+import { NewArrivalsCarousel } from "@/components/home/NewArrivalsCarousel";
 import { LocationOpenBadge } from "@/components/locations/LocationOpenBadge";
 import { ShowroomGallery } from "@/components/locations/ShowroomGallery";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
@@ -12,13 +13,13 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
-import { brands } from "@/data/brands";
 import { locations } from "@/data/locations";
 import { partridgeCreekShowroomPhotos } from "@/data/showroom-gallery";
 import { pageContent } from "@/lib/site-content";
 import { buildMetadata } from "@/lib/seo";
+import { getShopBrands, type ShopBrand } from "@/lib/shopify/brands";
 import { resolveMenCategories } from "@/lib/shopify/men-categories";
-import { getBestSellingProducts, getShopProducts } from "@/lib/shopify/products";
+import { getBestSellingProducts, getNewArrivalProducts } from "@/lib/shopify/products";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { formatPhone } from "@/lib/utils";
 
@@ -80,19 +81,6 @@ const categoryPresentation: Record<string, { href: string; name: string }> = {
   suits: { href: "/categories/suits", name: "Suits" },
 };
 const DEFAULT_CATEGORY_IMAGE = "/images/locations/partridge-creek/showroom-02.jpg";
-const inStoreBrandSlugs = [
-  "7-downie-st",
-  "7-for-all-mankind",
-  "ag-jeans",
-  "alberto",
-  "brax",
-  "canali",
-  "ermenegildo-zegna",
-  "eton",
-];
-const inStoreBrands = inStoreBrandSlugs
-  .map((slug) => brands.find((brand) => brand.slug === slug))
-  .filter((brand): brand is (typeof brands)[number] => Boolean(brand));
 
 function normalizeCategory(value: string) {
   return value
@@ -145,10 +133,6 @@ function getStorefrontCategories(categories: ResolvedCategory[]) {
     });
 }
 
-function availableProducts(products: ShopifyProduct[]) {
-  return products.filter((product) => product.variants.some((variant) => variant.availableForSale));
-}
-
 function uniqueProducts(products: ShopifyProduct[]) {
   return Array.from(new Map(products.map((product) => [product.id, product])).values());
 }
@@ -157,23 +141,26 @@ export default async function HomePage() {
   const resolvedCategories = await resolveMenCategories(50, 1);
   const categories = getStorefrontCategories(resolvedCategories);
   let bestSellers: ShopifyProduct[] = [];
+  let featuredShopBrands: ShopBrand[] = [];
   let newArrivals: ShopifyProduct[] = [];
 
   try {
-    bestSellers = uniqueProducts(availableProducts(await getBestSellingProducts(24))).slice(0, 8);
+    bestSellers = uniqueProducts(await getBestSellingProducts(25)).slice(0, 25);
   } catch (error) {
     console.error("Unable to load homepage best sellers.", error);
   }
 
   try {
-    newArrivals = availableProducts(await getShopProducts(24));
+    newArrivals = uniqueProducts(await getNewArrivalProducts(20)).slice(0, 20);
   } catch (error) {
     console.error("Unable to load homepage new arrivals.", error);
   }
 
-  newArrivals = uniqueProducts(
-    newArrivals.filter((product) => !bestSellers.some((item) => item.id === product.id)),
-  ).slice(0, 4);
+  try {
+    featuredShopBrands = (await getShopBrands()).slice(0, 8);
+  } catch (error) {
+    console.error("Unable to load homepage brands.", error);
+  }
 
   return (
     <>
@@ -208,12 +195,14 @@ export default async function HomePage() {
           </div>
 
           {bestSellers.length > 0 ? (
-            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {bestSellers.map((product) => (
                 <ShopProductCard
                   key={product.id}
                   product={product}
-                  imageSizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  headingLevel="h3"
+                  imagePresentation="filled"
+                  imageSizes="(max-width: 639px) 50vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 230px"
                 />
               ))}
             </div>
@@ -236,42 +225,21 @@ export default async function HomePage() {
           )}
 
           {newArrivals.length > 0 ? (
-            <>
-              <div className="mt-12 flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold tracking-[0.18em] text-deep-teal uppercase">
-                    New Arrivals
-                  </p>
-                  <h2 className="mt-2 font-heading text-3xl text-ink sm:text-4xl">
-                    Fresh on the Floor
-                  </h2>
-                </div>
-                <Link
-                  href="/shop?top=new#top-picks"
-                  className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
+            <NewArrivalsCarousel itemCount={newArrivals.length}>
+              {newArrivals.map((product) => (
+                <li
+                  key={product.id}
+                  className="w-[82vw] max-w-80 shrink-0 snap-start sm:w-[calc((100%_-_1rem)/2)] sm:max-w-none md:w-[calc((100%_-_2rem)/3)] lg:w-[calc((100%_-_3rem)/4)] xl:w-[calc((100%_-_4rem)/5)]"
                 >
-                  Shop New Arrivals
-                </Link>
-              </div>
-              <div
-                role="list"
-                aria-label="Fresh on the Floor products"
-                className="mt-6 -mr-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain pr-4 pb-3 [scrollbar-width:none] sm:mr-0 sm:grid sm:snap-none sm:grid-cols-2 sm:overflow-visible sm:pr-0 sm:pb-0 xl:grid-cols-4 [&::-webkit-scrollbar]:hidden"
-              >
-                {newArrivals.map((product) => (
-                  <div
-                    key={product.id}
-                    role="listitem"
-                    className="w-[82%] max-w-80 shrink-0 snap-start sm:w-auto sm:max-w-none sm:snap-none"
-                  >
-                    <ShopProductCard
-                      product={product}
-                      imageSizes="(max-width: 639px) 82vw, (max-width: 1279px) 50vw, 25vw"
-                    />
-                  </div>
-                ))}
-              </div>
-            </>
+                  <ShopProductCard
+                    product={product}
+                    headingLevel="h3"
+                    imagePresentation="filled"
+                    imageSizes="(max-width: 639px) 82vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, 230px"
+                  />
+                </li>
+              ))}
+            </NewArrivalsCarousel>
           ) : null}
         </Container>
       </WaveSection>
@@ -410,78 +378,78 @@ export default async function HomePage() {
             ))}
           </div>
 
-          <div className="mt-12 border-t border-ink/10 pt-10">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <Badge variant="gold">In-Store Designers</Badge>
-                <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
-                  Brands carried in store.
-                </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-                  Visit J. Barbaro for premium menswear labels selected for fit, fabric, and
-                  wardrobe longevity.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <ButtonLink
-                  href="/designers/all-designer-brands"
-                  variant="secondary"
-                  className="w-full sm:w-auto"
-                >
-                  Browse Designers
-                </ButtonLink>
-                <ButtonLink
-                  href="/schedule-appointment"
-                  variant="teal"
-                  className="w-full sm:w-auto"
-                >
-                  Book Visit
+          {featuredShopBrands.length > 0 ? (
+            <div className="mt-12 border-t border-ink/10 pt-10">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <Badge variant="gold">Designer Brands</Badge>
+                  <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
+                    Shop by brand.
+                  </h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
+                    Browse designer labels represented in our online catalog and go straight to
+                    their products.
+                  </p>
+                </div>
+                <ButtonLink href="/shop/brands" className="w-full sm:w-auto">
+                  Shop All Brands
                 </ButtonLink>
               </div>
-            </div>
 
-            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-              {inStoreBrands.map((brand) => (
-                <Link
-                  key={brand.slug}
-                  href={`/collection-brand/${brand.slug}`}
-                  className="group block"
-                >
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-ink/10 bg-stone shadow-sm shadow-ink/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-gold/50">
-                    <Image
-                      src={brand.image}
-                      alt={`${brand.name} designer collection`}
-                      fill
-                      sizes="(max-width: 768px) 50vw, 25vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-ink/82 via-ink/20 to-transparent" />
-                    <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-md border border-white/45 bg-white/86 p-4 shadow-[0_18px_40px_-26px_rgba(14,23,38,0.55)] backdrop-blur-sm">
-                      <div className="relative h-16 sm:h-20">
-                        <Image
-                          src={brand.logo}
-                          alt={`${brand.name} logo`}
-                          fill
-                          sizes="180px"
-                          className="object-contain"
-                        />
+              <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+                {featuredShopBrands.map((brand) => {
+                  const brandImage = brand.presentation?.image ?? brand.image?.url;
+                  const brandLogo = brand.presentation?.logo;
+
+                  return (
+                    <Link
+                      key={brand.slug}
+                      href={`/shop/brands/${brand.slug}`}
+                      className="group block"
+                    >
+                      <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-ink/10 bg-product-canvas shadow-sm shadow-ink/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-gold/50">
+                        {brandImage ? (
+                          <Image
+                            src={brandImage}
+                            alt=""
+                            fill
+                            sizes="(max-width: 768px) 50vw, 25vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+                          />
+                        ) : null}
+                        <div className="absolute inset-0 bg-gradient-to-t from-ink/82 via-ink/20 to-transparent" />
+                        <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-md border border-white/45 bg-white/88 p-4 shadow-[0_18px_40px_-26px_rgba(14,23,38,0.55)] backdrop-blur-sm">
+                          {brandLogo ? (
+                            <div className="relative h-16 sm:h-20">
+                              <Image
+                                src={brandLogo}
+                                alt=""
+                                fill
+                                sizes="180px"
+                                className="object-contain"
+                              />
+                            </div>
+                          ) : (
+                            <p className="text-center font-heading text-xl leading-tight text-ink sm:text-2xl">
+                              {brand.name}
+                            </p>
+                          )}
+                        </div>
+                        <div className="absolute inset-x-0 bottom-0 p-4 text-center text-white">
+                          <h3 className="text-xs font-semibold tracking-[0.12em] uppercase">
+                            {brand.name}
+                          </h3>
+                          <p className="mt-1 text-xs text-white/78">
+                            {brand.productCount} product{brand.productCount === 1 ? "" : "s"}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="absolute inset-x-0 bottom-0 p-4">
-                      <h3 className="text-center text-xs font-semibold tracking-[0.12em] text-white uppercase">
-                        {brand.name}
-                      </h3>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-
-            <p className="mt-5 text-center text-xs leading-5 text-smoke">
-              Brand selection and inventory vary by location. Book ahead and our team can prepare
-              options around your size and occasion.
-            </p>
-          </div>
+          ) : null}
         </Container>
       </WaveSection>
 

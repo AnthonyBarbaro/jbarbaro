@@ -39,6 +39,7 @@ import {
   parseFitProfile,
   type ProductFitRecommendation,
 } from "@/lib/fit-profile";
+import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
 import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
@@ -80,7 +81,17 @@ function getOptionMap(product: ShopifyProduct) {
     .filter((group) => group.name.trim().toLowerCase() !== "title" && group.values.length > 0);
 }
 
-function getProductOptionLabel(product: ShopifyProduct, name: string) {
+function getProductOptionLabel(
+  product: ShopifyProduct,
+  name: string,
+  optionPresentation: ReturnType<typeof getProductOptionPresentation>,
+) {
+  const importedLabel = optionPresentation.getLabel(name);
+
+  if (importedLabel !== name) {
+    return importedLabel;
+  }
+
   if (
     isSuitSizingProduct(product) &&
     name.toLowerCase().includes("size") &&
@@ -164,6 +175,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
   const images = getProductImages(product);
   const optionGroups = getOptionMap(product);
+  const optionPresentation = getProductOptionPresentation(product);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
     buildInitialOptionState(initialVariant),
@@ -231,7 +243,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         option.name.trim().toLowerCase() !== "title" &&
         option.value.trim().toLowerCase() !== "default title",
     )
-    .map((option) => option.value)
+    .map((option) => optionPresentation.getSummaryPart(option.name, option.value))
     .join(" · ");
   const metaCategoryLabel = primaryCollection?.title || product.productType;
   const visibleOptionGroups = optionGroups;
@@ -892,7 +904,14 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   {visibleOptionGroups.map((group) => {
                     const labelId = `product-option-${group.name.toLowerCase().replace(/\s+/g, "-")}`;
                     const selectedValue = selectedOptions[group.name] ?? "";
-                    const displayGroupName = getProductOptionLabel(product, group.name);
+                    const displayGroupName = getProductOptionLabel(
+                      product,
+                      group.name,
+                      optionPresentation,
+                    );
+                    const displaySelectedValue = selectedValue
+                      ? optionPresentation.getValue(group.name, selectedValue)
+                      : "";
                     const isEuropeanJacketSize =
                       getProductSuitSizeSystem(product) === "EU" &&
                       group.name.toLowerCase().includes("size");
@@ -918,7 +937,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                             ) : null}
                             {selectedValue ? (
                               <p className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
-                                {selectedValue}
+                                {displaySelectedValue}
                               </p>
                             ) : null}
                           </div>
@@ -932,6 +951,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                           className="mt-3 flex flex-wrap gap-2"
                         >
                           {group.values.map((value) => {
+                            const displayValue = optionPresentation.getValue(group.name, value);
                             const isSelected = selectedValue === value;
                             const isAvailable = Boolean(
                               findAvailableVariantForOption(
@@ -950,7 +970,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                                 key={value}
                                 type="button"
                                 aria-pressed={isSelected}
-                                aria-label={`${displayGroupName} ${value}${
+                                aria-label={`${displayGroupName} ${displayValue}${
                                   usJacketEquivalent ? `, equivalent to ${usJacketEquivalent}` : ""
                                 }${isAvailable ? "" : ", sold out"}`}
                                 disabled={!isAvailable}
@@ -964,7 +984,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                                       : "border-ink/8 bg-stone/60 text-smoke/60 line-through",
                                 )}
                               >
-                                <span>{value}</span>
+                                <span>{displayValue}</span>
                                 {usJacketEquivalent ? (
                                   <span
                                     className={cn(

@@ -10,11 +10,11 @@ import { WaveSection } from "@/components/ui/WaveSection";
 import { getProductSizeKind, type ProductSizeKind } from "@/lib/fit-profile";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import {
+  getAllShopProductPreviews,
   getBestSellingProducts,
   getProductsByVendor,
   getRecommendedProducts,
   getShopProduct,
-  getShopProductPreviews,
 } from "@/lib/shopify/products";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 
@@ -107,7 +107,7 @@ async function loadShopProduct(handle: string) {
 
 export async function generateStaticParams() {
   try {
-    const products = await getShopProductPreviews(250);
+    const products = await getAllShopProductPreviews();
     return products.map((product) => ({ handle: product.handle }));
   } catch (error) {
     console.error("Unable to build static params for Shopify product pages.", error);

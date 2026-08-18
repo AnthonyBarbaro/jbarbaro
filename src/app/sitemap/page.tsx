@@ -5,12 +5,12 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
-import { brands } from "@/data/brands";
 import { locations } from "@/data/locations";
 import { getCollection } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
+import { getShopBrands, type ShopBrand } from "@/lib/shopify/brands";
 import { resolveMenCategories } from "@/lib/shopify/men-categories";
-import { getShopProductPreviews } from "@/lib/shopify/products";
+import { getAllShopProductPreviews } from "@/lib/shopify/products";
 import type { ShopifyProductPreview } from "@/lib/shopify/types";
 
 export const metadata = buildMetadata({
@@ -24,10 +24,17 @@ export default async function HtmlSitemapPage() {
   const blogPosts = getCollection("blog");
   const stylePosts = getCollection("style-guide");
   const menCategories = await resolveMenCategories(40, 1);
+  let shopBrands: ShopBrand[] = [];
   let shopProducts: ShopifyProductPreview[] = [];
 
   try {
-    shopProducts = await getShopProductPreviews(250);
+    shopBrands = await getShopBrands();
+  } catch (error) {
+    console.error("Unable to load Shopify brands for the HTML sitemap.", error);
+  }
+
+  try {
+    shopProducts = await getAllShopProductPreviews();
   } catch (error) {
     console.error("Unable to load Shopify product previews for the HTML sitemap.", error);
   }
@@ -56,15 +63,27 @@ export default async function HtmlSitemapPage() {
     },
     {
       title: "Shop Products",
-      links: shopProducts.map((product) => ({ label: product.title, href: `/shop/${product.handle}` })),
+      links: shopProducts.map((product) => ({
+        label: product.title,
+        href: `/shop/${product.handle}`,
+      })),
     },
     {
       title: "Locations",
-      links: locations.map((location) => ({ label: location.name, href: `/location/${location.slug}` })),
+      links: locations.map((location) => ({
+        label: location.name,
+        href: `/location/${location.slug}`,
+      })),
     },
     {
       title: "Brands",
-      links: brands.map((brand) => ({ label: brand.name, href: `/collection-brand/${brand.slug}` })),
+      links: [
+        { label: "Shop All Brands", href: "/shop/brands" },
+        ...shopBrands.map((brand) => ({
+          label: brand.name,
+          href: `/shop/brands/${brand.slug}`,
+        })),
+      ],
     },
     {
       title: "Blog Posts",
@@ -78,7 +97,10 @@ export default async function HtmlSitemapPage() {
 
   return (
     <>
-      <PageHero title="HTML Sitemap" description="A complete index of routes and resources available on jasonbarbaro.com." />
+      <PageHero
+        title="HTML Sitemap"
+        description="A complete index of routes and resources available on jasonbarbaro.com."
+      />
       <WaveSection topWave="C" background="stone">
         <Container>
           <div className="grid gap-5 md:grid-cols-2">

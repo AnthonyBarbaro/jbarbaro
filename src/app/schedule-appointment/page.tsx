@@ -2,7 +2,7 @@ import { AppointmentForm } from "@/components/appointments/AppointmentForm";
 import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
-import { locations } from "@/data/locations";
+import { appointmentLocations } from "@/data/locations";
 import { pageContent } from "@/lib/site-content";
 import { buildMetadata } from "@/lib/seo";
 
@@ -20,7 +20,10 @@ export default function ScheduleAppointmentPage() {
       <PageHero title={schedulePage.hero.title} description={schedulePage.hero.description} />
       <WaveSection topWave="A" background="stone">
         <Container>
-          <AppointmentForm locations={locations} services={servicesPage.appointmentServices} />
+          <AppointmentForm
+            locations={appointmentLocations}
+            services={servicesPage.appointmentServices}
+          />
         </Container>
       </WaveSection>
     </>

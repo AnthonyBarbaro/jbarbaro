@@ -69,9 +69,7 @@ type FitDraftInput = Omit<
   heightInches: number | "";
   weightLbs: number | "";
 };
-const DEFAULT_AVAILABILITY: AvailabilityOption = "in-stock";
-const INITIAL_VISIBLE_PRODUCTS = 36;
-const PRODUCT_LOAD_STEP = 36;
+const DEFAULT_AVAILABILITY: AvailabilityOption = "all";
 const sizeGroupDefinitions: Array<{
   kind: ProductSizeKind;
   label: string;
@@ -317,12 +315,8 @@ export function ShopCatalogClient({
   const [activeTopPicksId, setActiveTopPicksId] = useState<string | null>(() =>
     urlTopPicksId && ["best", "new", "under-100"].includes(urlTopPicksId) ? urlTopPicksId : null,
   );
-  const [productWindow, setProductWindow] = useState({
-    signature: "",
-    count: INITIAL_VISIBLE_PRODUCTS,
-  });
   const pillBarRef = useRef<HTMLDivElement | null>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(urlQuery);
   const [sort, setSort] = useState<SortOption>("featured");
   const [availability, setAvailability] = useState<AvailabilityOption>(() =>
     urlQuery ? "all" : DEFAULT_AVAILABILITY,
@@ -568,13 +562,6 @@ export function ShopCatalogClient({
   } else if (deferredSort === "title-asc") {
     filteredProducts = [...filteredProducts].sort((a, b) => a.title.localeCompare(b.title));
   }
-
-  const visibleProductCount =
-    productWindow.signature === appliedFilterSignature
-      ? productWindow.count
-      : INITIAL_VISIBLE_PRODUCTS;
-  const visibleProducts = filteredProducts.slice(0, visibleProductCount);
-  const remainingProductCount = Math.max(0, filteredProducts.length - visibleProducts.length);
 
   function toggleValue(list: string[], value: string, setter: (next: string[]) => void) {
     shouldScrollToResultsRef.current = false;
@@ -2649,7 +2636,7 @@ export function ShopCatalogClient({
         className={cn("mt-3 text-sm text-smoke", isFiltering && "text-deep-teal")}
         aria-live="polite"
       >
-        {`Showing ${visibleProducts.length} of ${filteredProducts.length} matching ${pluralize(filteredProducts.length, "product")}`}
+        {`Showing ${filteredProducts.length} matching ${pluralize(filteredProducts.length, "product")}`}
         {isFiltering ? " · Updating" : ""}
       </p>
 
@@ -2722,7 +2709,7 @@ export function ShopCatalogClient({
                   : "translate-y-0 opacity-100 blur-0",
               )}
             >
-              {visibleProducts.map((product) => (
+              {filteredProducts.map((product) => (
                 <ShopProductCard
                   key={product.id}
                   product={product}
@@ -2762,26 +2749,6 @@ export function ShopCatalogClient({
               </CardContent>
             </Card>
           )}
-
-          {remainingProductCount > 0 ? (
-            <div className="mt-8 flex flex-col items-center border-t border-ink/10 pt-8 text-center">
-              <p className="text-sm text-smoke">
-                {visibleProducts.length} of {filteredProducts.length} matching products shown
-              </p>
-              <button
-                type="button"
-                onClick={() =>
-                  setProductWindow({
-                    signature: appliedFilterSignature,
-                    count: visibleProductCount + PRODUCT_LOAD_STEP,
-                  })
-                }
-                className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md border border-ink bg-ink px-6 py-2.5 text-xs font-semibold tracking-[0.16em] text-white uppercase transition-colors hover:border-deep-teal hover:bg-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
-              >
-                Show {Math.min(PRODUCT_LOAD_STEP, remainingProductCount)} More
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
     </div>

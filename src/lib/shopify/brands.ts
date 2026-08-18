@@ -45,7 +45,7 @@ async function fetchShopBrandProducts(): Promise<BrandProduct[]> {
     >({
       query: `
         query ShopBrandProducts($cursor: String) {
-          products(first: 250, after: $cursor, query: "available_for_sale:true") {
+          products(first: 250, after: $cursor) {
             nodes {
               vendor
               featuredImage {
@@ -79,7 +79,7 @@ async function fetchShopBrandProducts(): Promise<BrandProduct[]> {
 
 const getShopBrandProductsCached = unstable_cache(
   fetchShopBrandProducts,
-  ["shopify-brand-products"],
+  ["shopify-all-brand-products"],
   { revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS },
 );
 

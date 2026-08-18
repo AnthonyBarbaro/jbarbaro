@@ -87,7 +87,7 @@ export default async function MenCategoryPage({
     permanentRedirect(redirectPath);
   }
 
-  const category = await resolveMenCategory(categorySlug, 250);
+  const category = await resolveMenCategory(categorySlug, 250, true);
 
   if (!category) {
     notFound();

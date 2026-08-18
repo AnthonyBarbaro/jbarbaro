@@ -12,6 +12,8 @@ Modern, SEO-first rebuild of the J. Barbaro Clothiers website using Next.js App 
 
 ## Quick Start
 
+Requires Node.js 24.x and pnpm 10.28.2.
+
 1. Install dependencies:
 
 ```bash

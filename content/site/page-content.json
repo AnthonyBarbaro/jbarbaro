@@ -149,8 +149,8 @@
           "href": "/designers/featured-designers"
         },
         {
-          "label": "Browse All Designers",
-          "href": "/designers/all-designer-brands"
+          "label": "Shop All Brands",
+          "href": "/shop/brands"
         }
       ]
     },
@@ -353,7 +353,7 @@
   },
   "schedulePage": {
     "metaTitle": "Schedule Appointment",
-    "metaDescription": "Schedule a menswear appointment at J. Barbaro Clothiers. Choose location, service type, and preferred date/time.",
+    "metaDescription": "Schedule a menswear appointment at The Mall at Partridge Creek. Choose a service type and preferred date/time.",
     "hero": {
       "title": "Schedule an Appointment",
       "description": "Reserve one-on-one time for styling, tailoring, event wear, or a complete wardrobe refresh."
@@ -391,28 +391,28 @@
     ],
     "featureCards": [
       {
-        "title": "Wedding Party Coordination",
-        "description": "Keep every groomsman aligned with a consistent style direction and sizing process."
+        "title": "Choose Your Look In Store",
+        "description": "Meet with our formalwear team to compare rental and purchase options, coordinate accessories, and plan around your event."
       },
       {
-        "title": "Luxury Fit Standards",
-        "description": "We focus on clean silhouette, event-appropriate styling, and final-detail polish."
+        "title": "Measurements & Fit Checks",
+        "description": "Visit your preferred showroom for measurements, fitting guidance, and a final review before pickup."
       }
     ],
     "closingCard": {
-      "title": "Ready to Start?",
-      "description": "Register your wedding party today and our team will follow up with the next steps.",
+      "title": "Plan Your Store Visit",
+      "description": "Choose a Metro Detroit showroom and book ahead so our team can prepare for your size, event, and timeline.",
       "buttons": [
         {
-          "label": "Register Wedding",
-          "href": "/register-your-wedding"
+          "label": "Schedule Appointment",
+          "href": "/schedule-appointment"
         },
         {
-          "label": "Browse Categories",
-          "href": "/categories"
+          "label": "View Store Locations",
+          "href": "/locations"
         }
       ],
-      "footerLinkLabel": "Go to Registration",
+      "footerLinkLabel": "Register Your Wedding",
       "footerLinkHref": "/register-your-wedding"
     }
   },
@@ -461,8 +461,8 @@
       "title": "Designer Collections",
       "description": "We curate globally respected menswear labels selected for quality, fit consistency, and wardrobe longevity.",
       "ctaPrimary": {
-        "label": "Browse All Designers",
-        "href": "/designers/all-designer-brands"
+        "label": "Shop All Products",
+        "href": "/shop"
       }
     },
     "cards": [
@@ -474,11 +474,11 @@
         "buttonHref": "/designers/featured-designers"
       },
       {
-        "badge": "Directory",
-        "title": "All Designer Brands",
-        "description": "Use search and A-Z filtering to quickly find every designer available in-store.",
-        "buttonLabel": "Browse A-Z",
-        "buttonHref": "/designers/all-designer-brands"
+        "badge": "Shop Brands",
+        "title": "Shop by Brand",
+        "description": "Search and filter designer brands represented in the online shop.",
+        "buttonLabel": "Shop All Brands",
+        "buttonHref": "/shop/brands"
       },
       {
         "title": "Need Brand Recommendations?",

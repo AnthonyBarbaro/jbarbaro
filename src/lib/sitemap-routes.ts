@@ -3,7 +3,7 @@ import { locations } from "@/data/locations";
 import { getCollection } from "@/lib/content";
 import { getShopBrands } from "@/lib/shopify/brands";
 import { getMenCategoryRoutes } from "@/lib/shopify/men-categories";
-import { getShopProductPreviews } from "@/lib/shopify/products";
+import { getAllShopProductPreviews } from "@/lib/shopify/products";
 
 export async function getSitemapRoutes() {
   const staticRoutes = [
@@ -18,7 +18,6 @@ export async function getSitemapRoutes() {
     "/account",
     "/designers",
     "/designers/featured-designers",
-    "/designers/all-designer-brands",
     "/tailored-clothing",
     "/suit-tuxedo-rentals",
     "/register-your-wedding",
@@ -44,7 +43,7 @@ export async function getSitemapRoutes() {
   let shopProductRoutes: string[] = [];
 
   try {
-    shopProductRoutes = (await getShopProductPreviews(250)).map(
+    shopProductRoutes = (await getAllShopProductPreviews()).map(
       (product) => `/shop/${product.handle}`,
     );
   } catch (error) {
@@ -58,8 +57,7 @@ export async function getSitemapRoutes() {
   try {
     shopBrandRoutes = (await getShopBrands()).map((brand) => `/shop/brands/${brand.slug}`);
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unknown Shopify brand sitemap error.";
+    const message = error instanceof Error ? error.message : "Unknown Shopify brand sitemap error.";
     console.error(`Unable to build dynamic /shop/brands sitemap routes: ${message}`);
   }
 

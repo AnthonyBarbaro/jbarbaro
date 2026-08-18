@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import { getShopBrandBySlug, getShopBrands } from "@/lib/shopify/brands";
-import { getProductsByVendor } from "@/lib/shopify/products";
+import { getAllProductsByVendor } from "@/lib/shopify/products";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 
@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: ShopBrandPageProps): Promise<
     if (brand) {
       return buildMetadata({
         title: `Shop ${brand.name} Online`,
-        description: `Shop ${brand.name} menswear online at J. Barbaro Clothiers. ${brand.productCount} item${brand.productCount === 1 ? "" : "s"} available with secure checkout.`,
+        description: `Shop ${brand.name} menswear online at J. Barbaro Clothiers. Browse ${brand.productCount} item${brand.productCount === 1 ? "" : "s"} in the online catalog.`,
         path: `/shop/brands/${brand.slug}`,
         image: brand.presentation?.image ?? brand.image?.url,
       });
@@ -66,7 +66,7 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
     brand = await getShopBrandBySlug(brandSlug);
 
     if (brand) {
-      products = await getProductsByVendor(brand.vendor, 250, true);
+      products = await getAllProductsByVendor(brand.vendor);
     }
   } catch (error) {
     storefrontAvailable = false;
@@ -141,7 +141,7 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
               <p className="text-xs font-semibold tracking-[0.18em] text-deep-teal uppercase">Brand</p>
               <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-ink sm:text-3xl">{brand.name}</h1>
               <p className="mt-2 text-sm leading-6 text-smoke sm:text-base">
-                {products.length} item{products.length === 1 ? "" : "s"} available to shop online.
+                {products.length} item{products.length === 1 ? "" : "s"} in the online catalog.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">

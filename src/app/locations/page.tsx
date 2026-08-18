@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
-import { locations } from "@/data/locations";
+import { appointmentLocationMap, locations } from "@/data/locations";
 import { aggregateRating } from "@/data/testimonials";
 import { buildGoogleMapsEmbedUrl } from "@/lib/maps";
 import { SITE_URL } from "@/lib/constants";
@@ -143,9 +143,23 @@ export default function LocationsPage() {
                     >
                       View Details
                     </ButtonLink>
-                    <ButtonLink href="/schedule-appointment" size="sm" className="w-full sm:w-auto">
-                      Book Visit
-                    </ButtonLink>
+                    {appointmentLocationMap[location.slug] ? (
+                      <ButtonLink
+                        href="/schedule-appointment"
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
+                        Book Visit
+                      </ButtonLink>
+                    ) : (
+                      <ButtonLink
+                        href={formatPhone(location.phone)}
+                        size="sm"
+                        className="w-full sm:w-auto"
+                      >
+                        Call Store
+                      </ButtonLink>
+                    )}
                     <ButtonLink
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.address)}`}
                       target="_blank"

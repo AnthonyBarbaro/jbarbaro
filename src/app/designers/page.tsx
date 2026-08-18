@@ -94,10 +94,12 @@ export default async function DesignersHubPage() {
           <Container>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <Badge variant="teal">Available Online</Badge>
-                <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">Shop designer brands online.</h2>
+                <Badge variant="teal">Online Catalog</Badge>
+                <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">
+                  Shop designer brands online.
+                </h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-                  These labels are in stock and ready to ship from the online shop right now.
+                  Explore designer labels represented in the online catalog.
                 </p>
               </div>
               <ButtonLink href="/shop/brands" variant="secondary" className="w-full sm:w-auto">
@@ -124,7 +126,7 @@ export default async function DesignersHubPage() {
                     ) : brand.image ? (
                       <Image
                         src={brand.image.url}
-                        alt={`${brand.name} product available online`}
+                        alt=""
                         fill
                         sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                         className="object-contain p-5 transition-transform duration-500 group-hover:scale-[1.05]"
@@ -141,7 +143,7 @@ export default async function DesignersHubPage() {
                         {brand.name}
                       </h3>
                       <p className="mt-0.5 text-xs text-smoke">
-                        Shop {brand.productCount} item{brand.productCount === 1 ? "" : "s"}
+                        View {brand.productCount} item{brand.productCount === 1 ? "" : "s"}
                       </p>
                     </div>
                     <span className="shrink-0 rounded-full border border-deep-teal/20 bg-deep-teal/8 px-2.5 py-1 text-xs font-semibold tracking-[0.1em] text-deep-teal uppercase">
@@ -160,20 +162,26 @@ export default async function DesignersHubPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <Badge variant="gold">In-Store Collections</Badge>
-              <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">{designersPage.popularHeading}</h2>
+              <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">
+                {designersPage.popularHeading}
+              </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-                Explore designer profiles carried across our Metro Detroit stores, then book a visit and we will
-                prepare options in your size.
+                Explore designer profiles carried across our Metro Detroit stores, then book a visit
+                and we will prepare options in your size.
               </p>
             </div>
-            <ButtonLink href="/designers/all-designer-brands" variant="secondary" className="w-full sm:w-auto">
-              Browse All Designers
+            <ButtonLink href="/shop/brands" variant="secondary" className="w-full sm:w-auto">
+              Shop Online Brands
             </ButtonLink>
           </div>
 
           <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 xl:gap-4">
             {featuredBrands.slice(0, 8).map((brand) => (
-              <Link key={brand.slug} href={`/collection-brand/${brand.slug}`} className="group block">
+              <Link
+                key={brand.slug}
+                href={`/collection-brand/${brand.slug}`}
+                className="group block"
+              >
                 <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-ink/10 bg-stone shadow-sm shadow-ink/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-gold/50">
                   <Image
                     src={brand.image}
@@ -185,11 +193,19 @@ export default async function DesignersHubPage() {
                   <div className="absolute inset-0 bg-gradient-to-t from-ink/82 via-ink/20 to-transparent" />
                   <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-md border border-white/45 bg-white/88 p-3 shadow-[0_18px_40px_-26px_rgba(14,23,38,0.55)] backdrop-blur-sm sm:p-4">
                     <div className="relative h-12 sm:h-16">
-                      <Image src={brand.logo} alt={`${brand.name} logo`} fill sizes="180px" className="object-contain" />
+                      <Image
+                        src={brand.logo}
+                        alt={`${brand.name} logo`}
+                        fill
+                        sizes="180px"
+                        className="object-contain"
+                      />
                     </div>
                   </div>
                   <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 p-4">
-                    <h3 className="text-xs font-semibold tracking-[0.12em] text-white uppercase">{brand.name}</h3>
+                    <h3 className="text-xs font-semibold tracking-[0.12em] text-white uppercase">
+                      {brand.name}
+                    </h3>
                     {shoppableEditorialSlugs.has(brand.slug) ? (
                       <span className="rounded-full bg-white/92 px-2 py-0.5 text-xs font-semibold tracking-[0.1em] text-deep-teal uppercase">
                         Shop Online
@@ -212,11 +228,17 @@ export default async function DesignersHubPage() {
               return (
                 <Card key={card.title} tone={isInkCard ? "ink" : "ivory"}>
                   <CardContent>
-                    {card.badge ? <Badge variant={index === 0 ? "teal" : "gold"}>{card.badge}</Badge> : null}
-                    <h2 className={`mt-4 font-heading text-2xl sm:text-3xl ${isInkCard ? "text-ivory" : "text-ink"}`}>
+                    {card.badge ? (
+                      <Badge variant={index === 0 ? "teal" : "gold"}>{card.badge}</Badge>
+                    ) : null}
+                    <h2
+                      className={`mt-4 font-heading text-2xl sm:text-3xl ${isInkCard ? "text-ivory" : "text-ink"}`}
+                    >
                       {card.title}
                     </h2>
-                    <p className={`mt-3 text-sm leading-7 ${isInkCard ? "text-ivory/82" : "text-smoke"}`}>
+                    <p
+                      className={`mt-3 text-sm leading-7 ${isInkCard ? "text-ivory/82" : "text-smoke"}`}
+                    >
                       {card.description}
                     </p>
                     {card.buttonHref && card.buttonLabel ? (
@@ -237,9 +259,12 @@ export default async function DesignersHubPage() {
           <div className="mt-10 rounded-lg border border-ink/10 bg-white p-6 sm:p-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="font-heading text-2xl text-ink sm:text-3xl">Ready to shop the collection?</h2>
+                <h2 className="font-heading text-2xl text-ink sm:text-3xl">
+                  Ready to shop the collection?
+                </h2>
                 <p className="mt-2 max-w-2xl text-sm leading-7 text-smoke">
-                  Browse every designer piece available online, or filter the shop by brand, size, and price.
+                  Browse every designer piece available online, or filter the shop by brand, size,
+                  and price.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">

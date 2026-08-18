@@ -372,9 +372,9 @@ Designers hub. It uses `pageContent.designersPage`, renders hero, three CTA card
 
 Featured designers page. It renders breadcrumbs, breadcrumb JSON-LD, hero, and a card grid of all `featuredBrands`, each with image, logo, description, and link to its brand page.
 
-### `/designers/all-designer-brands` - `src/app/designers/all-designer-brands/page.tsx`
+### `/designers/all-designer-brands`
 
-Full brand directory. It renders breadcrumbs, breadcrumb JSON-LD, hero, `BrandSearch`, A-Z jump links, and grouped brand links.
+Legacy brand-directory URL. `next.config.ts` permanently redirects it to the live, shoppable `/shop/brands` directory.
 
 ### `/collection-brand/[brandSlug]` - `src/app/collection-brand/[brandSlug]/page.tsx`
 

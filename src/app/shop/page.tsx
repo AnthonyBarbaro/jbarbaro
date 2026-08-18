@@ -7,7 +7,7 @@ import { ShopCatalogClient } from "@/components/shop/ShopCatalogClient";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
-import { getBestSellingProducts, getShopProducts } from "@/lib/shopify/products";
+import { getAllShopProducts, getBestSellingProducts } from "@/lib/shopify/products";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
@@ -18,7 +18,7 @@ export const metadata = buildMetadata({
     "Shop premium menswear, designer shoes, shirts, suits, accessories, and formalwear from J. Barbaro Clothiers.",
   path: "/shop",
 });
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
 
 const shopDepartments = [
   { label: "Suits", href: "/categories/suits" },
@@ -36,7 +36,7 @@ export default async function ShopPage() {
   let storefrontAvailable = true;
 
   try {
-    products = await getShopProducts(250);
+    products = await getAllShopProducts();
   } catch (error) {
     storefrontAvailable = false;
     console.error("Unable to load Shopify storefront for /shop.", error);
@@ -128,7 +128,7 @@ export default async function ShopPage() {
               </h1>
               <p className="mt-2 text-sm leading-6 text-smoke sm:text-base">
                 {storefrontAvailable
-                  ? `${availableProducts.length || products.length} item${(availableProducts.length || products.length) === 1 ? "" : "s"} available. Use filters or Smart Fit to narrow the floor.`
+                  ? `${products.length} item${products.length === 1 ? "" : "s"} in the online catalog. Use filters or Smart Fit to narrow the floor.`
                   : "The catalog is refreshing right now. Check back shortly or continue to the main collection pages."}
               </p>
             </div>

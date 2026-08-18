@@ -24,10 +24,10 @@ export function FeaturedBrandGrid({ brands }: FeaturedBrandGridProps) {
             </p>
           </div>
           <Link
-            href="/designers/all-designer-brands"
+            href="/shop/brands"
             className="text-sm font-semibold tracking-[0.12em] text-deep-teal uppercase hover:text-ink"
           >
-            View All Brands
+            Shop All Brands
           </Link>
         </div>
 

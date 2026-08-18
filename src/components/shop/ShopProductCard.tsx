@@ -16,6 +16,7 @@ import { cn, formatMoney } from "@/lib/utils";
 type ShopProductCardProps = {
   product: ShopifyProduct;
   fitProfile?: FitProfile | null;
+  imagePresentation?: "default" | "filled";
   imageSizes?: string;
   preferredVariantId?: string | null;
   sizeAvailabilityLabel?: string | null;
@@ -33,6 +34,7 @@ function getSecondaryImage(product: ShopifyProduct) {
 export function ShopProductCard({
   product,
   fitProfile = null,
+  imagePresentation = "default",
   imageSizes = "(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw",
   preferredVariantId = null,
   sizeAvailabilityLabel = null,
@@ -85,7 +87,12 @@ export function ShopProductCard({
         href={`/shop/${product.handle}`}
         className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-inset"
       >
-        <div className="relative overflow-hidden border-b border-ink/8 bg-product-canvas">
+        <div
+          className={cn(
+            "relative overflow-hidden border-b border-ink/8",
+            imagePresentation === "filled" ? "bg-white" : "bg-product-canvas",
+          )}
+        >
           {isSoldOut ? (
             <span className="absolute top-3 right-3 z-[2] rounded-full bg-ink/85 px-2.5 py-1 text-xs font-semibold tracking-[0.12em] text-white uppercase shadow-sm">
               Sold Out
@@ -110,7 +117,8 @@ export function ShopProductCard({
                   fill
                   sizes={imageSizes}
                   className={cn(
-                    "object-contain object-center p-4 transition-all duration-500 sm:p-5",
+                    "object-center transition-all duration-500",
+                    imagePresentation === "filled" ? "object-contain" : "object-contain p-4 sm:p-5",
                     secondaryImage
                       ? "opacity-100 group-hover:scale-[1.03] group-hover:opacity-0"
                       : "group-hover:scale-[1.03]",
@@ -119,10 +127,15 @@ export function ShopProductCard({
                 {secondaryImage ? (
                   <Image
                     src={secondaryImage.url}
-                    alt={secondaryImage.altText || `${product.title} alternate view`}
+                    alt=""
                     fill
                     sizes={imageSizes}
-                    className="object-contain object-center p-4 opacity-0 transition-all duration-500 group-hover:scale-[1.03] group-hover:opacity-100 sm:p-5"
+                    className={cn(
+                      "object-center opacity-0 transition-all duration-500 group-hover:scale-[1.03] group-hover:opacity-100",
+                      imagePresentation === "filled"
+                        ? "object-contain"
+                        : "object-contain p-4 sm:p-5",
+                    )}
                   />
                 ) : null}
               </>

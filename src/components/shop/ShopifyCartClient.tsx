@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { notifyShopifyCartChanged } from "@/lib/shopify/cart-events";
+import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
 import type { ShopifyCartSnapshot } from "@/lib/shopify/types";
 import { formatMoney } from "@/lib/utils";
 
@@ -29,7 +30,11 @@ type CartResponse = {
 
 function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]) {
   if (cartLine.selectedOptions.length > 0) {
-    return cartLine.selectedOptions.map((option) => option.value).join(" / ");
+    const optionPresentation = getProductOptionPresentation(cartLine);
+
+    return cartLine.selectedOptions
+      .map((option) => optionPresentation.getSummaryPart(option.name, option.value))
+      .join(" / ");
   }
 
   if (cartLine.variantTitle && cartLine.variantTitle !== "Default Title") {
@@ -371,8 +376,10 @@ export function ShopifyCartClient() {
 
           {cart.lines.map((line) => {
             const lineMeta = formatLineMeta(line);
+            const optionPresentation = getProductOptionPresentation(line);
             const productHref = line.productHandle ? `/shop/${line.productHandle}` : null;
             const currentSize = getSelectedOptionValue(line.selectedOptions, "size");
+            const sizeLabel = optionPresentation.getLabel("Size");
             const sizeChoices = getSizeChoices(line);
             const isLineMutating = mutatingLineId === line.id;
 
@@ -423,7 +430,7 @@ export function ShopifyCartClient() {
                             htmlFor={`cart-line-size-${line.id}`}
                             className="text-[11px] font-semibold tracking-[0.14em] text-smoke uppercase"
                           >
-                            Size
+                            {sizeLabel}
                           </label>
                           <select
                             id={`cart-line-size-${line.id}`}
@@ -450,7 +457,9 @@ export function ShopifyCartClient() {
                           </p>
                         </div>
                       ) : currentSize ? (
-                        <p className="mt-3 text-xs font-medium text-smoke">Size {currentSize}</p>
+                        <p className="mt-3 text-xs font-medium text-smoke">
+                          {sizeLabel} {optionPresentation.getValue("Size", currentSize)}
+                        </p>
                       ) : null}
 
                       <button

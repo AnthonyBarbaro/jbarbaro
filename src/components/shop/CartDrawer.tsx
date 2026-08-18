@@ -10,6 +10,7 @@ import {
   SHOPIFY_CART_OPEN_EVENT,
   notifyShopifyCartChanged,
 } from "@/lib/shopify/cart-events";
+import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
 import type { ShopifyCartSnapshot } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
@@ -21,7 +22,11 @@ type CartResponse = {
 
 function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]) {
   if (cartLine.selectedOptions.length > 0) {
-    return cartLine.selectedOptions.map((option) => option.value).join(" / ");
+    const optionPresentation = getProductOptionPresentation(cartLine);
+
+    return cartLine.selectedOptions
+      .map((option) => optionPresentation.getSummaryPart(option.name, option.value))
+      .join(" / ");
   }
 
   if (cartLine.variantTitle && cartLine.variantTitle !== "Default Title") {

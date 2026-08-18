@@ -314,16 +314,16 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
   return (
     <>
       <aside className="bg-ink text-white" aria-label="Store promotion">
-        <div className="mx-auto flex max-w-[84rem] items-center justify-center gap-2 px-4 py-2 text-center text-[11px] font-medium tracking-[0.08em] sm:text-xs">
+        <div className="mx-auto flex max-w-[84rem] items-center justify-center gap-2 px-4 py-2 text-center text-xs font-medium tracking-[0.08em]">
           <span className="hidden sm:inline">
-            Personal styling and expert tailoring at two Metro Detroit locations.
+            Free shipping on $400+ orders. Eligible shipping rates up to $25.
           </span>
-          <span className="sm:hidden">Two Metro Detroit stores.</span>
+          <span className="sm:hidden">Free shipping on $400+.</span>
           <Link
-            href="/schedule-appointment"
+            href="/shop"
             className="shrink-0 font-semibold text-gold underline-offset-4 transition-colors hover:text-white hover:underline"
           >
-            Book a Fitting
+            Shop Now
           </Link>
         </div>
       </aside>

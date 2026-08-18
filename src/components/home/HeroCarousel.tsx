@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState, type TouchEvent as ReactTouchEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
 import type { HeroSlide } from "@/types/site";
@@ -12,6 +12,13 @@ type HeroCarouselProps = {
   slides: HeroSlide[];
   badges?: Array<{ label: string }>;
   secondaryCta?: { label: string; href: string };
+};
+
+type SwipeGesture = {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  isDragging: boolean;
 };
 
 function getPrimaryCtaLabel(slide: HeroSlide) {
@@ -58,8 +65,12 @@ function getImagePosition(slide: HeroSlide) {
 export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [isInteractionPaused, setIsInteractionPaused] = useState(false);
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [isHovered, setIsHovered] = useState(false);
+  const [isFocusWithin, setIsFocusWithin] = useState(false);
+  const [isPointerActive, setIsPointerActive] = useState(false);
+  const swipeGestureRef = useRef<SwipeGesture | null>(null);
+  const suppressClickRef = useRef(false);
+  const isInteractionPaused = isHovered || isFocusWithin || isPointerActive;
   const metadataBadges = badges.filter(
     ({ label }) => !/j\.\s*barbaro clothiers|since\s+1998/i.test(label.trim()),
   );
@@ -110,32 +121,71 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
     setActiveIndex((current) => (current + 1) % slides.length);
   }
 
-  function handleTouchStart(event: ReactTouchEvent<HTMLElement>) {
-    if (event.touches.length !== 1) {
-      touchStartRef.current = null;
+  function handlePointerDown(event: ReactPointerEvent<HTMLElement>) {
+    if (
+      slides.length < 2 ||
+      !event.isPrimary ||
+      (event.pointerType === "mouse" && event.button !== 0)
+    ) {
       return;
     }
 
-    const touch = event.touches[0];
-    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
-    setIsInteractionPaused(true);
+    swipeGestureRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      isDragging: false,
+    };
+    setIsPointerActive(true);
   }
 
-  function handleTouchEnd(event: ReactTouchEvent<HTMLElement>) {
-    const touchStart = touchStartRef.current;
-    const touchEnd = event.changedTouches[0];
+  function handlePointerMove(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = swipeGestureRef.current;
 
-    touchStartRef.current = null;
-    setIsInteractionPaused(false);
-
-    if (!touchStart || !touchEnd || slides.length < 2) {
+    if (!gesture || gesture.pointerId !== event.pointerId || gesture.isDragging) {
       return;
     }
 
-    const horizontalDistance = touchStart.x - touchEnd.clientX;
-    const verticalDistance = Math.abs(touchStart.y - touchEnd.clientY);
+    const horizontalDistance = Math.abs(event.clientX - gesture.startX);
+    const verticalDistance = Math.abs(event.clientY - gesture.startY);
 
-    if (Math.abs(horizontalDistance) < 48 || Math.abs(horizontalDistance) <= verticalDistance) {
+    if (horizontalDistance < 10 || horizontalDistance <= verticalDistance) {
+      return;
+    }
+
+    gesture.isDragging = true;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function handlePointerUp(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = swipeGestureRef.current;
+
+    if (!gesture || gesture.pointerId !== event.pointerId) {
+      return;
+    }
+
+    swipeGestureRef.current = null;
+    setIsPointerActive(false);
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const horizontalDistance = gesture.startX - event.clientX;
+    const verticalDistance = Math.abs(gesture.startY - event.clientY);
+    const shouldChangeSlide =
+      slides.length > 1 &&
+      Math.abs(horizontalDistance) >= 48 &&
+      Math.abs(horizontalDistance) > verticalDistance;
+
+    if (gesture.isDragging || shouldChangeSlide) {
+      suppressClickRef.current = true;
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+    }
+
+    if (!shouldChangeSlide) {
       return;
     }
 
@@ -146,25 +196,56 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
     }
   }
 
-  function handleTouchCancel() {
-    touchStartRef.current = null;
-    setIsInteractionPaused(false);
+  function handlePointerCancel(event: ReactPointerEvent<HTMLElement>) {
+    if (swipeGestureRef.current?.pointerId !== event.pointerId) {
+      return;
+    }
+
+    swipeGestureRef.current = null;
+    setIsPointerActive(false);
+  }
+
+  function handlePointerLeave(event: ReactPointerEvent<HTMLElement>) {
+    const gesture = swipeGestureRef.current;
+
+    if (
+      !gesture ||
+      gesture.pointerId !== event.pointerId ||
+      event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      return;
+    }
+
+    swipeGestureRef.current = null;
+    setIsPointerActive(false);
   }
 
   return (
     <section
       aria-label="Featured collections"
       aria-roledescription="carousel"
-      className="relative touch-pan-y overflow-hidden bg-[#0b0f14] text-white"
-      onMouseEnter={() => setIsInteractionPaused(true)}
-      onMouseLeave={() => setIsInteractionPaused(false)}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchCancel}
-      onFocusCapture={() => setIsInteractionPaused(true)}
+      className="relative touch-pan-y overflow-hidden bg-[#0b0f14] text-white select-none"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerLeave}
+      onClickCapture={(event) => {
+        if (!suppressClickRef.current) {
+          return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        suppressClickRef.current = false;
+      }}
+      onDragStart={(event) => event.preventDefault()}
+      onFocusCapture={() => setIsFocusWithin(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setIsInteractionPaused(false);
+          setIsFocusWithin(false);
         }
       }}
     >

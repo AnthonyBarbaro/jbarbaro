@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
-import { locationMap, locations } from "@/data/locations";
+import { appointmentLocationMap, locationMap, locations } from "@/data/locations";
 import { partridgeCreekShowroomPhotos } from "@/data/showroom-gallery";
 import { aggregateRating } from "@/data/testimonials";
 import { buildMetadata } from "@/lib/seo";
@@ -30,7 +30,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locationS
 
   return buildMetadata({
     title: `${location.name} Location`,
-    description: `${location.brand} at ${location.name}. Address, hours, phone, and appointment scheduling information.`,
+    description: appointmentLocationMap[location.slug]
+      ? `${location.brand} at ${location.name}. Address, hours, phone, and appointment scheduling information.`
+      : `${location.brand} at ${location.name}. Address, hours, phone, and directions.`,
     path: `/location/${location.slug}`,
   });
 }
@@ -48,6 +50,7 @@ export default async function LocationDetailPage({
   }
 
   const isPartridgeCreek = location.slug === "partridge-creek";
+  const acceptsAppointments = Boolean(appointmentLocationMap[location.slug]);
   const breadcrumbData = breadcrumbJsonLd([
     { name: "Home", path: "/" },
     { name: "Locations", path: "/locations" },
@@ -90,8 +93,8 @@ export default async function LocationDetailPage({
       <PageHero
         title={location.name}
         description={`${location.brand} at ${location.address}`}
-        ctaHref="/schedule-appointment"
-        ctaLabel="Book This Location"
+        ctaHref={acceptsAppointments ? "/schedule-appointment" : formatPhone(location.phone)}
+        ctaLabel={acceptsAppointments ? "Book This Location" : "Call Store"}
       />
 
       {isPartridgeCreek ? (
@@ -150,9 +153,19 @@ export default async function LocationDetailPage({
 
                 <p className="mt-3 text-xs text-smoke">{location.note}</p>
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <ButtonLink href="/schedule-appointment" size="sm" className="w-full sm:w-auto">
-                    Schedule Appointment
-                  </ButtonLink>
+                  {acceptsAppointments ? (
+                    <ButtonLink href="/schedule-appointment" size="sm" className="w-full sm:w-auto">
+                      Schedule Appointment
+                    </ButtonLink>
+                  ) : (
+                    <ButtonLink
+                      href={formatPhone(location.phone)}
+                      size="sm"
+                      className="w-full sm:w-auto"
+                    >
+                      Call Store
+                    </ButtonLink>
+                  )}
                   <ButtonLink
                     href={`https://maps.google.com/?q=${encodeURIComponent(location.address)}`}
                     target="_blank"

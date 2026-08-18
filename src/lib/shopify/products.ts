@@ -92,6 +92,20 @@ type ProductsResponse = {
   };
 };
 
+type PageInfo = {
+  hasNextPage: boolean;
+  endCursor: string | null;
+};
+
+type PaginatedConnection<T> = {
+  nodes: T[];
+  pageInfo: PageInfo;
+};
+
+type PaginatedProductsResponse = {
+  products: PaginatedConnection<RawProduct>;
+};
+
 type ProductResponse = {
   product: RawProduct | null;
 };
@@ -110,6 +124,16 @@ type RawCollection = {
   products: {
     nodes: RawProduct[];
   };
+};
+
+type RawCollectionDetails = Omit<RawCollection, "products">;
+
+type PaginatedCollectionResponse = {
+  collection:
+    | (RawCollectionDetails & {
+        products: PaginatedConnection<RawProduct>;
+      })
+    | null;
 };
 
 type CollectionResponse = {
@@ -167,12 +191,18 @@ type PredictiveSearchResponse = {
 
 type ProductPreviewsResponse = {
   products: {
-    nodes: Array<{
-      id: string;
-      handle: string;
-      title: string;
-    }>;
+    nodes: RawProductPreview[];
   };
+};
+
+type RawProductPreview = {
+  id: string;
+  handle: string;
+  title: string;
+};
+
+type PaginatedProductPreviewsResponse = {
+  products: PaginatedConnection<RawProductPreview>;
 };
 
 const productFields = `
@@ -248,6 +278,8 @@ const productFields = `
     }
   }
 `;
+
+const SHOPIFY_PAGE_SIZE = 250;
 
 function parseReviewRatingValue(value: string | null | undefined) {
   if (!value) {
@@ -340,6 +372,50 @@ async function fetchWithRetry<T>(
   return request();
 }
 
+async function fetchAllPages<T extends { id: string }>(
+  label: string,
+  requestPage: (cursor: string | null) => Promise<PaginatedConnection<T>>,
+): Promise<T[]> {
+  const itemsById = new Map<string, T>();
+  const seenCursors = new Set<string>();
+  let cursor: string | null = null;
+
+  while (true) {
+    const itemCountBeforeRequest = itemsById.size;
+    const page = await fetchWithRetry(
+      () => requestPage(cursor),
+      () => false,
+    );
+
+    for (const item of page.nodes) {
+      itemsById.set(item.id, item);
+    }
+
+    if (!page.pageInfo.hasNextPage) {
+      break;
+    }
+
+    const nextCursor = page.pageInfo.endCursor;
+
+    if (!nextCursor) {
+      throw new Error(`${label} pagination did not return an end cursor.`);
+    }
+
+    if (
+      nextCursor === cursor ||
+      seenCursors.has(nextCursor) ||
+      itemsById.size === itemCountBeforeRequest
+    ) {
+      throw new Error(`${label} pagination did not make progress.`);
+    }
+
+    seenCursors.add(nextCursor);
+    cursor = nextCursor;
+  }
+
+  return Array.from(itemsById.values());
+}
+
 async function fetchShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductsResponse, { limit: number }>({
     query: `
@@ -365,6 +441,88 @@ const getShopProductsCached = unstable_cache(fetchShopProducts, ["shopify-produc
 
 export async function getShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   return getShopProductsCached(limit);
+}
+
+async function fetchNewArrivalProducts(limit = 20): Promise<ShopifyProduct[]> {
+  const data = await storefrontRequest<ProductsResponse, { limit: number }>({
+    query: `
+      query NewArrivalProducts($limit: Int!) {
+        products(
+          first: $limit
+          query: "available_for_sale:true"
+          sortKey: CREATED_AT
+          reverse: true
+        ) {
+          nodes {
+            ${productFields}
+          }
+        }
+      }
+    `,
+    variables: {
+      limit,
+    },
+  });
+
+  return data.products.nodes.map(normalizeProduct);
+}
+
+const getNewArrivalProductsCached = unstable_cache(
+  fetchNewArrivalProducts,
+  ["shopify-new-arrival-products"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
+
+export async function getNewArrivalProducts(limit = 20): Promise<ShopifyProduct[]> {
+  return getNewArrivalProductsCached(limit);
+}
+
+async function fetchAllShopProductsPage(cursor: string | null) {
+  const data = await storefrontRequest<PaginatedProductsResponse, { cursor: string | null }>({
+    query: `
+      query AllShopProducts($cursor: String) {
+        products(
+          first: ${SHOPIFY_PAGE_SIZE}
+          after: $cursor
+          sortKey: CREATED_AT
+          reverse: true
+        ) {
+          nodes {
+            ${productFields}
+          }
+          pageInfo {
+            hasNextPage
+            endCursor
+          }
+        }
+      }
+    `,
+    variables: { cursor },
+  });
+
+  return data.products;
+}
+
+const getAllShopProductsPageCached = unstable_cache(
+  fetchAllShopProductsPage,
+  ["shopify-all-products-page"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
+
+async function fetchAllShopProducts(): Promise<ShopifyProduct[]> {
+  const products = await fetchAllPages("Shopify products", (cursor) =>
+    getAllShopProductsPageCached(cursor),
+  );
+
+  return products.map(normalizeProduct);
+}
+
+export async function getAllShopProducts(): Promise<ShopifyProduct[]> {
+  return fetchAllShopProducts();
 }
 
 async function fetchProductsByVendor(
@@ -407,11 +565,70 @@ export async function getProductsByVendor(
   return getProductsByVendorCached(vendor, limit, availableOnly);
 }
 
+async function fetchAllProductsByVendor(
+  vendor: string,
+  availableOnly = false,
+): Promise<ShopifyProduct[]> {
+  const vendorQuery = `vendor:'${vendor.replace(/'/g, "\\'")}'${availableOnly ? " AND available_for_sale:true" : ""}`;
+  const products = await fetchAllPages(
+    `Shopify products for vendor "${vendor}"`,
+    async (cursor) => {
+      const data = await storefrontRequest<
+        PaginatedProductsResponse,
+        { cursor: string | null; query: string }
+      >({
+        query: `
+        query AllProductsByVendor($cursor: String, $query: String!) {
+          products(
+            first: ${SHOPIFY_PAGE_SIZE}
+            after: $cursor
+            sortKey: CREATED_AT
+            reverse: true
+            query: $query
+          ) {
+            nodes {
+              ${productFields}
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `,
+        variables: {
+          cursor,
+          query: vendorQuery,
+        },
+      });
+
+      return data.products;
+    },
+  );
+
+  return products.map(normalizeProduct);
+}
+
+const getAllProductsByVendorCached = unstable_cache(
+  fetchAllProductsByVendor,
+  ["shopify-all-products-by-vendor"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
+
+export async function getAllProductsByVendor(
+  vendor: string,
+  availableOnly = false,
+): Promise<ShopifyProduct[]> {
+  return getAllProductsByVendorCached(vendor, availableOnly);
+}
+
 async function fetchBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
   const data = await storefrontRequest<ProductsResponse, { limit: number }>({
     query: `
       query BestSellingProducts($limit: Int!) {
-        products(first: $limit, sortKey: BEST_SELLING) {
+        products(first: $limit, query: "available_for_sale:true", sortKey: BEST_SELLING) {
           nodes {
             ${productFields}
           }
@@ -428,7 +645,7 @@ async function fetchBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
 
 const getBestSellingProductsCached = unstable_cache(
   fetchBestSellingProducts,
-  ["shopify-best-selling-products"],
+  ["shopify-available-best-selling-products"],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -439,18 +656,22 @@ export async function getBestSellingProducts(limit = 8): Promise<ShopifyProduct[
 }
 
 async function fetchShopProduct(handle: string): Promise<ShopifyProduct | null> {
-  const data = await storefrontRequest<ProductResponse, { handle: string }>({
-    query: `
-      query ShopProduct($handle: String!) {
-        product(handle: $handle) {
-          ${productFields}
-        }
-      }
-    `,
-    variables: {
-      handle,
-    },
-  });
+  const data = await fetchWithRetry(
+    () =>
+      storefrontRequest<ProductResponse, { handle: string }>({
+        query: `
+          query ShopProduct($handle: String!) {
+            product(handle: $handle) {
+              ${productFields}
+            }
+          }
+        `,
+        variables: {
+          handle,
+        },
+      }),
+    () => false,
+  );
 
   if (!data.product) {
     return null;
@@ -517,6 +738,100 @@ export async function getShopCollection(
   limit = 12,
 ): Promise<ShopifyCollection | null> {
   return getShopCollectionCached(handle, limit);
+}
+
+async function fetchAllShopCollection(handle: string): Promise<ShopifyCollection | null> {
+  const collectionState: {
+    details: RawCollectionDetails | null;
+    missing: boolean;
+  } = {
+    details: null,
+    missing: false,
+  };
+  const products = await fetchAllPages(`Shopify collection "${handle}"`, async (cursor) => {
+    const data = await fetchWithRetry(
+      () =>
+        storefrontRequest<PaginatedCollectionResponse, { handle: string; cursor: string | null }>({
+          query: `
+            query AllShopCollectionProducts($handle: String!, $cursor: String) {
+              collection(handle: $handle) {
+                id
+                handle
+                title
+                description
+                image {
+                  url
+                  altText
+                  width
+                  height
+                }
+                products(first: ${SHOPIFY_PAGE_SIZE}, after: $cursor) {
+                  nodes {
+                    ${productFields}
+                  }
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
+                }
+              }
+            }
+          `,
+          variables: {
+            handle,
+            cursor,
+          },
+        }),
+      (result) =>
+        cursor === null && (!result.collection || result.collection.products.nodes.length === 0),
+    );
+
+    if (!data.collection) {
+      if (cursor) {
+        throw new Error(`Shopify collection "${handle}" disappeared during pagination.`);
+      }
+
+      collectionState.missing = true;
+      return {
+        nodes: [],
+        pageInfo: {
+          hasNextPage: false,
+          endCursor: null,
+        },
+      };
+    }
+
+    collectionState.details = {
+      id: data.collection.id,
+      handle: data.collection.handle,
+      title: data.collection.title,
+      description: data.collection.description,
+      image: data.collection.image,
+    };
+
+    return data.collection.products;
+  });
+
+  if (collectionState.missing || !collectionState.details) {
+    return null;
+  }
+
+  return normalizeCollection({
+    ...collectionState.details,
+    products: { nodes: products },
+  });
+}
+
+const getAllShopCollectionCached = unstable_cache(
+  fetchAllShopCollection,
+  ["shopify-all-collection-products"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
+
+export async function getAllShopCollection(handle: string): Promise<ShopifyCollection | null> {
+  return getAllShopCollectionCached(handle);
 }
 
 async function fetchShopCollections(limit = 8): Promise<ShopifyCollectionPreview[]> {
@@ -656,6 +971,46 @@ const getShopProductPreviewsCached = unstable_cache(
 
 export async function getShopProductPreviews(limit = 100): Promise<ShopifyProductPreview[]> {
   return getShopProductPreviewsCached(limit);
+}
+
+async function fetchAllShopProductPreviews(): Promise<ShopifyProductPreview[]> {
+  return fetchAllPages("Shopify product previews", async (cursor) => {
+    const data = await storefrontRequest<
+      PaginatedProductPreviewsResponse,
+      { cursor: string | null }
+    >({
+      query: `
+        query AllShopProductPreviews($cursor: String) {
+          products(first: ${SHOPIFY_PAGE_SIZE}, after: $cursor) {
+            nodes {
+              id
+              handle
+              title
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+        }
+      `,
+      variables: { cursor },
+    });
+
+    return data.products;
+  });
+}
+
+const getAllShopProductPreviewsCached = unstable_cache(
+  fetchAllShopProductPreviews,
+  ["shopify-all-product-previews"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
+
+export async function getAllShopProductPreviews(): Promise<ShopifyProductPreview[]> {
+  return getAllShopProductPreviewsCached();
 }
 
 async function fetchRecommendedProducts(

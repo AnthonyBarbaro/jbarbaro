@@ -36,7 +36,11 @@ export async function generateMetadata({ params }: { params: Promise<{ brandSlug
   });
 }
 
-export default async function CollectionBrandPage({ params }: { params: Promise<{ brandSlug: string }> }) {
+export default async function CollectionBrandPage({
+  params,
+}: {
+  params: Promise<{ brandSlug: string }>;
+}) {
   const { brandSlug } = await params;
   const brand = brandMap[brandSlug];
 
@@ -76,19 +80,31 @@ export default async function CollectionBrandPage({ params }: { params: Promise<
           <div className="grid gap-8 lg:grid-cols-[1.3fr_1fr]">
             <Card>
               <div className="relative aspect-[16/10]">
-                <Image src={brand.image} alt={brand.name} fill sizes="(max-width: 1024px) 100vw, 60vw" className="object-cover" />
+                <Image
+                  src={brand.image}
+                  alt={brand.name}
+                  fill
+                  sizes="(max-width: 1024px) 100vw, 60vw"
+                  className="object-cover"
+                />
               </div>
               <CardContent>
                 <h2 className="font-heading text-3xl text-ink sm:text-4xl">About {brand.name}</h2>
                 <p className="mt-4 text-base leading-8 text-smoke">
-                  We guide clients through the strongest {brand.name} options for their build, style profile, and occasion needs. Inventory evolves seasonally, so appointments are the most efficient way to preview available selections.
+                  We guide clients through the strongest {brand.name} options for their build, style
+                  profile, and occasion needs. Inventory evolves seasonally, so appointments are the
+                  most efficient way to preview available selections.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <ButtonLink href="/schedule-appointment" className="w-full sm:w-auto">
-                    Book Appointment
+                  <ButtonLink href="/shop/brands" className="w-full sm:w-auto">
+                    Shop Online Brands
                   </ButtonLink>
-                  <ButtonLink href="/designers/all-designer-brands" variant="secondary" className="w-full sm:w-auto">
-                    View All Brands
+                  <ButtonLink
+                    href="/schedule-appointment"
+                    variant="secondary"
+                    className="w-full sm:w-auto"
+                  >
+                    Book Appointment
                   </ButtonLink>
                 </div>
               </CardContent>
@@ -116,7 +132,10 @@ export default async function CollectionBrandPage({ params }: { params: Promise<
                   <ul className="mt-3 space-y-2 text-sm font-semibold tracking-[0.08em] text-ink uppercase">
                     {relatedBrands.map((related) => (
                       <li key={related.slug}>
-                        <Link href={`/collection-brand/${related.slug}`} className="hover:text-deep-teal">
+                        <Link
+                          href={`/collection-brand/${related.slug}`}
+                          className="hover:text-deep-teal"
+                        >
                           {related.name}
                         </Link>
                       </li>

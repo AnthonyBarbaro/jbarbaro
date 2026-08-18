@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { ShopCatalogClient } from "@/components/shop/ShopCatalogClient";
-import { ButtonLink } from "@/components/ui/Button";
+import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
 import { getAllShopProducts, getBestSellingProducts } from "@/lib/shopify/products";
@@ -120,7 +120,7 @@ export default async function ShopPage() {
       </nav>
 
       <section id="shop-catalog" className="scroll-mt-28 border-b border-ink/10 bg-ivory">
-        <Container className="py-5 sm:py-6">
+        <Container className="max-w-[90rem] px-6 py-3 sm:px-6 sm:py-4 lg:px-8 2xl:px-12">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink sm:text-3xl">
@@ -128,19 +128,24 @@ export default async function ShopPage() {
               </h1>
               <p className="mt-2 text-sm leading-6 text-smoke sm:text-base">
                 {storefrontAvailable
-                  ? `${products.length} item${products.length === 1 ? "" : "s"} in the online catalog. Use filters or Smart Fit to narrow the floor.`
+                  ? `Explore ${products.length} ${products.length === 1 ? "piece" : "pieces"}. Use filters or Smart Fit to find the right style and size.`
                   : "The catalog is refreshing right now. Check back shortly or continue to the main collection pages."}
               </p>
             </div>
 
-            <ButtonLink href="/shop/brands" variant="secondary" size="sm" className="w-fit">
+            <ButtonLink
+              href="/shop/brands"
+              variant="secondary"
+              size="sm"
+              className="w-full sm:w-fit"
+            >
               Shop by Brand
             </ButtonLink>
           </div>
         </Container>
       </section>
 
-      <section className="bg-ivory py-5 sm:py-6 lg:py-8">
+      <section className="bg-ivory py-3 sm:py-4 lg:py-5">
         {storefrontAvailable ? (
           <Suspense fallback={null}>
             <ShopCatalogClient
@@ -150,7 +155,7 @@ export default async function ShopPage() {
             />
           </Suspense>
         ) : (
-          <Container>
+          <Container className="max-w-[90rem] px-6 sm:px-6 lg:px-8 2xl:px-12">
             <Card className="border-ink/10 bg-white">
               <CardContent className="p-6 sm:p-8">
                 <p className="text-xs font-semibold tracking-[0.18em] text-smoke uppercase">
@@ -164,7 +169,12 @@ export default async function ShopPage() {
                   automatically once the refresh is complete.
                 </p>
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <ButtonLink href="/categories">Browse Categories</ButtonLink>
+                  <form action="/shop" method="get">
+                    <Button type="submit">Try Again</Button>
+                  </form>
+                  <ButtonLink href="/categories" variant="secondary">
+                    Browse Categories
+                  </ButtonLink>
                 </div>
               </CardContent>
             </Card>

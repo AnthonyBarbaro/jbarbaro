@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
+  useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -11,9 +12,12 @@ import {
   useTransition,
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
+  type ReactNode,
 } from "react";
 import {
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Footprints,
   LayoutGrid,
   Ruler,
@@ -55,11 +59,35 @@ type ShopCatalogClientProps = {
 
 type FacetKey = "availability" | "price" | "brand" | "size" | "length" | "color";
 type FacetPill = { key: FacetKey; label: string; activeCount: number };
+type FilterGroupKey = "availability" | "price" | "category" | "brand" | "size" | "length" | "color";
+
+type FilterAccordionProps = {
+  id: string;
+  label: string;
+  activeCount?: number;
+  isOpen: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+};
 
 type SortOption = "featured" | "newest" | "price-low" | "price-high" | "title-asc";
 type AvailabilityOption = "all" | "in-stock" | "sold-out";
 type PriceOption = "all" | "under-100" | "100-250" | "250-500" | "500-plus";
 type SizeSelections = Record<ProductSizeKind, string[]>;
+type SearchParamsReader = Pick<URLSearchParams, "get" | "getAll">;
+type ShopUrlState = {
+  query: string;
+  sort: SortOption;
+  availability: AvailabilityOption;
+  priceFilter: PriceOption;
+  selectedTypes: string[];
+  selectedVendors: string[];
+  selectedSizes: SizeSelections;
+  selectedLengths: string[];
+  selectedColors: string[];
+  smartFitEnabled: boolean;
+  topPicksId: string | null;
+};
 type FitDraftInput = Omit<
   FitProfileInput,
   "build" | "heightFeet" | "heightInches" | "weightLbs"
@@ -70,6 +98,34 @@ type FitDraftInput = Omit<
   weightLbs: number | "";
 };
 const DEFAULT_AVAILABILITY: AvailabilityOption = "all";
+const sortOptions: SortOption[] = ["featured", "newest", "price-low", "price-high", "title-asc"];
+const sortLabels: Record<SortOption, string> = {
+  featured: "Featured",
+  newest: "Newest",
+  "price-low": "Price: Low to High",
+  "price-high": "Price: High to Low",
+  "title-asc": "Alphabetical",
+};
+const availabilityOptions: AvailabilityOption[] = ["all", "in-stock", "sold-out"];
+const priceOptions: PriceOption[] = ["all", "under-100", "100-250", "250-500", "500-plus"];
+const topPicksIds = ["best", "new", "under-100"];
+const controlledShopSearchParams = [
+  "q",
+  "sort",
+  "availability",
+  "price",
+  "category",
+  "brand",
+  "size-shirt",
+  "size-suit",
+  "size-waist",
+  "size-shoe",
+  "size-top",
+  "length",
+  "color",
+  "fit",
+  "top",
+] as const;
 const sizeGroupDefinitions: Array<{
   kind: ProductSizeKind;
   label: string;
@@ -104,6 +160,48 @@ const fitBuildOptions: Array<{ label: string; value: FitBuild }> = [
   { label: "Full", value: "full" },
 ];
 const FIT_WIDGET_IMAGE = "/images/campaign/showroom-hero-v2.webp";
+
+function FilterAccordion({
+  id,
+  label,
+  activeCount = 0,
+  isOpen,
+  onToggle,
+  children,
+}: FilterAccordionProps) {
+  const panelId = `${id}-panel`;
+
+  return (
+    <section className="border-b border-ink/10 last:border-b-0">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex min-h-11 w-full items-center justify-between gap-3 py-3 text-left text-sm font-semibold text-ink transition-colors duration-200 hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
+        aria-expanded={isOpen}
+        aria-controls={panelId}
+      >
+        <span className="flex items-center gap-2">
+          {label}
+          {activeCount > 0 ? (
+            <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-deep-teal px-1.5 py-0.5 text-xs leading-4 font-semibold text-white">
+              {activeCount}
+            </span>
+          ) : null}
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 shrink-0 text-smoke transition-transform duration-200",
+            isOpen && "rotate-180",
+          )}
+          aria-hidden
+        />
+      </button>
+      <div id={panelId} hidden={!isOpen} className="pb-4">
+        {children}
+      </div>
+    </section>
+  );
+}
 
 function getEmptyFitEstimate(input: FitDraftInput): FitEstimate {
   return {
@@ -267,6 +365,51 @@ function createEmptySizeSelections(): SizeSelections {
   };
 }
 
+function readStringList(searchParams: SearchParamsReader, key: string) {
+  return Array.from(
+    new Set(
+      searchParams
+        .getAll(key)
+        .map((value) => value.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function readShopUrlState(searchParams: SearchParamsReader): ShopUrlState {
+  const requestedSort = searchParams.get("sort");
+  const requestedAvailability = searchParams.get("availability");
+  const requestedPrice = searchParams.get("price");
+  const requestedTopPicksId = searchParams.get("top");
+
+  return {
+    query: searchParams.get("q")?.trim() || "",
+    sort: sortOptions.includes(requestedSort as SortOption)
+      ? (requestedSort as SortOption)
+      : "featured",
+    availability: availabilityOptions.includes(requestedAvailability as AvailabilityOption)
+      ? (requestedAvailability as AvailabilityOption)
+      : DEFAULT_AVAILABILITY,
+    priceFilter: priceOptions.includes(requestedPrice as PriceOption)
+      ? (requestedPrice as PriceOption)
+      : "all",
+    selectedTypes: readStringList(searchParams, "category"),
+    selectedVendors: readStringList(searchParams, "brand"),
+    selectedSizes: {
+      shirt: readStringList(searchParams, "size-shirt"),
+      suit: readStringList(searchParams, "size-suit"),
+      waist: readStringList(searchParams, "size-waist"),
+      shoe: readStringList(searchParams, "size-shoe"),
+      top: readStringList(searchParams, "size-top"),
+    },
+    selectedLengths: readStringList(searchParams, "length"),
+    selectedColors: readStringList(searchParams, "color"),
+    smartFitEnabled: searchParams.get("fit") === "1",
+    topPicksId:
+      requestedTopPicksId && topPicksIds.includes(requestedTopPicksId) ? requestedTopPicksId : null,
+  };
+}
+
 function getSelectedSizeCount(selections: SizeSelections) {
   return Object.values(selections).reduce((count, values) => count + values.length, 0);
 }
@@ -305,43 +448,65 @@ export function ShopCatalogClient({
 }: ShopCatalogClientProps) {
   const TopPicksHeading = productHeadingLevel;
   const searchParams = useSearchParams();
-  const urlQuery = searchParams.get("q")?.trim() || "";
-  const urlTopPicksId = searchParams.get("top");
+  const shopUrlSignature = searchParams.toString();
+  const initialUrlState = readShopUrlState(searchParams);
   const [isPending, startTransition] = useTransition();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [mobileLayout, setMobileLayout] = useState<"grid" | "single">("grid");
   const [openFacet, setOpenFacet] = useState<FacetKey | null>(null);
-  const [activeTopPicksId, setActiveTopPicksId] = useState<string | null>(() =>
-    urlTopPicksId && ["best", "new", "under-100"].includes(urlTopPicksId) ? urlTopPicksId : null,
+  const [openDesktopFilter, setOpenDesktopFilter] = useState<FilterGroupKey | null>(null);
+  const [openMobileFilter, setOpenMobileFilter] = useState<FilterGroupKey | null>("availability");
+  const [activeTopPicksId, setActiveTopPicksId] = useState<string | null>(
+    initialUrlState.topPicksId,
   );
   const pillBarRef = useRef<HTMLDivElement | null>(null);
-  const [query, setQuery] = useState(urlQuery);
-  const [sort, setSort] = useState<SortOption>("featured");
-  const [availability, setAvailability] = useState<AvailabilityOption>(() =>
-    urlQuery ? "all" : DEFAULT_AVAILABILITY,
+  const [query, setQuery] = useState(initialUrlState.query);
+  const [sort, setSort] = useState<SortOption>(initialUrlState.sort);
+  const [availability, setAvailability] = useState<AvailabilityOption>(
+    initialUrlState.availability,
   );
-  const [priceFilter, setPriceFilter] = useState<PriceOption>("all");
-  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
-  const [selectedSizes, setSelectedSizes] = useState<SizeSelections>(createEmptySizeSelections);
-  const [selectedLengths, setSelectedLengths] = useState<string[]>([]);
-  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [priceFilter, setPriceFilter] = useState<PriceOption>(initialUrlState.priceFilter);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(initialUrlState.selectedTypes);
+  const [selectedVendors, setSelectedVendors] = useState<string[]>(initialUrlState.selectedVendors);
+  const [selectedSizes, setSelectedSizes] = useState<SizeSelections>(initialUrlState.selectedSizes);
+  const [selectedLengths, setSelectedLengths] = useState<string[]>(initialUrlState.selectedLengths);
+  const [selectedColors, setSelectedColors] = useState<string[]>(initialUrlState.selectedColors);
   const [fitProfile, setFitProfile] = useState<FitProfile | null>(null);
   const [fitDraft, setFitDraft] = useState<FitDraftInput>(DEFAULT_FIT_INPUT);
   const [isFitEditorOpen, setIsFitEditorOpen] = useState(false);
   const [isFitDrawerOpen, setIsFitDrawerOpen] = useState(false);
   const [isManualSizeEditorOpen, setIsManualSizeEditorOpen] = useState(false);
-  const [smartFitEnabled, setSmartFitEnabled] = useState(false);
+  const [smartFitEnabled, setSmartFitEnabled] = useState(initialUrlState.smartFitEnabled);
   const resultsAnchorRef = useRef<HTMLDivElement | null>(null);
   const mobileFilterTriggerRef = useRef<HTMLButtonElement | null>(null);
   const mobileFilterPanelRef = useRef<HTMLDivElement | null>(null);
   const fitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const fitPanelRef = useRef<HTMLDivElement | null>(null);
   const topPicksRailRef = useRef<HTMLDivElement | null>(null);
+  const [topPicksScrollState, setTopPicksScrollState] = useState({
+    canScrollPrevious: false,
+    canScrollNext: false,
+  });
   const shouldScrollToResultsRef = useRef(false);
   const hasMountedRef = useRef(false);
   const hasLoadedFitProfileRef = useRef(false);
+  const lastShopUrlSignatureRef = useRef(shopUrlSignature);
+  const lastNonQueryUrlStateRef = useRef(
+    JSON.stringify({
+      sort: initialUrlState.sort,
+      availability: initialUrlState.availability,
+      priceFilter: initialUrlState.priceFilter,
+      selectedTypes: initialUrlState.selectedTypes,
+      selectedVendors: initialUrlState.selectedVendors,
+      selectedSizes: initialUrlState.selectedSizes,
+      selectedLengths: initialUrlState.selectedLengths,
+      selectedColors: initialUrlState.selectedColors,
+      smartFitEnabled: initialUrlState.smartFitEnabled,
+      topPicksId: initialUrlState.topPicksId,
+    }),
+  );
+  const isApplyingShopUrlStateRef = useRef(false);
   const deferredQuery = useDeferredValue(query);
   const deferredSort = useDeferredValue(sort);
   const deferredAvailability = useDeferredValue(availability);
@@ -351,6 +516,27 @@ export function ShopCatalogClient({
   const deferredSelectedSizes = useDeferredValue(selectedSizes);
   const deferredSelectedLengths = useDeferredValue(selectedLengths);
   const deferredSelectedColors = useDeferredValue(selectedColors);
+
+  const updateTopPicksScrollState = useCallback(() => {
+    const rail = topPicksRailRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    const maximumScrollLeft = Math.max(0, rail.scrollWidth - rail.clientWidth);
+    const nextState = {
+      canScrollPrevious: rail.scrollLeft > 2,
+      canScrollNext: rail.scrollLeft < maximumScrollLeft - 2,
+    };
+
+    setTopPicksScrollState((current) =>
+      current.canScrollPrevious === nextState.canScrollPrevious &&
+      current.canScrollNext === nextState.canScrollNext
+        ? current
+        : nextState,
+    );
+  }, [setTopPicksScrollState]);
 
   const productTypes = useMemo(
     () =>
@@ -392,25 +578,159 @@ export function ShopCatalogClient({
   );
   const searchableQuery = deferredQuery.trim().toLowerCase();
   const hasDeferredManualSizeSelections = getSelectedSizeCount(deferredSelectedSizes) > 0;
+  const currentShopUrlState = useMemo<ShopUrlState>(
+    () => ({
+      query,
+      sort,
+      availability,
+      priceFilter,
+      selectedTypes,
+      selectedVendors,
+      selectedSizes,
+      selectedLengths,
+      selectedColors,
+      smartFitEnabled,
+      topPicksId: activeTopPicksId,
+    }),
+    [
+      activeTopPicksId,
+      availability,
+      priceFilter,
+      query,
+      selectedColors,
+      selectedLengths,
+      selectedSizes,
+      selectedTypes,
+      selectedVendors,
+      smartFitEnabled,
+      sort,
+    ],
+  );
 
   useEffect(() => {
-    const frameId = window.requestAnimationFrame(() => {
-      setQuery(urlQuery);
-      setAvailability(urlQuery ? "all" : DEFAULT_AVAILABILITY);
-    });
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [urlQuery]);
-
-  useEffect(() => {
-    if (!urlTopPicksId || !["best", "new", "under-100"].includes(urlTopPicksId)) {
+    if (shopUrlSignature === lastShopUrlSignatureRef.current) {
       return;
     }
 
-    const frameId = window.requestAnimationFrame(() => setActiveTopPicksId(urlTopPicksId));
+    const nextUrlState = readShopUrlState(new URLSearchParams(shopUrlSignature));
+    const nextNonQueryStateSignature = JSON.stringify({
+      sort: nextUrlState.sort,
+      availability: nextUrlState.availability,
+      priceFilter: nextUrlState.priceFilter,
+      selectedTypes: nextUrlState.selectedTypes,
+      selectedVendors: nextUrlState.selectedVendors,
+      selectedSizes: nextUrlState.selectedSizes,
+      selectedLengths: nextUrlState.selectedLengths,
+      selectedColors: nextUrlState.selectedColors,
+      smartFitEnabled: nextUrlState.smartFitEnabled,
+      topPicksId: nextUrlState.topPicksId,
+    });
+
+    isApplyingShopUrlStateRef.current = true;
+    lastShopUrlSignatureRef.current = shopUrlSignature;
+    lastNonQueryUrlStateRef.current = nextNonQueryStateSignature;
+
+    startTransition(() => {
+      setQuery(nextUrlState.query);
+      setSort(nextUrlState.sort);
+      setAvailability(nextUrlState.availability);
+      setPriceFilter(nextUrlState.priceFilter);
+      setSelectedTypes(nextUrlState.selectedTypes);
+      setSelectedVendors(nextUrlState.selectedVendors);
+      setSelectedSizes(nextUrlState.selectedSizes);
+      setSelectedLengths(nextUrlState.selectedLengths);
+      setSelectedColors(nextUrlState.selectedColors);
+      setSmartFitEnabled(nextUrlState.smartFitEnabled);
+      setActiveTopPicksId(nextUrlState.topPicksId);
+    });
+
+    const frameId = window.requestAnimationFrame(() => {
+      isApplyingShopUrlStateRef.current = false;
+    });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [urlTopPicksId]);
+  }, [shopUrlSignature]);
+
+  useEffect(() => {
+    if (isApplyingShopUrlStateRef.current) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+
+      controlledShopSearchParams.forEach((key) => params.delete(key));
+
+      if (currentShopUrlState.query.trim()) {
+        params.set("q", currentShopUrlState.query.trim());
+      }
+
+      if (currentShopUrlState.sort !== "featured") {
+        params.set("sort", currentShopUrlState.sort);
+      }
+
+      if (currentShopUrlState.availability !== DEFAULT_AVAILABILITY) {
+        params.set("availability", currentShopUrlState.availability);
+      }
+
+      if (currentShopUrlState.priceFilter !== "all") {
+        params.set("price", currentShopUrlState.priceFilter);
+      }
+
+      currentShopUrlState.selectedTypes.forEach((value) => params.append("category", value));
+      currentShopUrlState.selectedVendors.forEach((value) => params.append("brand", value));
+      currentShopUrlState.selectedSizes.shirt.forEach((value) =>
+        params.append("size-shirt", value),
+      );
+      currentShopUrlState.selectedSizes.suit.forEach((value) => params.append("size-suit", value));
+      currentShopUrlState.selectedSizes.waist.forEach((value) =>
+        params.append("size-waist", value),
+      );
+      currentShopUrlState.selectedSizes.shoe.forEach((value) => params.append("size-shoe", value));
+      currentShopUrlState.selectedSizes.top.forEach((value) => params.append("size-top", value));
+      currentShopUrlState.selectedLengths.forEach((value) => params.append("length", value));
+      currentShopUrlState.selectedColors.forEach((value) => params.append("color", value));
+
+      if (currentShopUrlState.smartFitEnabled) {
+        params.set("fit", "1");
+      }
+
+      if (currentShopUrlState.topPicksId) {
+        params.set("top", currentShopUrlState.topPicksId);
+      }
+
+      params.sort();
+      const nextShopUrlSignature = params.toString();
+
+      if (nextShopUrlSignature === lastShopUrlSignatureRef.current) {
+        return;
+      }
+
+      const nextNonQueryStateSignature = JSON.stringify({
+        sort: currentShopUrlState.sort,
+        availability: currentShopUrlState.availability,
+        priceFilter: currentShopUrlState.priceFilter,
+        selectedTypes: currentShopUrlState.selectedTypes,
+        selectedVendors: currentShopUrlState.selectedVendors,
+        selectedSizes: currentShopUrlState.selectedSizes,
+        selectedLengths: currentShopUrlState.selectedLengths,
+        selectedColors: currentShopUrlState.selectedColors,
+        smartFitEnabled: currentShopUrlState.smartFitEnabled,
+        topPicksId: currentShopUrlState.topPicksId,
+      });
+      const nextUrl = `${window.location.pathname}${nextShopUrlSignature ? `?${nextShopUrlSignature}` : ""}${window.location.hash}`;
+      const historyMethod =
+        nextNonQueryStateSignature === lastNonQueryUrlStateRef.current
+          ? "replaceState"
+          : "pushState";
+
+      lastShopUrlSignatureRef.current = nextShopUrlSignature;
+      lastNonQueryUrlStateRef.current = nextNonQueryStateSignature;
+      window.history[historyMethod](null, "", nextUrl);
+    }, 180);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [currentShopUrlState]);
 
   useEffect(() => {
     if (!openFacet) {
@@ -682,13 +1002,6 @@ export function ShopCatalogClient({
       setQuery("");
       setAvailability(DEFAULT_AVAILABILITY);
     });
-
-    const url = new URL(window.location.href);
-
-    if (url.searchParams.has("q")) {
-      url.searchParams.delete("q");
-      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
-    }
   }
 
   function clearFilters() {
@@ -901,6 +1214,30 @@ export function ShopCatalogClient({
   function renderFilterPanel(variant: "desktop" | "mobile") {
     const searchId = `${variant}-shop-search`;
     const sortId = `${variant}-shop-sort`;
+    const openFilter = variant === "desktop" ? openDesktopFilter : openMobileFilter;
+
+    function toggleFilter(filter: FilterGroupKey) {
+      if (variant === "mobile") {
+        setOpenMobileFilter((current) => (current === filter ? null : filter));
+        return;
+      }
+
+      const willOpen = openDesktopFilter !== filter;
+
+      setOpenDesktopFilter(willOpen ? filter : null);
+
+      if (willOpen) {
+        window.requestAnimationFrame(() => {
+          const targetY = resultsAnchorRef.current
+            ? resultsAnchorRef.current.getBoundingClientRect().top + window.scrollY - 148
+            : window.scrollY;
+
+          if (window.scrollY > targetY) {
+            window.scrollTo({ top: Math.max(0, targetY), behavior: "auto" });
+          }
+        });
+      }
+    }
 
     return (
       <Card
@@ -908,13 +1245,13 @@ export function ShopCatalogClient({
           "border-ink/10 bg-white",
           variant === "mobile" &&
             "flex h-full flex-col shadow-[0_30px_80px_-50px_rgba(14,23,38,0.4)]",
-          variant === "desktop" &&
-            "flex h-full max-h-[calc(100dvh-6rem)] flex-col rounded-lg border border-ink/10 shadow-none",
+          variant === "desktop" && "rounded-lg border border-ink/10 shadow-none",
         )}
       >
         <CardContent
           className={cn(
-            (variant === "mobile" || variant === "desktop") && "flex min-h-0 flex-1 flex-col",
+            variant === "mobile" && "flex min-h-0 flex-1 flex-col p-5",
+            variant === "desktop" && "p-4",
           )}
         >
           <div className="flex items-center justify-between gap-3">
@@ -926,9 +1263,9 @@ export function ShopCatalogClient({
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors duration-200 hover:text-ink"
+                  className="inline-flex min-h-11 items-center text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors duration-200 hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
                 >
-                  Clear
+                  Clear all
                 </button>
               ) : null}
               {variant === "mobile" ? (
@@ -946,9 +1283,9 @@ export function ShopCatalogClient({
 
           <div
             className={cn(
-              "mt-5 space-y-5",
-              (variant === "mobile" || variant === "desktop") &&
-                "min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin]",
+              variant === "mobile"
+                ? "mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1"
+                : "mt-2",
             )}
           >
             {variant === "mobile" ? (
@@ -994,148 +1331,192 @@ export function ShopCatalogClient({
               </>
             ) : null}
 
-            <div>
-              <p className="text-sm font-medium text-ink/90">Availability</p>
-              <div className="mt-3 space-y-2">
-                {[
-                  { label: "All items", value: "all" },
-                  { label: "In stock", value: "in-stock" },
-                  { label: "Sold out", value: "sold-out" },
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm text-smoke transition-all duration-200 hover:border-ink/10 hover:bg-ivory/65 hover:text-ink"
-                  >
-                    <input
-                      type="radio"
-                      name={`${variant}-availability`}
-                      checked={availability === option.value}
-                      onChange={() => {
-                        shouldScrollToResultsRef.current = false;
-
-                        startTransition(() => {
-                          setAvailability(option.value as AvailabilityOption);
-                        });
-                      }}
-                      className="h-4 w-4 accent-deep-teal"
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-sm font-medium text-ink/90">Price</p>
-              <div className="mt-3 space-y-2">
-                {[
-                  { label: "All prices", value: "all" },
-                  { label: "Under $100", value: "under-100" },
-                  { label: "$100 to $250", value: "100-250" },
-                  { label: "$250 to $500", value: "250-500" },
-                  { label: "$500 and up", value: "500-plus" },
-                ].map((option) => (
-                  <label
-                    key={option.value}
-                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm text-smoke transition-all duration-200 hover:border-ink/10 hover:bg-ivory/65 hover:text-ink"
-                  >
-                    <input
-                      type="radio"
-                      name={`${variant}-price-range`}
-                      checked={priceFilter === option.value}
-                      onChange={() => {
-                        shouldScrollToResultsRef.current = false;
-
-                        startTransition(() => {
-                          setPriceFilter(option.value as PriceOption);
-                        });
-                      }}
-                      className="h-4 w-4 accent-deep-teal"
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            {productTypes.length > 0 ? (
-              <div>
-                <p className="text-sm font-medium text-ink/90">Category</p>
-                <div className="mt-3 space-y-2">
-                  {productTypes.map((productType) => (
+            <FilterAccordion
+              id={`${variant}-availability-filter`}
+              label="Availability"
+              activeCount={availability !== DEFAULT_AVAILABILITY ? 1 : 0}
+              isOpen={openFilter === "availability"}
+              onToggle={() => toggleFilter("availability")}
+            >
+              <fieldset>
+                <legend className="sr-only">Availability</legend>
+                <div className="space-y-1">
+                  {[
+                    { label: "All items", value: "all" },
+                    { label: "In stock", value: "in-stock" },
+                    { label: "Sold out", value: "sold-out" },
+                  ].map((option) => (
                     <label
-                      key={productType}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm text-smoke transition-all duration-200 hover:border-ink/10 hover:bg-ivory/65 hover:text-ink"
+                      key={option.value}
+                      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-transparent px-2 py-2 text-sm text-smoke transition-colors duration-200 hover:border-ink/10 hover:bg-stone/55 hover:text-ink"
                     >
                       <input
-                        type="checkbox"
-                        checked={selectedTypes.includes(productType)}
-                        onChange={() => toggleValue(selectedTypes, productType, setSelectedTypes)}
-                        className="h-4 w-4 rounded border-ink/30 accent-deep-teal"
+                        type="radio"
+                        name={`${variant}-availability`}
+                        checked={availability === option.value}
+                        onChange={() => {
+                          shouldScrollToResultsRef.current = false;
+
+                          startTransition(() => {
+                            setAvailability(option.value as AvailabilityOption);
+                          });
+                        }}
+                        className="h-4 w-4 accent-deep-teal"
                       />
-                      <span>{productType}</span>
+                      <span>{option.label}</span>
                     </label>
                   ))}
                 </div>
-              </div>
+              </fieldset>
+            </FilterAccordion>
+
+            <FilterAccordion
+              id={`${variant}-price-filter`}
+              label="Price"
+              activeCount={priceFilter !== "all" ? 1 : 0}
+              isOpen={openFilter === "price"}
+              onToggle={() => toggleFilter("price")}
+            >
+              <fieldset>
+                <legend className="sr-only">Price</legend>
+                <div className="space-y-1">
+                  {[
+                    { label: "All prices", value: "all" },
+                    { label: "Under $100", value: "under-100" },
+                    { label: "$100 to $250", value: "100-250" },
+                    { label: "$250 to $500", value: "250-500" },
+                    { label: "$500 and up", value: "500-plus" },
+                  ].map((option) => (
+                    <label
+                      key={option.value}
+                      className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-transparent px-2 py-2 text-sm text-smoke transition-colors duration-200 hover:border-ink/10 hover:bg-stone/55 hover:text-ink"
+                    >
+                      <input
+                        type="radio"
+                        name={`${variant}-price-range`}
+                        checked={priceFilter === option.value}
+                        onChange={() => {
+                          shouldScrollToResultsRef.current = false;
+
+                          startTransition(() => {
+                            setPriceFilter(option.value as PriceOption);
+                          });
+                        }}
+                        className="h-4 w-4 accent-deep-teal"
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </FilterAccordion>
+
+            {productTypes.length > 0 ? (
+              <FilterAccordion
+                id={`${variant}-category-filter`}
+                label="Category"
+                activeCount={selectedTypes.length}
+                isOpen={openFilter === "category"}
+                onToggle={() => toggleFilter("category")}
+              >
+                <fieldset>
+                  <legend className="sr-only">Category</legend>
+                  <div className="space-y-1">
+                    {productTypes.map((productType) => (
+                      <label
+                        key={productType}
+                        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-transparent px-2 py-2 text-sm text-smoke transition-colors duration-200 hover:border-ink/10 hover:bg-stone/55 hover:text-ink"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedTypes.includes(productType)}
+                          onChange={() => toggleValue(selectedTypes, productType, setSelectedTypes)}
+                          className="h-4 w-4 rounded border-ink/30 accent-deep-teal"
+                        />
+                        <span>{productType}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </FilterAccordion>
             ) : null}
 
             {vendors.length > 0 ? (
-              <div>
-                <p className="text-sm font-medium text-ink/90">Brand</p>
-                <div className="mt-3 space-y-2">
-                  {vendors.map((vendor) => (
-                    <label
-                      key={vendor}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl border border-transparent px-3 py-2 text-sm text-smoke transition-all duration-200 hover:border-ink/10 hover:bg-ivory/65 hover:text-ink"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedVendors.includes(vendor)}
-                        onChange={() => toggleValue(selectedVendors, vendor, setSelectedVendors)}
-                        className="h-4 w-4 rounded border-ink/30 accent-deep-teal"
-                      />
-                      <span>{vendor}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <FilterAccordion
+                id={`${variant}-brand-filter`}
+                label="Brand"
+                activeCount={selectedVendors.length}
+                isOpen={openFilter === "brand"}
+                onToggle={() => toggleFilter("brand")}
+              >
+                <fieldset>
+                  <legend className="sr-only">Brand</legend>
+                  <div className="space-y-1">
+                    {vendors.map((vendor) => (
+                      <label
+                        key={vendor}
+                        className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-transparent px-2 py-2 text-sm text-smoke transition-colors duration-200 hover:border-ink/10 hover:bg-stone/55 hover:text-ink"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedVendors.includes(vendor)}
+                          onChange={() => toggleValue(selectedVendors, vendor, setSelectedVendors)}
+                          className="h-4 w-4 rounded border-ink/30 accent-deep-teal"
+                        />
+                        <span>{vendor}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </FilterAccordion>
             ) : null}
 
             {sizeGroups.length > 0 ? (
-              <div className="space-y-5">
-                <p className="text-sm font-medium text-ink/90">Size</p>
-                {sizeGroups.map((group) => (
-                  <fieldset key={group.kind}>
-                    <legend className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
-                      {group.label}
-                    </legend>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {group.values.map((size) => (
-                        <button
-                          key={size}
-                          type="button"
-                          onClick={() => toggleSize(group.kind, size)}
-                          aria-pressed={selectedSizes[group.kind].includes(size)}
-                          className={`min-h-11 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
-                            selectedSizes[group.kind].includes(size)
-                              ? "border-deep-teal bg-deep-teal text-white shadow-[0_18px_34px_-24px_rgba(15,91,91,0.75)]"
-                              : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-deep-teal hover:text-deep-teal"
-                          }`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
-                  </fieldset>
-                ))}
-              </div>
+              <FilterAccordion
+                id={`${variant}-size-filter`}
+                label="Size"
+                activeCount={smartFitEnabled ? 1 : getSelectedSizeCount(selectedSizes)}
+                isOpen={openFilter === "size"}
+                onToggle={() => toggleFilter("size")}
+              >
+                <div className="space-y-5">
+                  {sizeGroups.map((group) => (
+                    <fieldset key={group.kind}>
+                      <legend className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
+                        {group.label}
+                      </legend>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {group.values.map((size) => (
+                          <button
+                            key={size}
+                            type="button"
+                            onClick={() => toggleSize(group.kind, size)}
+                            aria-pressed={selectedSizes[group.kind].includes(size)}
+                            className={`min-h-11 rounded-full border px-4 text-xs font-semibold tracking-[0.12em] uppercase transition-all duration-200 ${
+                              selectedSizes[group.kind].includes(size)
+                                ? "border-deep-teal bg-deep-teal text-white shadow-[0_18px_34px_-24px_rgba(15,91,91,0.75)]"
+                                : "border-ink/15 bg-ivory text-ink hover:-translate-y-0.5 hover:border-deep-teal hover:text-deep-teal"
+                            }`}
+                          >
+                            {size}
+                          </button>
+                        ))}
+                      </div>
+                    </fieldset>
+                  ))}
+                </div>
+              </FilterAccordion>
             ) : null}
 
             {lengths.length > 0 ? (
-              <div>
-                <p className="text-sm font-medium text-ink/90">Length</p>
-                <div className="mt-3 flex flex-wrap gap-2">
+              <FilterAccordion
+                id={`${variant}-length-filter`}
+                label="Length"
+                activeCount={selectedLengths.length}
+                isOpen={openFilter === "length"}
+                onToggle={() => toggleFilter("length")}
+              >
+                <div className="flex flex-wrap gap-2">
                   {lengths.map((length) => (
                     <button
                       key={length}
@@ -1152,13 +1533,18 @@ export function ShopCatalogClient({
                     </button>
                   ))}
                 </div>
-              </div>
+              </FilterAccordion>
             ) : null}
 
             {colors.length > 0 ? (
-              <div>
-                <p className="text-sm font-medium text-ink/90">Color</p>
-                <div className="mt-3 flex flex-wrap gap-2">
+              <FilterAccordion
+                id={`${variant}-color-filter`}
+                label="Color"
+                activeCount={selectedColors.length}
+                isOpen={openFilter === "color"}
+                onToggle={() => toggleFilter("color")}
+              >
+                <div className="flex flex-wrap gap-2">
                   {colors.map((color) => (
                     <button
                       key={color}
@@ -1175,7 +1561,7 @@ export function ShopCatalogClient({
                     </button>
                   ))}
                 </div>
-              </div>
+              </FilterAccordion>
             ) : null}
           </div>
 
@@ -1213,6 +1599,7 @@ export function ShopCatalogClient({
     return (
       <>
         {isFiltering ? <Badge variant="neutral">Refreshing results</Badge> : null}
+        {sort !== "featured" ? <Badge variant="neutral">Sort: {sortLabels[sort]}</Badge> : null}
         {smartFitEnabled && fitProfile ? <Badge variant="teal">Smart Fit</Badge> : null}
         {selectedTypes.map((productType) => (
           <Badge key={productType} variant="neutral">
@@ -2097,7 +2484,7 @@ export function ShopCatalogClient({
         ref={fitTriggerRef}
         type="button"
         onClick={() => setIsFitDrawerOpen(true)}
-        className="mb-4 flex w-full items-center justify-between gap-3 rounded-lg border border-ink/10 bg-white px-3.5 py-2.5 text-left shadow-sm shadow-ink/[0.03] transition-colors hover:border-deep-teal/30 hover:bg-[#fbfcfc]"
+        className="mb-4 flex w-full flex-col items-stretch justify-between gap-3 rounded-lg border border-ink/10 bg-white px-3.5 py-3 text-left shadow-sm shadow-ink/[0.03] transition-colors duration-200 hover:border-deep-teal/30 hover:bg-stone/35 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20 sm:flex-row sm:items-center"
         aria-controls="smart-fit-panel"
         aria-expanded={isFitDrawerOpen}
       >
@@ -2106,12 +2493,16 @@ export function ShopCatalogClient({
             <Ruler className="h-4 w-4" />
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-sm font-semibold text-ink">{launcherTitle}</span>
-            <span className="mt-0.5 block truncate text-xs text-smoke">{launcherSubtitle}</span>
+            <span className="block text-sm font-semibold text-ink sm:truncate">
+              {launcherTitle}
+            </span>
+            <span className="mt-0.5 block text-xs leading-5 text-smoke sm:truncate">
+              {launcherSubtitle}
+            </span>
           </span>
         </span>
 
-        <span className="shrink-0 rounded-md border border-gold/90 bg-gold px-3 py-1.5 text-xs font-semibold tracking-[0.14em] text-ink uppercase">
+        <span className="inline-flex min-h-11 w-full shrink-0 items-center justify-center rounded-md border border-gold/90 bg-gold px-4 py-2 text-xs font-semibold tracking-[0.14em] text-ink uppercase sm:w-auto">
           {launcherAction}
         </span>
       </button>
@@ -2135,10 +2526,52 @@ export function ShopCatalogClient({
   ].filter((tab) => tab.items.length > 0);
   const activeTopPicksTab =
     topPickTabs.find((tab) => tab.id === activeTopPicksId) ?? topPickTabs[0];
+  const activeTopPickProductIds = new Set(
+    activeTopPicksTab?.items.slice(0, 5).map((product) => product.id) ?? [],
+  );
+  const catalogProducts =
+    activeTopPicksTab && !hasActiveFilters
+      ? [
+          ...filteredProducts.filter((product) => !activeTopPickProductIds.has(product.id)),
+          ...filteredProducts.filter((product) => activeTopPickProductIds.has(product.id)),
+        ]
+      : filteredProducts;
 
   useEffect(() => {
-    topPicksRailRef.current?.scrollTo({ left: 0, behavior: "auto" });
-  }, [activeTopPicksTab?.id]);
+    const rail = topPicksRailRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    rail.scrollTo({ left: 0, behavior: "auto" });
+    const frameId = window.requestAnimationFrame(updateTopPicksScrollState);
+    const resizeObserver = new ResizeObserver(updateTopPicksScrollState);
+
+    resizeObserver.observe(rail);
+    rail.addEventListener("scroll", updateTopPicksScrollState, { passive: true });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      resizeObserver.disconnect();
+      rail.removeEventListener("scroll", updateTopPicksScrollState);
+    };
+  }, [activeTopPicksTab?.id, updateTopPicksScrollState]);
+
+  function scrollTopPicks(direction: -1 | 1) {
+    const rail = topPicksRailRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    rail.scrollBy({
+      left: direction * Math.max(240, rail.clientWidth - 24),
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+  }
 
   function handleTopPicksKeyDown(
     event: ReactKeyboardEvent<HTMLButtonElement>,
@@ -2178,11 +2611,41 @@ export function ShopCatalogClient({
     }
 
     return (
-      <section id="top-picks" className="mb-6 scroll-mt-28" aria-label="Top picks">
-        <div className="flex items-baseline justify-between gap-3">
+      <section id="top-picks" className="mb-4 scroll-mt-28" aria-label="Top picks">
+        <div className="flex items-center justify-between gap-3">
           <TopPicksHeading className="text-lg font-semibold tracking-[-0.01em] text-ink sm:text-xl">
             Top Picks
           </TopPicksHeading>
+          <div className="flex items-center gap-2" aria-label="Top Picks carousel controls">
+            <button
+              type="button"
+              onClick={() => scrollTopPicks(-1)}
+              aria-label="Previous Top Picks products"
+              aria-controls="top-picks-panel"
+              aria-disabled={!topPicksScrollState.canScrollPrevious}
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-md border border-ink/15 bg-white text-ink transition-colors duration-200 hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20",
+                !topPicksScrollState.canScrollPrevious &&
+                  "cursor-default border-ink/8 text-smoke/40 hover:border-ink/8 hover:text-smoke/40",
+              )}
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTopPicks(1)}
+              aria-label="Next Top Picks products"
+              aria-controls="top-picks-panel"
+              aria-disabled={!topPicksScrollState.canScrollNext}
+              className={cn(
+                "inline-flex h-11 w-11 items-center justify-center rounded-md border border-ink/15 bg-white text-ink transition-colors duration-200 hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20",
+                !topPicksScrollState.canScrollNext &&
+                  "cursor-default border-ink/8 text-smoke/40 hover:border-ink/8 hover:text-smoke/40",
+              )}
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
         </div>
 
         <div
@@ -2218,25 +2681,26 @@ export function ShopCatalogClient({
           id="top-picks-panel"
           role="tabpanel"
           aria-labelledby={`top-picks-tab-${activeTopPicksTab.id}`}
-          className="mt-4 flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="mt-3 flex snap-x snap-mandatory scroll-px-0 gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {activeTopPicksTab.items.map((product) => {
+          {activeTopPicksTab.items.map((product, index) => {
             const isOnSale = Boolean(getProductSale(product));
 
             return (
               <Link
                 key={`${activeTopPicksTab.id}-${product.id}`}
                 href={`/shop/${product.handle}`}
-                className="group w-36 shrink-0 snap-start sm:w-44"
+                className="group w-[72vw] max-w-64 shrink-0 snap-start sm:w-[calc((100%-1rem)/2)] sm:max-w-none md:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)] min-[87.5rem]:w-[calc((100%-4rem)/5)]"
               >
-                <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-ink/10 bg-white">
+                <div className="relative h-44 overflow-hidden rounded-lg border border-ink/10 bg-product-canvas sm:h-40 min-[87.5rem]:h-44">
                   {product.featuredImage ? (
                     <Image
                       src={product.featuredImage.url}
                       alt={product.featuredImage.altText || product.title}
                       fill
-                      sizes="176px"
-                      className="object-contain p-3 transition-transform duration-500 group-hover:scale-[1.05]"
+                      sizes="(max-width: 639px) 72vw, (max-width: 767px) 50vw, (max-width: 1023px) 33vw, (max-width: 1399px) 25vw, 20vw"
+                      priority={index < 5}
+                      className="object-contain p-3 transition-transform duration-200 group-hover:scale-[1.025]"
                     />
                   ) : null}
                 </div>
@@ -2245,7 +2709,7 @@ export function ShopCatalogClient({
                     {product.vendor}
                   </p>
                 ) : null}
-                <p className="mt-0.5 truncate text-sm font-medium text-ink transition-colors group-hover:text-deep-teal">
+                <p className="mt-0.5 line-clamp-2 min-h-10 text-sm leading-5 font-medium text-ink transition-colors duration-200 group-hover:text-deep-teal">
                   {product.title}
                 </p>
                 <p className={cn("mt-0.5 text-sm font-bold", isOnSale ? "text-sale" : "text-ink")}>
@@ -2444,7 +2908,7 @@ export function ShopCatalogClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[84rem] px-4 sm:px-5 lg:px-6 xl:px-8">
+    <div className="mx-auto w-full max-w-[90rem] px-6 sm:px-6 lg:px-8 2xl:px-12">
       {renderTopPicks()}
       {renderFitProfileLauncher()}
 
@@ -2473,17 +2937,88 @@ export function ShopCatalogClient({
       ) : null}
 
       <div ref={pillBarRef} className="relative">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="hidden min-h-14 items-center gap-4 border-y border-ink/10 py-2 lg:flex">
+          <p
+            className={cn("shrink-0 text-sm font-medium text-ink", isFiltering && "text-deep-teal")}
+            aria-live="polite"
+          >
+            {`${filteredProducts.length} ${pluralize(filteredProducts.length, "product")}`}
+            {isFiltering ? " · Updating" : ""}
+          </p>
+
+          <div className="ml-auto flex min-w-0 items-center gap-3">
+            <div className="relative w-64 xl:w-72">
+              <label htmlFor="desktop-shop-search-toolbar" className="sr-only">
+                Search products
+              </label>
+              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-smoke" />
+              <Input
+                id="desktop-shop-search-toolbar"
+                value={query}
+                onChange={(event) => {
+                  shouldScrollToResultsRef.current = false;
+                  setQuery(event.target.value);
+                }}
+                placeholder="Search products"
+                className="mt-0 h-11 rounded-md py-0 pr-10 pl-10 text-sm"
+              />
+              {query ? (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="absolute top-1/2 right-1 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-smoke transition-colors duration-200 hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
+                  aria-label="Clear product search"
+                >
+                  <X className="h-4 w-4" aria-hidden />
+                </button>
+              ) : null}
+            </div>
+
+            <div className="relative shrink-0">
+              <label htmlFor="desktop-shop-sort-toolbar" className="sr-only">
+                Sort products
+              </label>
+              <select
+                id="desktop-shop-sort-toolbar"
+                value={sort}
+                onChange={(event) => {
+                  shouldScrollToResultsRef.current = false;
+                  startTransition(() => setSort(event.target.value as SortOption));
+                }}
+                className="h-11 min-w-44 appearance-none rounded-md border border-ink/15 bg-white pr-9 pl-4 text-sm font-medium text-ink outline-none transition-colors duration-200 hover:border-ink/40 focus:border-deep-teal focus:ring-4 focus:ring-deep-teal/15"
+              >
+                <option value="featured">Sort: Featured</option>
+                <option value="newest">Sort: Newest</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+                <option value="title-asc">Alphabetical</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-smoke" />
+            </div>
+
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex min-h-11 shrink-0 items-center px-2 text-xs font-semibold tracking-[0.12em] text-deep-teal uppercase transition-colors duration-200 hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
+              >
+                Clear all
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <button
             ref={mobileFilterTriggerRef}
             type="button"
             onClick={() => setIsMobileFiltersOpen(true)}
-            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-ink/15 bg-white px-4 text-sm font-medium text-ink transition-colors hover:border-ink/40 lg:hidden"
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-ink/15 bg-white px-3 text-sm font-medium text-ink transition-colors hover:border-ink/40 lg:hidden"
             aria-expanded={isMobileFiltersOpen}
             aria-controls="shop-filters"
           >
             <SlidersHorizontal className="h-4 w-4" />
-            All Filters
+            Filters
             {activeFilterCount > 0 ? (
               <span className="rounded-full bg-deep-teal px-2 py-0.5 text-xs font-semibold text-white">
                 {activeFilterCount}
@@ -2492,11 +3027,11 @@ export function ShopCatalogClient({
           </button>
 
           <div className="relative shrink-0">
-            <label htmlFor="shop-sort" className="sr-only">
+            <label htmlFor="mobile-shop-sort-toolbar" className="sr-only">
               Sort by
             </label>
             <select
-              id="shop-sort"
+              id="mobile-shop-sort-toolbar"
               value={sort}
               onChange={(event) => {
                 shouldScrollToResultsRef.current = false;
@@ -2504,10 +3039,10 @@ export function ShopCatalogClient({
                   setSort(event.target.value as SortOption);
                 });
               }}
-              className="h-11 appearance-none rounded-full border border-ink/15 bg-white pr-9 pl-4 text-sm font-medium text-ink outline-none transition-colors hover:border-ink/40 focus:border-deep-teal focus:ring-4 focus:ring-deep-teal/15"
+              className="h-11 w-[6.75rem] appearance-none rounded-full border border-ink/15 bg-white pr-8 pl-3 text-sm font-medium text-ink outline-none transition-colors hover:border-ink/40 focus:border-deep-teal focus:ring-4 focus:ring-deep-teal/15"
             >
-              <option value="featured">Sort: Featured</option>
-              <option value="newest">Sort: Newest</option>
+              <option value="featured">Featured</option>
+              <option value="newest">Newest</option>
               <option value="price-low">Price: Low to High</option>
               <option value="price-high">Price: High to Low</option>
               <option value="title-asc">Alphabetical</option>
@@ -2515,12 +3050,30 @@ export function ShopCatalogClient({
             <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-smoke" />
           </div>
 
+          <button
+            type="button"
+            onClick={() => setIsSearchOpen((current) => !current)}
+            className={cn(
+              "inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors duration-200",
+              isSearchOpen || query
+                ? "border-ink bg-ink text-white"
+                : "border-ink/15 bg-white text-ink hover:border-ink/40",
+            )}
+            aria-label="Search products"
+            aria-expanded={isSearchOpen}
+            aria-controls="mobile-shop-search-field"
+          >
+            <Search className="h-4 w-4" aria-hidden />
+            Search
+          </button>
+
           {facetPills.map((pill) => (
             <button
               key={pill.key}
               type="button"
               onClick={() => setOpenFacet((current) => (current === pill.key ? null : pill.key))}
               aria-expanded={openFacet === pill.key}
+              aria-controls={`shop-facet-popover-${pill.key}`}
               className={cn(
                 "inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors lg:hidden",
                 pill.activeCount > 0 || openFacet === pill.key
@@ -2543,42 +3096,8 @@ export function ShopCatalogClient({
             </button>
           ))}
 
-          {isSearchOpen ? (
-            <div className="relative hidden shrink-0 lg:block">
-              <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-smoke" />
-              <Input
-                autoFocus
-                value={query}
-                onChange={(event) => {
-                  shouldScrollToResultsRef.current = false;
-                  setQuery(event.target.value);
-                }}
-                placeholder="Search products"
-                aria-label="Search products"
-                className="mt-0 h-11 w-56 rounded-full py-0 pr-10 pl-10 text-sm xl:w-64"
-              />
-              <button
-                type="button"
-                onClick={() => setIsSearchOpen(false)}
-                className="absolute top-1/2 right-1 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-smoke transition-colors hover:text-ink"
-                aria-label="Close search"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsSearchOpen(true)}
-              className="hidden h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/15 bg-white text-ink transition-colors hover:border-ink/40 lg:inline-flex"
-              aria-label="Search products"
-            >
-              <Search className="h-4 w-4" />
-            </button>
-          )}
-
           <div
-            className="inline-flex h-11 shrink-0 items-center gap-1 rounded-full border border-ink/15 bg-white p-1 sm:hidden"
+            className="inline-flex shrink-0 items-center rounded-full border border-ink/15 bg-white sm:hidden"
             role="group"
             aria-label="Product layout"
           >
@@ -2588,7 +3107,7 @@ export function ShopCatalogClient({
               aria-pressed={mobileLayout === "grid"}
               aria-label="Two column grid"
               className={cn(
-                "inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors",
+                "inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200",
                 mobileLayout === "grid" ? "bg-ink text-white" : "text-smoke hover:text-ink",
               )}
             >
@@ -2600,7 +3119,7 @@ export function ShopCatalogClient({
               aria-pressed={mobileLayout === "single"}
               aria-label="Single column view"
               className={cn(
-                "inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors",
+                "inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200",
                 mobileLayout === "single" ? "bg-ink text-white" : "text-smoke hover:text-ink",
               )}
             >
@@ -2609,14 +3128,48 @@ export function ShopCatalogClient({
           </div>
         </div>
 
+        {isSearchOpen ? (
+          <div id="mobile-shop-search-field" className="relative mt-3 lg:hidden">
+            <Search className="pointer-events-none absolute top-1/2 left-3.5 h-4 w-4 -translate-y-1/2 text-smoke" />
+            <Input
+              autoFocus
+              value={query}
+              onChange={(event) => {
+                shouldScrollToResultsRef.current = false;
+                setQuery(event.target.value);
+              }}
+              placeholder="Search products"
+              aria-label="Search products"
+              className="mt-0 h-11 rounded-md py-0 pr-11 pl-10 text-sm"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (query) {
+                  clearSearch();
+                } else {
+                  setIsSearchOpen(false);
+                }
+              }}
+              className="absolute top-1/2 right-1 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-md text-smoke transition-colors duration-200 hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
+              aria-label={query ? "Clear product search" : "Close product search"}
+            >
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+        ) : null}
+
         {openFacet ? (
-          <div className="absolute top-full left-0 z-[60] mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-ink/10 bg-white p-4 shadow-[0_30px_70px_-40px_rgba(11,15,20,0.5)] lg:hidden">
+          <div
+            id={`shop-facet-popover-${openFacet}`}
+            className="absolute top-full left-0 z-[60] mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-ink/10 bg-white p-4 shadow-[0_30px_70px_-40px_rgba(11,15,20,0.5)] lg:hidden"
+          >
             {renderFacetPopoverContent(openFacet)}
             <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-3">
               <button
                 type="button"
                 onClick={() => clearFacet(openFacet)}
-                className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase transition-colors hover:text-ink"
+                className="inline-flex min-h-11 items-center px-2 text-xs font-semibold tracking-[0.12em] text-smoke uppercase transition-colors duration-200 hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
               >
                 Clear
               </button>
@@ -2633,7 +3186,7 @@ export function ShopCatalogClient({
       </div>
 
       <p
-        className={cn("mt-3 text-sm text-smoke", isFiltering && "text-deep-teal")}
+        className={cn("mt-3 text-sm text-smoke lg:hidden", isFiltering && "text-deep-teal")}
         aria-live="polite"
       >
         {`Showing ${filteredProducts.length} matching ${pluralize(filteredProducts.length, "product")}`}
@@ -2646,7 +3199,7 @@ export function ShopCatalogClient({
             <button
               type="button"
               onClick={clearSearch}
-              className="inline-flex items-center gap-1.5 rounded-full border border-deep-teal/25 bg-deep-teal/8 px-3 py-1.5 text-xs font-semibold text-deep-teal transition-colors hover:border-deep-teal/50"
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-deep-teal/25 bg-deep-teal/8 px-3 py-2 text-xs font-semibold text-deep-teal transition-colors duration-200 hover:border-deep-teal/50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
               aria-label={`Clear search for ${query.trim()}`}
             >
               &ldquo;{query.trim()}&rdquo;
@@ -2658,7 +3211,7 @@ export function ShopCatalogClient({
             <button
               type="button"
               onClick={clearFilters}
-              className="text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors hover:text-ink"
+              className="inline-flex min-h-11 items-center px-2 text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors duration-200 hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
             >
               Clear all
             </button>
@@ -2690,8 +3243,13 @@ export function ShopCatalogClient({
         </>
       ) : null}
 
-      <div className="lg:mt-6 lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-5 xl:grid-cols-[18rem_minmax(0,1fr)]">
-        <aside className="hidden lg:sticky lg:top-24 lg:block">
+      <div className="lg:mt-5 lg:grid lg:grid-cols-[17rem_minmax(0,1fr)] lg:items-start lg:gap-5 2xl:grid-cols-[17.5rem_minmax(0,1fr)] 2xl:gap-6">
+        <aside
+          className={cn(
+            "hidden lg:block",
+            openDesktopFilter ? "lg:relative" : "lg:sticky lg:top-24",
+          )}
+        >
           {renderFilterPanel("desktop")}
         </aside>
 
@@ -2702,14 +3260,12 @@ export function ShopCatalogClient({
             <div
               aria-busy={isFiltering}
               className={cn(
-                "mt-6 grid gap-3 transition-[opacity,transform,filter] duration-300 ease-out sm:grid-cols-2 md:grid-cols-3 lg:mt-0 lg:grid-cols-2 xl:grid-cols-3 xl:gap-4",
-                mobileLayout === "grid" ? "grid-cols-2" : "grid-cols-1",
-                isFiltering
-                  ? "translate-y-1 opacity-60 blur-[1px]"
-                  : "translate-y-0 opacity-100 blur-0",
+                "mt-5 grid gap-3 transition-opacity duration-200 ease-out motion-reduce:transition-none sm:grid-cols-2 md:grid-cols-2 lg:mt-0 lg:grid-cols-3 lg:gap-4 min-[87.5rem]:grid-cols-4 min-[87.5rem]:gap-5",
+                mobileLayout === "grid" ? "grid-cols-1 min-[360px]:grid-cols-2" : "grid-cols-1",
+                isFiltering ? "opacity-65" : "opacity-100",
               )}
             >
-              {filteredProducts.map((product) => (
+              {catalogProducts.map((product) => (
                 <ShopProductCard
                   key={product.id}
                   product={product}
@@ -2717,7 +3273,7 @@ export function ShopCatalogClient({
                   headingLevel={productHeadingLevel}
                   imageSizes={
                     mobileLayout === "grid"
-                      ? "(max-width: 640px) 50vw, (max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                      ? "(max-width: 359px) 100vw, (max-width: 1023px) 50vw, (max-width: 1399px) 33vw, 25vw"
                       : undefined
                   }
                 />
@@ -2726,10 +3282,8 @@ export function ShopCatalogClient({
           ) : (
             <Card
               className={cn(
-                "mt-8 transition-[opacity,transform,filter] duration-300 ease-out lg:mt-0",
-                isFiltering
-                  ? "translate-y-1 opacity-60 blur-[1px]"
-                  : "translate-y-0 opacity-100 blur-0",
+                "mt-8 transition-opacity duration-200 ease-out motion-reduce:transition-none lg:mt-0",
+                isFiltering ? "opacity-65" : "opacity-100",
               )}
             >
               <CardContent>

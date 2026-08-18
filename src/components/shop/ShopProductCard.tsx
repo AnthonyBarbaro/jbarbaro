@@ -82,7 +82,7 @@ export function ShopProductCard({
     .join(" · ");
 
   return (
-    <Card className="group relative flex h-full flex-col overflow-hidden rounded-lg border-ink/10 bg-white shadow-none transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-deep-teal/30 hover:shadow-[0_18px_40px_-32px_rgba(11,15,20,0.32)]">
+    <Card className="group relative flex h-full flex-col overflow-hidden rounded-lg border-ink/10 bg-white shadow-none transition-[border-color,transform] duration-200 ease-out hover:border-ink/25 focus-within:border-deep-teal/40 motion-safe:hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none">
       <Link
         href={`/shop/${product.handle}`}
         className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-inset"
@@ -117,11 +117,11 @@ export function ShopProductCard({
                   fill
                   sizes={imageSizes}
                   className={cn(
-                    "object-center transition-all duration-500",
-                    imagePresentation === "filled" ? "object-contain" : "object-contain p-4 sm:p-5",
+                    "object-center transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
+                    imagePresentation === "filled" ? "object-contain" : "object-contain p-3 sm:p-4",
                     secondaryImage
-                      ? "opacity-100 group-hover:scale-[1.03] group-hover:opacity-0"
-                      : "group-hover:scale-[1.03]",
+                      ? "opacity-100 group-hover:opacity-0 motion-safe:group-hover:scale-[1.025]"
+                      : "motion-safe:group-hover:scale-[1.025]",
                   )}
                 />
                 {secondaryImage ? (
@@ -131,10 +131,10 @@ export function ShopProductCard({
                     fill
                     sizes={imageSizes}
                     className={cn(
-                      "object-center opacity-0 transition-all duration-500 group-hover:scale-[1.03] group-hover:opacity-100",
+                      "object-center opacity-0 transition-[opacity,transform] duration-200 ease-out group-hover:opacity-100 motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none",
                       imagePresentation === "filled"
                         ? "object-contain"
-                        : "object-contain p-4 sm:p-5",
+                        : "object-contain p-3 sm:p-4",
                     )}
                   />
                 ) : null}
@@ -154,7 +154,7 @@ export function ShopProductCard({
             </p>
           ) : null}
 
-          <ProductHeading className="mt-1.5 line-clamp-2 text-base leading-5 font-semibold tracking-[-0.01em] text-ink transition-colors group-hover:text-deep-teal sm:leading-6">
+          <ProductHeading className="mt-1.5 min-h-10 line-clamp-2 text-base leading-5 font-semibold tracking-[-0.01em] text-ink transition-colors duration-200 group-hover:text-deep-teal sm:min-h-12 sm:leading-6 motion-reduce:transition-none">
             {product.title}
           </ProductHeading>
 

@@ -50,7 +50,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
   const mobileNavItems = navItems.filter((item) => item.label !== "Cart");
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 64rem)");
+    const mediaQuery = window.matchMedia("(min-width: 80rem)");
     const syncViewport = () => {
       setIsDesktopViewport(mediaQuery.matches);
       if (mediaQuery.matches) {
@@ -334,7 +334,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
               ref={menuButtonRef}
               type="button"
               onClick={() => setIsOpen(true)}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 lg:hidden"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 xl:hidden"
               aria-label="Open navigation"
               aria-expanded={isOpen}
             >
@@ -363,7 +363,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
           </div>
 
           <nav
-            className="hidden items-center justify-center gap-2 pb-2.5 lg:flex xl:gap-4 2xl:gap-6"
+            className="hidden items-center justify-center gap-2 pb-2.5 xl:flex xl:gap-4 2xl:gap-6"
             aria-label="Primary"
           >
             {renderDesktopNav(desktopNavItems)}
@@ -377,7 +377,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
 
       <div
         className={cn(
-          "fixed inset-0 z-[140] bg-[#0b0f14]/55 backdrop-blur-[2px] transition-opacity duration-300 lg:hidden",
+          "fixed inset-0 z-[140] bg-[#0b0f14]/55 backdrop-blur-[2px] transition-opacity duration-300 xl:hidden",
           isOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0",
         )}
         onClick={() => setIsOpen(false)}
@@ -387,7 +387,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
       <aside
         ref={drawerRef}
         className={cn(
-          "fixed inset-y-0 right-0 z-[150] h-dvh w-[calc(100vw-2.5rem)] max-w-[22rem] overflow-y-auto border-l border-ink/10 bg-ivory p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl transition-transform duration-300 lg:hidden sm:p-5",
+          "fixed inset-y-0 right-0 z-[150] h-dvh w-[calc(100vw-2.5rem)] max-w-[22rem] overflow-y-auto border-l border-ink/10 bg-ivory p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl transition-transform duration-300 xl:hidden sm:p-5",
           isOpen ? "translate-x-0" : "translate-x-full",
         )}
         role="dialog"

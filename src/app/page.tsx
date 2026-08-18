@@ -1,7 +1,6 @@
-import Image from "next/image";
-import Link from "next/link";
 import { MapPin, Phone, Ruler, ShieldCheck, Store, Tags } from "lucide-react";
 
+import { BrandProductRail } from "@/components/home/BrandProductRail";
 import { CollectionRail } from "@/components/home/CollectionRail";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { NewArrivalsCarousel } from "@/components/home/NewArrivalsCarousel";
@@ -17,9 +16,13 @@ import { locations } from "@/data/locations";
 import { partridgeCreekShowroomPhotos } from "@/data/showroom-gallery";
 import { pageContent } from "@/lib/site-content";
 import { buildMetadata } from "@/lib/seo";
-import { getShopBrands, type ShopBrand } from "@/lib/shopify/brands";
+import { getShopBrands } from "@/lib/shopify/brands";
 import { resolveMenCategories } from "@/lib/shopify/men-categories";
-import { getBestSellingProducts, getNewArrivalProducts } from "@/lib/shopify/products";
+import {
+  getBestSellingProducts,
+  getBestSellingProductsByVendor,
+  getNewArrivalProducts,
+} from "@/lib/shopify/products";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { formatPhone } from "@/lib/utils";
 
@@ -81,6 +84,14 @@ const categoryPresentation: Record<string, { href: string; name: string }> = {
   suits: { href: "/categories/suits", name: "Suits" },
 };
 const DEFAULT_CATEGORY_IMAGE = "/images/locations/partridge-creek/showroom-02.jpg";
+const promotedBrandVendors = ["Alberto", "Canali", "Eton", "Corneliani", "Magnanni"] as const;
+
+type PromotedBrandRow = {
+  vendor: string;
+  name: string;
+  slug: string;
+  products: ShopifyProduct[];
+};
 
 function normalizeCategory(value: string) {
   return value
@@ -141,11 +152,11 @@ export default async function HomePage() {
   const resolvedCategories = await resolveMenCategories(50, 1);
   const categories = getStorefrontCategories(resolvedCategories);
   let bestSellers: ShopifyProduct[] = [];
-  let featuredShopBrands: ShopBrand[] = [];
   let newArrivals: ShopifyProduct[] = [];
+  let promotedBrandRows: PromotedBrandRow[] = [];
 
   try {
-    bestSellers = uniqueProducts(await getBestSellingProducts(25)).slice(0, 25);
+    bestSellers = uniqueProducts(await getBestSellingProducts(24)).slice(0, 24);
   } catch (error) {
     console.error("Unable to load homepage best sellers.", error);
   }
@@ -157,9 +168,40 @@ export default async function HomePage() {
   }
 
   try {
-    featuredShopBrands = (await getShopBrands()).slice(0, 8);
+    const shopBrands = await getShopBrands();
+    const brandsByVendor = new Map(
+      shopBrands.map((brand) => [brand.vendor.trim().toLocaleLowerCase(), brand]),
+    );
+
+    promotedBrandRows = (
+      await Promise.all(
+        promotedBrandVendors.map(async (vendor) => {
+          const brand = brandsByVendor.get(vendor.toLocaleLowerCase());
+
+          if (!brand) {
+            return null;
+          }
+
+          try {
+            const products = uniqueProducts(await getBestSellingProductsByVendor(brand.vendor, 8));
+
+            return products.length > 0
+              ? {
+                  vendor: brand.vendor,
+                  name: brand.name,
+                  slug: brand.slug,
+                  products,
+                }
+              : null;
+          } catch (error) {
+            console.error(`Unable to load homepage products for ${brand.name}.`, error);
+            return null;
+          }
+        }),
+      )
+    ).filter((row): row is PromotedBrandRow => row !== null);
   } catch (error) {
-    console.error("Unable to load homepage brands.", error);
+    console.error("Unable to load promoted homepage brands.", error);
   }
 
   return (
@@ -176,14 +218,61 @@ export default async function HomePage() {
         <CollectionRail collections={categories} />
       </WaveSection>
 
+      {promotedBrandRows.length > 0 ? (
+        <WaveSection
+          background="ivory"
+          contentClassName="py-10 sm:py-12 lg:py-14"
+          className="border-b border-ink/15"
+        >
+          <Container className="max-w-none px-0">
+            <div className="flex flex-col gap-4 px-4 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+              <div>
+                <Badge variant="gold">Designer Brands</Badge>
+                <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">Shop by brand.</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
+                  Browse designer labels represented in our online catalog and go straight to their
+                  products.
+                </p>
+              </div>
+              <ButtonLink href="/shop/brands" className="w-full rounded-none sm:w-auto">
+                Shop All Brands
+              </ButtonLink>
+            </div>
+
+            <div className="mt-8">
+              {promotedBrandRows.map((brand) => (
+                <BrandProductRail key={brand.vendor} brandName={brand.name} brandSlug={brand.slug}>
+                  {brand.products.map((product) => (
+                    <li
+                      key={product.id}
+                      className="w-[76vw] shrink-0 snap-start sm:w-[42vw] md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw] min-[100rem]:w-[14.285vw]"
+                    >
+                      <ShopProductCard
+                        product={product}
+                        headingLevel="h4"
+                        imagePresentation="filled"
+                        imageSizes="(max-width: 639px) 76vw, (max-width: 767px) 42vw, (max-width: 1023px) 30vw, (max-width: 1279px) 23vw, (max-width: 1535px) 19vw, 15vw"
+                      />
+                    </li>
+                  ))}
+                </BrandProductRail>
+              ))}
+            </div>
+          </Container>
+        </WaveSection>
+      ) : null}
+
       <WaveSection
         topWave="C"
         background="stone"
         contentClassName="py-8 sm:py-10 lg:py-12"
         className="border-b border-ink/15 bg-[#f1eee7]"
       >
-        <Container className="max-w-none px-0">
-          <div className="flex flex-col gap-4 px-4 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
+        <Container className="max-w-none min-w-0 overflow-hidden px-0">
+          <div
+            id="best-sellers"
+            className="flex scroll-mt-28 flex-col gap-4 px-4 sm:flex-row sm:items-end sm:justify-between sm:px-6 lg:px-8 xl:px-10 2xl:px-12"
+          >
             <div>
               <p className="text-xs font-semibold tracking-[0.2em] text-ink/60 uppercase">
                 The J. Barbaro Edit
@@ -200,14 +289,14 @@ export default async function HomePage() {
           </div>
 
           {bestSellers.length > 0 ? (
-            <div className="mt-6 grid grid-cols-2 gap-px border-y border-ink/10 bg-ink/10 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 min-[100rem]:grid-cols-7 min-[120rem]:grid-cols-8">
+            <div className="mt-6 grid grid-cols-2 gap-px border-y border-ink/10 bg-ink/10 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 min-[100rem]:grid-cols-8">
               {bestSellers.map((product) => (
                 <ShopProductCard
                   key={product.id}
                   product={product}
                   headingLevel="h3"
                   imagePresentation="filled"
-                  imageSizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, (max-width: 1599px) 20vw, 14vw"
+                  imageSizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, (max-width: 1279px) 25vw, (max-width: 1599px) 16.67vw, 12.5vw"
                 />
               ))}
             </div>
@@ -251,7 +340,10 @@ export default async function HomePage() {
 
       <WaveSection topWave="C" background="ivory">
         <Container className="max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div
+            id="showroom"
+            className="grid scroll-mt-28 gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"
+          >
             <div className="max-w-3xl">
               <Badge variant="teal">Partridge Creek</Badge>
               <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
@@ -299,73 +391,80 @@ export default async function HomePage() {
 
       <WaveSection topWave="C" background="stone">
         <Container className="max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
-          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div
+            id="locations"
+            className="grid scroll-mt-28 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end"
+          >
             <div className="max-w-3xl">
               <Badge variant="teal">Visit J. Barbaro</Badge>
               <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
-                Two stores. Personal service at both.
+                Plan your visit to Partridge Creek.
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
                 Stop in to browse, get fitted, or book ahead and our team will prepare options for
-                your size, style, and occasion.
+                your size, style, and occasion. Our Great Lakes Crossing location is also available
+                when it is more convenient.
               </p>
             </div>
-            <ButtonLink href="/locations" variant="secondary" className="w-full sm:w-auto">
-              Compare Locations
+            <ButtonLink
+              href="/location/partridge-creek"
+              variant="secondary"
+              className="w-full sm:w-auto"
+            >
+              Partridge Creek Details
             </ButtonLink>
           </div>
 
-          <div className="mt-8 grid gap-5 lg:grid-cols-2">
-            {locations.map((location) => (
-              <Card
-                key={location.slug}
-                className="group flex h-full flex-col overflow-hidden bg-white transition-colors hover:border-ink/20"
-              >
-                <Link
-                  href={`/location/${location.slug}`}
-                  className="relative block aspect-[16/8] overflow-hidden bg-stone"
+          <div className="mt-8 overflow-hidden border-y border-ink/15 bg-white">
+            {locations.map((location) => {
+              const isPartridgeCreek = location.slug === "partridge-creek";
+
+              return (
+                <article
+                  key={location.slug}
+                  className={`grid gap-6 border-b border-ink/15 px-5 last:border-b-0 sm:px-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center ${
+                    isPartridgeCreek ? "py-8 sm:py-10" : "bg-stone/45 py-6 sm:py-7"
+                  }`}
                 >
-                  <Image
-                    src={location.photo}
-                    alt={location.photoAlt}
-                    fill
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-[1.025]"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink/78 via-ink/12 to-transparent" />
-                  <span className="absolute top-4 left-4 rounded-full border border-white/25 bg-ink/45 px-3 py-1.5 text-xs font-semibold tracking-[0.14em] text-white uppercase backdrop-blur">
-                    {location.photoLabel}
-                  </span>
-                  <h3 className="absolute inset-x-0 bottom-0 p-5 font-heading text-3xl text-white sm:text-4xl">
-                    {location.name}
-                  </h3>
-                </Link>
-
-                <CardContent className="flex flex-1 flex-col p-5 sm:p-6">
                   <div>
-                    <LocationOpenBadge location={location} />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <p className="text-xs font-semibold tracking-[0.16em] text-deep-teal uppercase">
+                        {isPartridgeCreek ? "Partridge Creek showroom" : "Additional location"}
+                      </p>
+                      <LocationOpenBadge location={location} />
+                    </div>
 
-                    <p className="mt-4 flex max-w-lg gap-2 text-sm leading-7 text-smoke">
-                      <MapPin className="mt-1 h-4 w-4 shrink-0 text-deep-teal" />
-                      {location.address}
-                    </p>
-                    <a
-                      href={formatPhone(location.phone)}
-                      className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-deep-teal hover:text-ink"
+                    <h3
+                      className={`mt-3 font-heading text-ink ${
+                        isPartridgeCreek ? "text-3xl sm:text-4xl" : "text-2xl sm:text-3xl"
+                      }`}
                     >
-                      <Phone className="h-4 w-4" />
-                      {location.phone}
-                    </a>
+                      {location.name}
+                    </h3>
+
+                    <div className="mt-4 flex flex-col gap-3 text-sm text-smoke sm:flex-row sm:flex-wrap sm:gap-x-7">
+                      <p className="flex max-w-xl gap-2 leading-6">
+                        <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-deep-teal" />
+                        {location.address}
+                      </p>
+                      <a
+                        href={formatPhone(location.phone)}
+                        className="inline-flex items-center gap-2 font-semibold text-deep-teal transition-colors hover:text-ink"
+                      >
+                        <Phone className="h-4 w-4" />
+                        {location.phone}
+                      </a>
+                    </div>
                   </div>
 
-                  <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
+                  <div className="flex flex-col gap-2 sm:flex-row lg:justify-end">
                     <ButtonLink
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.address)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      variant="teal"
+                      variant={isPartridgeCreek ? "teal" : "secondary"}
                       size="sm"
-                      className="w-full"
+                      className="w-full rounded-none sm:w-auto"
                     >
                       Directions
                     </ButtonLink>
@@ -373,88 +472,15 @@ export default async function HomePage() {
                       href={`/location/${location.slug}`}
                       variant="secondary"
                       size="sm"
-                      className="w-full"
+                      className="w-full rounded-none sm:w-auto"
                     >
                       Store Details
                     </ButtonLink>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </article>
+              );
+            })}
           </div>
-
-          {featuredShopBrands.length > 0 ? (
-            <div className="mt-12 border-t border-ink/10 pt-10">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <Badge variant="gold">Designer Brands</Badge>
-                  <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
-                    Shop by brand.
-                  </h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-                    Browse designer labels represented in our online catalog and go straight to
-                    their products.
-                  </p>
-                </div>
-                <ButtonLink href="/shop/brands" className="w-full sm:w-auto">
-                  Shop All Brands
-                </ButtonLink>
-              </div>
-
-              <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-                {featuredShopBrands.map((brand) => {
-                  const brandImage = brand.presentation?.image ?? brand.image?.url;
-                  const brandLogo = brand.presentation?.logo;
-
-                  return (
-                    <Link
-                      key={brand.slug}
-                      href={`/shop/brands/${brand.slug}`}
-                      className="group block"
-                    >
-                      <div className="relative aspect-[4/5] overflow-hidden rounded-lg border border-ink/10 bg-product-canvas shadow-sm shadow-ink/[0.03] transition-all duration-300 hover:-translate-y-1 hover:border-gold/50">
-                        {brandImage ? (
-                          <Image
-                            src={brandImage}
-                            alt=""
-                            fill
-                            sizes="(max-width: 768px) 50vw, 25vw"
-                            className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-                          />
-                        ) : null}
-                        <div className="absolute inset-0 bg-gradient-to-t from-ink/82 via-ink/20 to-transparent" />
-                        <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-md border border-white/45 bg-white/88 p-4 shadow-[0_18px_40px_-26px_rgba(14,23,38,0.55)] backdrop-blur-sm">
-                          {brandLogo ? (
-                            <div className="relative h-16 sm:h-20">
-                              <Image
-                                src={brandLogo}
-                                alt=""
-                                fill
-                                sizes="180px"
-                                className="object-contain"
-                              />
-                            </div>
-                          ) : (
-                            <p className="text-center font-heading text-xl leading-tight text-ink sm:text-2xl">
-                              {brand.name}
-                            </p>
-                          )}
-                        </div>
-                        <div className="absolute inset-x-0 bottom-0 p-4 text-center text-white">
-                          <h3 className="text-xs font-semibold tracking-[0.12em] uppercase">
-                            {brand.name}
-                          </h3>
-                          <p className="mt-1 text-xs text-white/78">
-                            {brand.productCount} product{brand.productCount === 1 ? "" : "s"}
-                          </p>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
         </Container>
       </WaveSection>
 

@@ -42,6 +42,10 @@ function getPrimaryCtaLabel(slide: HeroSlide) {
     return "Explore the Store";
   }
 
+  if (slide.title.toLowerCase().includes("save") && slide.href.startsWith("/shop/")) {
+    return "Shop This Deal";
+  }
+
   if (slide.title.toLowerCase().includes("$299")) {
     return "Shop Suits";
   }

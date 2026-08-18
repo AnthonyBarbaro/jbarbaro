@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
-import { ShopProductCard } from "@/components/shop/ShopProductCard";
+import { ProductGridWithMobileLayout } from "@/components/shop/ProductGridWithMobileLayout";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -79,7 +79,9 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
         <Container>
           <Card className="border-ink/10 bg-white">
             <CardContent className="p-6 sm:p-8">
-              <h1 className="font-heading text-3xl text-ink sm:text-4xl">This brand page is refreshing.</h1>
+              <h1 className="font-heading text-3xl text-ink sm:text-4xl">
+                This brand page is refreshing.
+              </h1>
               <p className="mt-4 max-w-3xl text-sm leading-7 text-smoke">
                 Check back shortly, or continue browsing the shop while the catalog updates.
               </p>
@@ -138,15 +140,23 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
         <Container className="py-6 sm:py-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <p className="text-xs font-semibold tracking-[0.18em] text-deep-teal uppercase">Brand</p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-ink sm:text-3xl">{brand.name}</h1>
+              <p className="text-xs font-semibold tracking-[0.18em] text-deep-teal uppercase">
+                Brand
+              </p>
+              <h1 className="mt-2 text-2xl font-semibold tracking-[-0.02em] text-ink sm:text-3xl">
+                {brand.name}
+              </h1>
               <p className="mt-2 text-sm leading-6 text-smoke sm:text-base">
                 {products.length} item{products.length === 1 ? "" : "s"} in the online catalog.
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
               {aboutBrand ? (
-                <ButtonLink href={`/collection-brand/${aboutBrand.slug}`} variant="secondary" size="sm">
+                <ButtonLink
+                  href={`/collection-brand/${aboutBrand.slug}`}
+                  variant="secondary"
+                  size="sm"
+                >
                   About {brand.name}
                 </ButtonLink>
               ) : null}
@@ -161,11 +171,7 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
       <section className="bg-ivory py-6 sm:py-8">
         <Container>
           {products.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 xl:gap-4">
-              {products.map((product) => (
-                <ShopProductCard key={product.id} product={product} />
-              ))}
-            </div>
+            <ProductGridWithMobileLayout products={products} />
           ) : (
             <Card className="border-ink/10 bg-white">
               <CardContent className="p-6 sm:p-8">
@@ -173,8 +179,8 @@ export default async function ShopBrandPage({ params }: ShopBrandPageProps) {
                   No {brand.name} items are online right now.
                 </h2>
                 <p className="mt-3 max-w-3xl text-sm leading-7 text-smoke">
-                  Inventory changes seasonally. Book an appointment and we can prepare current {brand.name} options
-                  in your size before you arrive.
+                  Inventory changes seasonally. Book an appointment and we can prepare current{" "}
+                  {brand.name} options in your size before you arrive.
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <ButtonLink href="/schedule-appointment">Book Appointment</ButtonLink>

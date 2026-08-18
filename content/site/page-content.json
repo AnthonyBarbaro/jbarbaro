@@ -29,20 +29,20 @@
     "heroSlides": [
       {
         "id": "slide-1",
-        "title": "Luxury Menswear. Perfect Fit.",
-        "caption": "Shop suits, shirts, shoes, accessories, and formalwear from premium menswear brands.",
+        "title": "Free Shipping on $400+",
+        "caption": "Complete the look online and get eligible shipping rates up to $25 covered on qualifying orders.",
         "href": "/shop",
-        "image": "/images/campaign/showroom-hero-v2.webp",
-        "imageAlt": "Client selecting a tailored suit in a menswear showroom",
-        "mobileFocalPoint": "center"
+        "image": "/images/campaign/hero-free-shipping-v1.png",
+        "imageAlt": "Man opening a delivered sport coat in a private dressing room",
+        "mobileFocalPoint": "right-quarter"
       },
       {
         "id": "slide-2",
-        "title": "Suits from $299",
-        "caption": "An easy starting point for event dressing, office rotation, or a clean wardrobe refresh.",
-        "href": "/shop",
-        "image": "/images/remote/www.jasonbarbaro.com/assets/media/2020/06/h3_lg.jpg",
-        "imageAlt": "Man wearing a refined light gray tailored suit",
+        "title": "Save 28% on a Standout Suit",
+        "caption": "The Lief Horsens Rock White suit is now $499, previously $695. A sharp choice for spring events, while sizes last.",
+        "href": "/shop/lief-horsens-suit-lh-2536-rock-white",
+        "image": "/images/campaign/hero-suit-deal-v1.png",
+        "imageAlt": "Man wearing a pale stone tailored suit outside a limestone building",
         "mobileFocalPoint": "right-quarter"
       },
       {

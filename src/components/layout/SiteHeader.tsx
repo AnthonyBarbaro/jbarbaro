@@ -9,6 +9,7 @@ import { ChevronDown, Menu, MoveUpRight, X } from "lucide-react";
 import { HeaderAccountButton } from "@/components/layout/HeaderAccountButton";
 import { HeaderCartButton } from "@/components/layout/HeaderCartButton";
 import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
+import { HeaderWishlistButton } from "@/components/layout/HeaderWishlistButton";
 import { primaryNavigation } from "@/data/navigation";
 import type { NavItem } from "@/data/navigation";
 import { siteSettings } from "@/data/site-settings";
@@ -348,7 +349,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
                 width={222}
                 height={68}
                 priority
-                className="brand-logo h-auto w-[128px] sm:w-[168px] lg:w-[176px]"
+                className="brand-logo h-auto w-[88px] min-[360px]:w-[112px] min-[400px]:w-[128px] sm:w-[168px] lg:w-[176px]"
               />
             </Link>
 
@@ -356,8 +357,9 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
               <HeaderProductSearch className="max-w-2xl" />
             </div>
 
-            <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-0">
+            <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0 lg:gap-2">
               <HeaderAccountButton compact className="h-11 w-11 rounded-md bg-ivory" />
+              <HeaderWishlistButton compact className="h-11 w-11 rounded-md bg-ivory" />
               <HeaderCartButton compact className="h-11 w-11 rounded-md bg-ivory" />
             </div>
           </div>
@@ -420,6 +422,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
         <div className="mt-4 grid grid-cols-2 gap-2">
           <HeaderAccountButton onNavigate={() => setIsOpen(false)} />
           <HeaderCartButton onNavigate={() => setIsOpen(false)} />
+          <HeaderWishlistButton onNavigate={() => setIsOpen(false)} className="col-span-2" />
         </div>
 
         <nav className="mt-6 space-y-2" aria-label="Mobile primary">

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { QuickAddProduct } from "@/components/shop/QuickAddProduct";
+import { WishlistButton } from "@/components/shop/WishlistButton";
 import { Card } from "@/components/ui/Card";
 import {
   getProductFitMatchesForProfile,
@@ -82,10 +83,28 @@ export function ShopProductCard({
     .join(" · ");
 
   return (
-    <Card className="group relative flex h-full flex-col overflow-hidden rounded-lg border-ink/10 bg-white shadow-none transition-[border-color,transform] duration-200 ease-out hover:border-ink/25 focus-within:border-deep-teal/40 motion-safe:hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none">
+    <Card className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-lg border-ink/10 bg-white shadow-none transition-[border-color,transform] duration-200 ease-out hover:border-ink/25 focus-within:border-deep-teal/40 motion-safe:hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none">
+      <WishlistButton
+        item={{
+          id: product.id,
+          handle: product.handle,
+          title: product.title,
+          vendor: product.vendor,
+          productType: product.productType,
+          priceLabel,
+          image: product.featuredImage
+            ? {
+                url: product.featuredImage.url,
+                altText: product.featuredImage.altText,
+              }
+            : null,
+        }}
+        className="absolute top-3 left-3 z-[3]"
+      />
+
       <Link
         href={`/shop/${product.handle}`}
-        className="flex flex-1 flex-col focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-inset"
+        className="flex min-w-0 flex-1 flex-col focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-inset"
       >
         <div
           className={cn(
@@ -147,21 +166,21 @@ export function ShopProductCard({
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col p-3 sm:p-4">
+        <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-4">
           {productMeta ? (
             <p className="truncate text-xs font-semibold tracking-[0.14em] text-smoke uppercase">
               {productMeta}
             </p>
           ) : null}
 
-          <ProductHeading className="mt-1.5 min-h-10 line-clamp-2 text-base leading-5 font-semibold tracking-[-0.01em] text-ink transition-colors duration-200 group-hover:text-deep-teal sm:min-h-12 sm:leading-6 motion-reduce:transition-none">
+          <ProductHeading className="mt-1.5 min-h-10 line-clamp-2 text-sm leading-5 font-semibold tracking-[-0.01em] text-ink transition-colors duration-200 group-hover:text-deep-teal sm:min-h-12 sm:text-base sm:leading-6 motion-reduce:transition-none">
             {product.title}
           </ProductHeading>
 
           <div className="mt-auto flex flex-wrap items-baseline gap-2 pr-14 pt-3 sm:pr-16">
             <p
               className={cn(
-                "text-lg font-bold tracking-[-0.02em]",
+                "text-base font-bold tracking-[-0.02em] sm:text-lg",
                 compareAtPrice ? "text-sale" : "text-ink",
               )}
             >

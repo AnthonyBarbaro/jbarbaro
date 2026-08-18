@@ -44,7 +44,7 @@ function RailArrowButton({
       type="button"
       onClick={() => onClick(direction)}
       disabled={disabled}
-      className={`group h-11 w-11 shrink-0 items-center justify-center border border-ink/20 bg-transparent text-ink transition-colors duration-200 hover:bg-ink hover:text-ivory focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal disabled:cursor-not-allowed disabled:border-ink/8 disabled:text-smoke/30 disabled:hover:bg-transparent ${className}`}
+      className={`group h-11 w-11 shrink-0 items-center justify-center bg-transparent text-ink transition-colors duration-200 hover:bg-ink hover:text-ivory focus-visible:z-[1] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-deep-teal disabled:cursor-not-allowed disabled:text-smoke/30 disabled:hover:bg-transparent ${className}`}
       aria-label={label}
       aria-controls={railId}
     >
@@ -289,7 +289,7 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
           </h2>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+        <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
           <Link
             href="/shop?top=new#top-picks"
             className="inline-flex min-h-11 items-center px-1 text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
@@ -321,7 +321,11 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
           ) : null}
 
           {itemCount > 1 ? (
-            <div className="flex items-center gap-px" role="group" aria-label="Browse new arrivals">
+            <div
+              className="ml-auto flex shrink-0 items-center overflow-hidden rounded-full border border-ink/20 bg-white"
+              role="group"
+              aria-label="Browse new arrivals"
+            >
               <RailArrowButton
                 direction={-1}
                 disabled={!hasOverflow}
@@ -336,7 +340,7 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
                 railId={railId}
                 onClick={handleArrowClick}
                 willWrap={!canScrollNext && hasOverflow}
-                className="inline-flex"
+                className="inline-flex border-l border-ink/20"
               />
             </div>
           ) : null}

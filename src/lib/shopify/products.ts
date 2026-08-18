@@ -655,6 +655,44 @@ export async function getBestSellingProducts(limit = 8): Promise<ShopifyProduct[
   return getBestSellingProductsCached(limit);
 }
 
+async function fetchBestSellingProductsByVendor(
+  vendor: string,
+  limit = 8,
+): Promise<ShopifyProduct[]> {
+  const data = await storefrontRequest<ProductsResponse, { limit: number; query: string }>({
+    query: `
+      query BestSellingProductsByVendor($limit: Int!, $query: String!) {
+        products(first: $limit, query: $query, sortKey: BEST_SELLING) {
+          nodes {
+            ${productFields}
+          }
+        }
+      }
+    `,
+    variables: {
+      limit,
+      query: `vendor:'${vendor.replace(/'/g, "\\'")}' AND available_for_sale:true`,
+    },
+  });
+
+  return data.products.nodes.map(normalizeProduct);
+}
+
+const getBestSellingProductsByVendorCached = unstable_cache(
+  fetchBestSellingProductsByVendor,
+  ["shopify-available-best-selling-products-by-vendor"],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
+
+export async function getBestSellingProductsByVendor(
+  vendor: string,
+  limit = 8,
+): Promise<ShopifyProduct[]> {
+  return getBestSellingProductsByVendorCached(vendor, limit);
+}
+
 async function fetchShopProduct(handle: string): Promise<ShopifyProduct | null> {
   const data = await fetchWithRetry(
     () =>

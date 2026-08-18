@@ -88,6 +88,8 @@ type ShopUrlState = {
   smartFitEnabled: boolean;
   topPicksId: string | null;
 };
+
+const SMART_FIT_PROMPT_DISMISSED_KEY = "jbarbaro:smart-fit-prompt-dismissed";
 type FitDraftInput = Omit<
   FitProfileInput,
   "build" | "heightFeet" | "heightInches" | "weightLbs"
@@ -476,12 +478,15 @@ export function ShopCatalogClient({
   const [fitDraft, setFitDraft] = useState<FitDraftInput>(DEFAULT_FIT_INPUT);
   const [isFitEditorOpen, setIsFitEditorOpen] = useState(false);
   const [isFitDrawerOpen, setIsFitDrawerOpen] = useState(false);
+  const [isMobileFitPromptReady, setIsMobileFitPromptReady] = useState(false);
+  const [isMobileFitPromptDismissed, setIsMobileFitPromptDismissed] = useState(false);
   const [isManualSizeEditorOpen, setIsManualSizeEditorOpen] = useState(false);
   const [smartFitEnabled, setSmartFitEnabled] = useState(initialUrlState.smartFitEnabled);
   const resultsAnchorRef = useRef<HTMLDivElement | null>(null);
   const mobileFilterTriggerRef = useRef<HTMLButtonElement | null>(null);
   const mobileFilterPanelRef = useRef<HTMLDivElement | null>(null);
-  const fitTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const desktopFitTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const mobileFitTriggerRef = useRef<HTMLButtonElement | null>(null);
   const fitPanelRef = useRef<HTMLDivElement | null>(null);
   const topPicksRailRef = useRef<HTMLDivElement | null>(null);
   const [topPicksScrollState, setTopPicksScrollState] = useState({
@@ -516,6 +521,17 @@ export function ShopCatalogClient({
   const deferredSelectedSizes = useDeferredValue(selectedSizes);
   const deferredSelectedLengths = useDeferredValue(selectedLengths);
   const deferredSelectedColors = useDeferredValue(selectedColors);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setIsMobileFitPromptDismissed(
+        window.sessionStorage.getItem(SMART_FIT_PROMPT_DISMISSED_KEY) === "true",
+      );
+      setIsMobileFitPromptReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, []);
 
   const updateTopPicksScrollState = useCallback(() => {
     const rail = topPicksRailRef.current;
@@ -1161,7 +1177,9 @@ export function ShopCatalogClient({
     }
 
     const previousOverflow = document.body.style.overflow;
-    const fitTrigger = fitTriggerRef.current;
+    const fitTrigger = [mobileFitTriggerRef.current, desktopFitTriggerRef.current].find(
+      (trigger) => trigger?.offsetParent !== null,
+    );
     const focusFrame = window.requestAnimationFrame(() => {
       const firstFocusable = fitPanelRef.current?.querySelector<HTMLElement>(
         'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
@@ -2481,7 +2499,7 @@ export function ShopCatalogClient({
 
     return (
       <button
-        ref={fitTriggerRef}
+        ref={desktopFitTriggerRef}
         type="button"
         onClick={() => setIsFitDrawerOpen(true)}
         className="mb-4 flex w-full flex-col items-stretch justify-between gap-3 rounded-lg border border-ink/10 bg-white px-3.5 py-3 text-left shadow-sm shadow-ink/[0.03] transition-colors duration-200 hover:border-deep-teal/30 hover:bg-stone/35 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20 sm:flex-row sm:items-center"
@@ -2507,6 +2525,11 @@ export function ShopCatalogClient({
         </span>
       </button>
     );
+  }
+
+  function dismissMobileFitPrompt() {
+    window.sessionStorage.setItem(SMART_FIT_PROMPT_DISMISSED_KEY, "true");
+    setIsMobileFitPromptDismissed(true);
   }
 
   const topPickTabs = [
@@ -2908,9 +2931,41 @@ export function ShopCatalogClient({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[90rem] px-6 sm:px-6 lg:px-8 2xl:px-12">
+    <div className="mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-8 2xl:px-12">
       {renderTopPicks()}
-      {renderFitProfileLauncher()}
+      <div className="hidden lg:block">{renderFitProfileLauncher()}</div>
+
+      {isMobileFitPromptReady && !fitProfile && !isMobileFitPromptDismissed ? (
+        <div className="fixed right-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 z-[90] flex items-stretch overflow-hidden rounded-full border border-ink/15 bg-white shadow-[0_18px_50px_-18px_rgba(11,15,20,0.5)] lg:hidden">
+          <button
+            ref={mobileFitTriggerRef}
+            type="button"
+            onClick={() => setIsFitDrawerOpen(true)}
+            className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2.5 text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-deep-teal/25"
+            aria-controls="smart-fit-panel"
+            aria-expanded={isFitDrawerOpen}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-deep-teal/9 text-deep-teal">
+              <Ruler className="h-4 w-4" aria-hidden />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold text-ink">Find your size</span>
+              <span className="block truncate text-xs text-smoke">Set up Smart Fit</span>
+            </span>
+            <span className="shrink-0 text-[11px] font-semibold tracking-[0.12em] text-deep-teal uppercase">
+              Set up
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={dismissMobileFitPrompt}
+            className="inline-flex w-11 shrink-0 items-center justify-center border-l border-ink/10 text-smoke transition-colors hover:bg-stone hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-deep-teal/25"
+            aria-label="Hide Smart Fit prompt"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      ) : null}
 
       {isFitDrawerOpen ? (
         <>
@@ -3261,7 +3316,7 @@ export function ShopCatalogClient({
               aria-busy={isFiltering}
               className={cn(
                 "mt-5 grid gap-3 transition-opacity duration-200 ease-out motion-reduce:transition-none sm:grid-cols-2 md:grid-cols-2 lg:mt-0 lg:grid-cols-3 lg:gap-4 min-[87.5rem]:grid-cols-4 min-[87.5rem]:gap-5",
-                mobileLayout === "grid" ? "grid-cols-1 min-[360px]:grid-cols-2" : "grid-cols-1",
+                mobileLayout === "grid" ? "grid-cols-2" : "grid-cols-1",
                 isFiltering ? "opacity-65" : "opacity-100",
               )}
             >
@@ -3273,7 +3328,7 @@ export function ShopCatalogClient({
                   headingLevel={productHeadingLevel}
                   imageSizes={
                     mobileLayout === "grid"
-                      ? "(max-width: 359px) 100vw, (max-width: 1023px) 50vw, (max-width: 1399px) 33vw, 25vw"
+                      ? "(max-width: 1023px) 50vw, (max-width: 1399px) 33vw, 25vw"
                       : undefined
                   }
                 />

@@ -7,6 +7,9 @@ import { useEffect, useState } from "react";
 import type { ShowroomPhoto } from "@/data/showroom-gallery";
 import { cn } from "@/lib/utils";
 
+const galleryBlurDataUrl =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10'%3E%3Crect width='16' height='10' fill='%23e8e2d8'/%3E%3C/svg%3E";
+
 type ShowroomGalleryProps = {
   photos: ShowroomPhoto[];
   visibleCount?: number;
@@ -21,6 +24,16 @@ export function ShowroomGallery({
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const visiblePhotos = photos.slice(0, visibleCount);
   const activePhoto = activeIndex === null ? null : (photos[activeIndex] ?? null);
+  const stagedPhotoIndexes =
+    activeIndex === null
+      ? []
+      : Array.from(
+          new Set([
+            activeIndex,
+            (activeIndex + 1) % photos.length,
+            (activeIndex - 1 + photos.length) % photos.length,
+          ]),
+        );
 
   function showPrevious() {
     setActiveIndex((current) => {
@@ -72,7 +85,7 @@ export function ShowroomGallery({
     <>
       <div
         className={cn(
-          "grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-12 md:auto-rows-[12rem] lg:auto-rows-[14rem]",
+          "grid grid-cols-2 gap-px overflow-hidden border border-ink/10 bg-ink/10 md:grid-cols-12 md:auto-rows-[13rem] lg:auto-rows-[15rem]",
           className,
         )}
       >
@@ -87,10 +100,10 @@ export function ShowroomGallery({
               type="button"
               onClick={() => setActiveIndex(index)}
               className={cn(
-                "group relative overflow-hidden rounded-lg border border-ink/10 bg-stone text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal",
+                "group relative overflow-hidden bg-product-canvas text-left focus-visible:z-[1] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-inset focus-visible:ring-deep-teal",
                 isLeadPhoto
-                  ? "col-span-2 aspect-[3/2] md:col-span-7 md:row-span-2 md:aspect-auto"
-                  : "aspect-square md:col-span-5 md:aspect-auto",
+                  ? "col-span-2 aspect-[4/3] md:col-span-8 md:row-span-2 md:aspect-auto"
+                  : "aspect-[4/3] md:col-span-4 md:aspect-auto",
                 !isLeadPhoto && visiblePhotos.length > 3 && index >= 3 && "md:col-span-3",
               )}
               aria-label={`Open showroom photo ${index + 1} of ${photos.length}`}
@@ -99,14 +112,22 @@ export function ShowroomGallery({
                 src={photo.src}
                 alt={photo.alt}
                 fill
-                quality={92}
+                quality={75}
+                placeholder="blur"
+                blurDataURL={galleryBlurDataUrl}
+                decoding="async"
                 sizes={
-                  isLeadPhoto ? "(max-width: 768px) 100vw, 58vw" : "(max-width: 768px) 50vw, 42vw"
+                  isLeadPhoto ? "(max-width: 768px) 100vw, 67vw" : "(max-width: 768px) 50vw, 33vw"
                 }
-                className="object-cover transition-transform duration-500 group-hover:scale-[1.025]"
+                className="object-cover transition-[filter,transform] duration-500 ease-out group-hover:brightness-[0.94] motion-safe:group-hover:scale-[1.018] motion-reduce:transition-none"
               />
-              <span className="absolute inset-0 bg-gradient-to-t from-ink/40 via-transparent to-transparent opacity-70 transition-opacity group-hover:opacity-90" />
-              <span className="absolute right-3 bottom-3 inline-flex min-h-9 items-center gap-2 rounded-full border border-white/25 bg-ink/65 px-3 text-[10px] font-semibold tracking-[0.12em] text-white uppercase backdrop-blur">
+              <span className="absolute inset-0 bg-gradient-to-t from-ink/55 via-transparent to-transparent opacity-75 transition-opacity duration-300 group-hover:opacity-100" />
+              {isLeadPhoto ? (
+                <span className="absolute bottom-4 left-4 max-w-[70%] font-heading text-2xl leading-tight text-white sm:bottom-5 sm:left-5 sm:text-3xl">
+                  The Partridge Creek showroom
+                </span>
+              ) : null}
+              <span className="absolute right-3 bottom-3 inline-flex min-h-10 items-center gap-2 border border-white/30 bg-ink/70 px-3 text-xs font-semibold tracking-[0.12em] text-white uppercase backdrop-blur-sm transition-colors group-hover:bg-ivory group-hover:text-ink">
                 {isLastPreviewPhoto ? (
                   <>
                     <Images className="h-3.5 w-3.5" />
@@ -151,22 +172,36 @@ export function ShowroomGallery({
           </div>
 
           <div className="relative min-h-0 flex-1 bg-black/20">
-            <Image
-              src={activePhoto.src}
-              alt={activePhoto.alt}
-              fill
-              quality={92}
-              sizes="100vw"
-              priority
-              className="object-contain p-2 sm:p-5"
-            />
+            {stagedPhotoIndexes.map((photoIndex) => {
+              const photo = photos[photoIndex];
+              const isActive = photoIndex === activeIndex;
+
+              return (
+                <Image
+                  key={photo.src}
+                  src={photo.src}
+                  alt={isActive ? photo.alt : ""}
+                  aria-hidden={!isActive}
+                  fill
+                  quality={92}
+                  sizes="100vw"
+                  loading="eager"
+                  placeholder="blur"
+                  blurDataURL={galleryBlurDataUrl}
+                  className={cn(
+                    "object-contain p-2 transition-opacity duration-150 sm:p-4 motion-reduce:transition-none",
+                    isActive ? "z-10 opacity-100" : "pointer-events-none z-0 opacity-0",
+                  )}
+                />
+              );
+            })}
 
             {photos.length > 1 ? (
               <>
                 <button
                   type="button"
                   onClick={showPrevious}
-                  className="absolute top-1/2 left-3 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-ink/65 text-white backdrop-blur transition-colors hover:bg-ink/85 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40 sm:left-5"
+                  className="absolute top-1/2 left-3 z-20 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-ink/65 text-white backdrop-blur transition-colors hover:bg-ink/85 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40 sm:left-5"
                   aria-label="Show previous showroom photo"
                 >
                   <ChevronLeft className="h-5 w-5" />
@@ -174,7 +209,7 @@ export function ShowroomGallery({
                 <button
                   type="button"
                   onClick={showNext}
-                  className="absolute top-1/2 right-3 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-ink/65 text-white backdrop-blur transition-colors hover:bg-ink/85 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40 sm:right-5"
+                  className="absolute top-1/2 right-3 z-20 inline-flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full border border-white/20 bg-ink/65 text-white backdrop-blur transition-colors hover:bg-ink/85 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40 sm:right-5"
                   aria-label="Show next showroom photo"
                 >
                   <ChevronRight className="h-5 w-5" />

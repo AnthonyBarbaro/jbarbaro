@@ -381,11 +381,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <ShowroomGallery
-            photos={partridgeCreekShowroomPhotos}
-            visibleCount={3}
-            className="mt-8"
-          />
+          <ShowroomGallery photos={partridgeCreekShowroomPhotos} className="mt-8" />
         </Container>
       </WaveSection>
 

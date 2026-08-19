@@ -1,8 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
 import type { HeroSlide } from "@/types/site";
@@ -10,8 +10,6 @@ import { cn } from "@/lib/utils";
 
 type HeroCarouselProps = {
   slides: HeroSlide[];
-  badges?: Array<{ label: string }>;
-  secondaryCta?: { label: string; href: string };
 };
 
 type SwipeGesture = {
@@ -42,6 +40,10 @@ function getPrimaryCtaLabel(slide: HeroSlide) {
     return "Explore the Store";
   }
 
+  if (slide.href.startsWith("/shop/brands/")) {
+    return slide.title.startsWith("Shop ") ? slide.title : "Shop Brand";
+  }
+
   if (slide.title.toLowerCase().includes("save") && slide.href.startsWith("/shop/")) {
     return "Shop This Deal";
   }
@@ -54,58 +56,34 @@ function getPrimaryCtaLabel(slide: HeroSlide) {
 }
 
 function getImagePosition(slide: HeroSlide) {
+  if (slide.imageFit === "contain-right") {
+    return "object-center sm:object-contain sm:object-right";
+  }
+
+  const desktopImagePosition =
+    slide.desktopImagePosition === "slightly-up"
+      ? "sm:object-[center_55%]"
+      : slide.desktopImagePosition === "slightly-down"
+        ? "sm:object-[center_45%]"
+        : "sm:object-center";
+
   switch (slide.mobileFocalPoint) {
     case "left":
-      return "object-left sm:object-center";
+      return `object-left ${desktopImagePosition}`;
     case "right":
-      return "object-right sm:object-center";
+      return `object-right ${desktopImagePosition}`;
     case "right-quarter":
-      return "object-[78%_center] sm:object-center";
+      return `object-[78%_center] ${desktopImagePosition}`;
     default:
-      return "object-center";
+      return `object-center ${desktopImagePosition}`;
   }
 }
 
-export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarouselProps) {
+export function HeroCarousel({ slides }: HeroCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [transitionDirection, setTransitionDirection] = useState<-1 | 1>(1);
-  const [isPaused, setIsPaused] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [isFocusWithin, setIsFocusWithin] = useState(false);
-  const [isPointerActive, setIsPointerActive] = useState(false);
   const swipeGestureRef = useRef<SwipeGesture | null>(null);
   const suppressClickRef = useRef(false);
-  const isInteractionPaused = isHovered || isFocusWithin || isPointerActive;
-  const metadataBadges = badges.filter(
-    ({ label }) => !/j\.\s*barbaro clothiers|since\s+1998/i.test(label.trim()),
-  );
-
-  useEffect(() => {
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncMotionPreference = () => {
-      if (reducedMotion.matches) {
-        setIsPaused(true);
-      }
-    };
-
-    syncMotionPreference();
-    reducedMotion.addEventListener("change", syncMotionPreference);
-
-    return () => reducedMotion.removeEventListener("change", syncMotionPreference);
-  }, []);
-
-  useEffect(() => {
-    if (slides.length < 2 || isPaused || isInteractionPaused) {
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setTransitionDirection(1);
-      setActiveIndex((current) => (current + 1) % slides.length);
-    }, 6500);
-
-    return () => clearInterval(timer);
-  }, [isInteractionPaused, isPaused, slides.length]);
 
   if (!slides.length) {
     return null;
@@ -114,10 +92,6 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
   const activeSlide = slides[activeIndex];
   const nextSlide = slides.length > 1 ? slides[(activeIndex + 1) % slides.length] : null;
   const renderedSlides = nextSlide ? [activeSlide, nextSlide] : [activeSlide];
-  const fallbackSecondaryCta = secondaryCta ?? {
-    label: "Book Appointment",
-    href: "/schedule-appointment",
-  };
 
   function showPreviousSlide() {
     setTransitionDirection(-1);
@@ -153,7 +127,6 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
       startY: event.clientY,
       isDragging: false,
     };
-    setIsPointerActive(true);
   }
 
   function handlePointerMove(event: ReactPointerEvent<HTMLElement>) {
@@ -182,7 +155,6 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
     }
 
     swipeGestureRef.current = null;
-    setIsPointerActive(false);
 
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
@@ -219,7 +191,6 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
     }
 
     swipeGestureRef.current = null;
-    setIsPointerActive(false);
   }
 
   function handlePointerLeave(event: ReactPointerEvent<HTMLElement>) {
@@ -234,7 +205,6 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
     }
 
     swipeGestureRef.current = null;
-    setIsPointerActive(false);
   }
 
   return (
@@ -242,8 +212,6 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
       aria-label="Featured collections"
       aria-roledescription="carousel"
       className="relative touch-pan-y overflow-hidden bg-[#0b0f14] text-white select-none [perspective:1600px]"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -259,12 +227,6 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
         suppressClickRef.current = false;
       }}
       onDragStart={(event) => event.preventDefault()}
-      onFocusCapture={() => setIsFocusWithin(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          setIsFocusWithin(false);
-        }
-      }}
     >
       {renderedSlides.map((slide, index) => {
         const isActive = index === 0;
@@ -327,33 +289,29 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
         </div>
       ) : null}
 
-      <div className="relative z-10 flex min-h-[540px] w-full items-end px-4 py-10 sm:min-h-[600px] sm:items-center sm:px-6 sm:py-14 lg:min-h-[680px] lg:px-8 lg:py-16 xl:px-10 2xl:px-12">
+      <div className="relative z-10 flex min-h-[540px] w-full items-end px-4 pt-10 pb-20 sm:min-h-[600px] sm:items-center sm:px-6 sm:py-14 lg:min-h-[680px] lg:px-8 lg:py-16 xl:px-10 2xl:px-12">
         <div className="w-full">
           <div key={activeSlide.id} className="hero-copy-enter max-w-4xl">
-            <div className="flex flex-nowrap items-center gap-3 overflow-hidden border-y border-white/25 py-2 sm:w-fit sm:gap-4">
-              {metadataBadges.map((badge, index) => (
-                <span
-                  key={badge.label}
-                  className={cn(
-                    "shrink-0 whitespace-nowrap text-xs font-semibold tracking-[0.16em] uppercase",
-                    index === 0
-                      ? "text-gold"
-                      : "border-l border-white/30 pl-3 text-ivory/82 sm:pl-4",
-                  )}
-                >
-                  {badge.label}
-                </span>
-              ))}
-            </div>
-
-            <h1 className="mt-6 max-w-5xl text-balance font-heading text-5xl leading-[0.94] tracking-[-0.025em] sm:text-6xl lg:text-7xl">
-              {activeSlide.title}
-            </h1>
-            <p className="mt-5 max-w-2xl text-pretty text-[0.98rem] leading-7 text-white/84 sm:text-lg sm:leading-8">
+            {activeSlide.logo ? (
+              <h1 className="relative -my-8 h-40 w-48 overflow-hidden sm:-my-10 sm:h-48 sm:w-56">
+                <Image
+                  src={activeSlide.logo}
+                  alt={activeSlide.logoAlt || activeSlide.title}
+                  fill
+                  sizes="(max-width: 640px) 12rem, 14rem"
+                  className="object-contain invert mix-blend-screen"
+                />
+              </h1>
+            ) : (
+              <h1 className="max-w-5xl text-balance font-heading text-5xl leading-[0.94] tracking-[-0.025em] sm:text-6xl lg:text-7xl">
+                {activeSlide.title}
+              </h1>
+            )}
+            <p className="mt-5 hidden max-w-2xl text-pretty text-[0.98rem] leading-7 text-white/84 sm:block sm:text-lg sm:leading-8">
               {activeSlide.caption}
             </p>
 
-            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
               <ButtonLink
                 href={activeSlide.href}
                 target={activeSlide.external ? "_blank" : undefined}
@@ -363,53 +321,36 @@ export function HeroCarousel({ slides, badges = [], secondaryCta }: HeroCarousel
               >
                 {getPrimaryCtaLabel(activeSlide)}
               </ButtonLink>
-              <ButtonLink
-                href={fallbackSecondaryCta.href}
-                variant="secondary"
-                size="lg"
-                className="w-full rounded-none border-white/55 bg-transparent text-white hover:border-gold hover:bg-transparent hover:text-gold sm:w-auto"
-              >
-                {fallbackSecondaryCta.label}
-              </ButtonLink>
             </div>
           </div>
-
-          {slides.length > 1 ? (
-            <div className="mt-7 flex flex-wrap sm:mt-9">
-              {slides.map((slide, index) => (
-                <button
-                  key={slide.id}
-                  type="button"
-                  onClick={() => showSlide(index)}
-                  aria-label={`Show slide ${index + 1}: ${slide.title}`}
-                  aria-current={index === activeIndex ? "true" : undefined}
-                  className="group inline-flex h-11 w-11 items-center justify-center"
-                >
-                  <span
-                    className={cn(
-                      "h-1.5 w-9 rounded-full transition-colors",
-                      index === activeIndex ? "bg-gold" : "bg-white/35 group-hover:bg-white/65",
-                    )}
-                  />
-                </button>
-              ))}
-              <button
-                type="button"
-                onClick={() => setIsPaused((paused) => !paused)}
-                className="ml-1 inline-flex h-11 items-center justify-center gap-2 rounded-md border border-white/25 bg-ink/45 px-3 text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:border-gold hover:text-gold"
-                aria-label={isPaused ? "Play slideshow" : "Pause slideshow"}
-              >
-                {isPaused ? (
-                  <Play className="h-3.5 w-3.5" aria-hidden />
-                ) : (
-                  <Pause className="h-3.5 w-3.5" aria-hidden />
-                )}
-                {isPaused ? "Play" : "Pause"}
-              </button>
-            </div>
-          ) : null}
         </div>
       </div>
+
+      {slides.length > 1 ? (
+        <div
+          className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2"
+          role="group"
+          aria-label="Choose featured collection"
+        >
+          {slides.map((slide, index) => (
+            <button
+              key={slide.id}
+              type="button"
+              onClick={() => showSlide(index)}
+              aria-label={`Show slide ${index + 1}: ${slide.title}`}
+              aria-current={index === activeIndex ? "true" : undefined}
+              className="group inline-flex h-11 w-11 items-center justify-center"
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-9 rounded-full transition-colors",
+                  index === activeIndex ? "bg-gold" : "bg-white/35 group-hover:bg-white/65",
+                )}
+              />
+            </button>
+          ))}
+        </div>
+      ) : null}
     </section>
   );
 }

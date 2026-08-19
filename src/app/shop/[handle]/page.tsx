@@ -7,15 +7,17 @@ import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
-import { getProductSizeKind, type ProductSizeKind } from "@/lib/fit-profile";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import {
   getAllShopProductPreviews,
-  getBestSellingProducts,
   getProductsByVendor,
-  getRecommendedProducts,
   getShopProduct,
 } from "@/lib/shopify/products";
+import {
+  getFeaturedRecommendationStrategy,
+  isFeaturedRecommendationCandidate,
+  rotateRecommendationsForSource,
+} from "@/lib/shopify/product-recommendations";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 
 type ShopProductPageProps = {
@@ -53,41 +55,6 @@ function getUniqueProducts(
     seenHandles.add(product.handle);
     return true;
   });
-}
-
-const complementarySizeKinds: Record<ProductSizeKind, ProductSizeKind[]> = {
-  suit: ["shirt", "shoe", "waist", "top"],
-  shirt: ["suit", "waist", "shoe", "top"],
-  waist: ["shirt", "suit", "shoe", "top"],
-  shoe: ["waist", "suit", "shirt", "top"],
-  top: ["waist", "suit", "shoe", "shirt"],
-};
-
-function rankOutfitFallbacks(product: ShopifyProduct, candidates: ShopifyProduct[]) {
-  const preferredKinds = complementarySizeKinds[getProductSizeKind(product)];
-  const rankedCandidates = candidates
-    .map((candidate, originalIndex) => ({
-      candidate,
-      originalIndex,
-      kind: getProductSizeKind(candidate),
-      kindPriority: preferredKinds.indexOf(getProductSizeKind(candidate)),
-    }))
-    .filter(({ kindPriority }) => kindPriority >= 0)
-    .sort(
-      (left, right) =>
-        left.kindPriority - right.kindPriority || left.originalIndex - right.originalIndex,
-    );
-  const diverseFirstChoices = preferredKinds.flatMap((kind) => {
-    const match = rankedCandidates.find((entry) => entry.kind === kind);
-
-    return match ? [match] : [];
-  });
-  const firstChoiceIds = new Set(diverseFirstChoices.map(({ candidate }) => candidate.id));
-
-  return [
-    ...diverseFirstChoices,
-    ...rankedCandidates.filter(({ candidate }) => !firstChoiceIds.has(candidate.id)),
-  ].map(({ candidate }) => candidate);
 }
 
 async function loadShopProduct(handle: string) {
@@ -195,12 +162,12 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
     notFound();
   }
 
-  const [sameBrandResult, outfitMatchResult, fallbackResult] = await Promise.allSettled([
+  const featuredStrategy = getFeaturedRecommendationStrategy(product.vendor);
+  const [sameBrandResult, featuredResult] = await Promise.allSettled([
     product.vendor.trim()
       ? getProductsByVendor(product.vendor.trim(), 24, true)
       : Promise.resolve<ShopifyProduct[]>([]),
-    getRecommendedProducts(product.id, product.handle, 10, "COMPLEMENTARY"),
-    getBestSellingProducts(48),
+    getProductsByVendor(featuredStrategy.vendor, 24, true),
   ]);
 
   if (sameBrandResult.status === "rejected") {
@@ -210,17 +177,10 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
     );
   }
 
-  if (outfitMatchResult.status === "rejected") {
+  if (featuredResult.status === "rejected") {
     console.error(
-      `Unable to load complementary Shopify products for "${product.handle}".`,
-      outfitMatchResult.reason,
-    );
-  }
-
-  if (fallbackResult.status === "rejected") {
-    console.error(
-      `Unable to load outfit fallback products for "${product.handle}".`,
-      fallbackResult.reason,
+      `Unable to load ${featuredStrategy.vendor} recommendations for "${product.handle}".`,
+      featuredResult.reason,
     );
   }
 
@@ -233,16 +193,19 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
       : [],
     product,
   );
-  const merchantOutfitCandidates =
-    outfitMatchResult.status === "fulfilled" ? outfitMatchResult.value : [];
-  const fallbackOutfitCandidates =
-    fallbackResult.status === "fulfilled" ? rankOutfitFallbacks(product, fallbackResult.value) : [];
-  const outfitMatchCandidates = getUniqueProducts(
-    [...merchantOutfitCandidates, ...fallbackOutfitCandidates],
-    product,
+  const featuredCandidates = rotateRecommendationsForSource(
+    getUniqueProducts(
+      featuredResult.status === "fulfilled"
+        ? featuredResult.value.filter((item) =>
+            isFeaturedRecommendationCandidate(item, featuredStrategy),
+          )
+        : [],
+      product,
+    ),
+    product.handle,
   );
   const hasRecommendationCandidates =
-    sameBrandCandidates.length > 0 || outfitMatchCandidates.length > 0;
+    sameBrandCandidates.length > 0 || featuredCandidates.length > 0;
 
   const minPrice = product.priceRange.minVariantPrice;
   const maxPrice = product.priceRange.maxVariantPrice;
@@ -324,7 +287,9 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
           key={product.id}
           product={product}
           sameBrandCandidates={sameBrandCandidates}
-          outfitMatchCandidates={outfitMatchCandidates}
+          featuredCandidates={featuredCandidates}
+          featuredTitle={featuredStrategy.title}
+          featuredDescription={featuredStrategy.description}
         />
       ) : null}
     </div>

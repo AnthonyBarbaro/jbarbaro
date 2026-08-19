@@ -1,6 +1,6 @@
 import "server-only";
 
-import { storefrontRequest } from "@/lib/shopify/client";
+import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
 import type { ShopifyCartSnapshot, ShopifyMoney, ShopifyProductVariant } from "@/lib/shopify/types";
 
 type MoneyV2 = {
@@ -142,10 +142,7 @@ const CART_FRAGMENT = `
               value
             }
             image {
-              url
-              altText
-              width
-              height
+              ${SHOPIFY_IMAGE_FIELDS}
             }
             product {
               title

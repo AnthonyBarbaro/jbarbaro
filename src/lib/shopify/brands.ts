@@ -4,7 +4,7 @@ import { unstable_cache } from "next/cache";
 
 import { getBrandPresentation } from "@/data/brands";
 import { brandSlug } from "@/lib/shopify/brand-slug";
-import { storefrontRequest } from "@/lib/shopify/client";
+import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
 import { SHOPIFY_STOREFRONT_REVALIDATE_SECONDS } from "@/lib/shopify/config";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import type { Brand } from "@/types/site";
@@ -49,10 +49,7 @@ async function fetchShopBrandProducts(): Promise<BrandProduct[]> {
             nodes {
               vendor
               featuredImage {
-                url
-                altText
-                width
-                height
+                ${SHOPIFY_IMAGE_FIELDS}
               }
             }
             pageInfo {

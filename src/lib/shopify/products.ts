@@ -3,7 +3,7 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 
 import { getVariantSizeValue } from "@/lib/fit-profile";
-import { storefrontRequest } from "@/lib/shopify/client";
+import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
 import { SHOPIFY_STOREFRONT_REVALIDATE_SECONDS } from "@/lib/shopify/config";
 import type {
   ShopifyCollection,
@@ -222,17 +222,11 @@ const productFields = `
     value
   }
   featuredImage {
-    url
-    altText
-    width
-    height
+    ${SHOPIFY_IMAGE_FIELDS}
   }
   images(first: 8) {
     nodes {
-      url
-      altText
-      width
-      height
+      ${SHOPIFY_IMAGE_FIELDS}
     }
   }
   collections(first: 10) {
@@ -241,10 +235,7 @@ const productFields = `
       handle
       title
       image {
-        url
-        altText
-        width
-        height
+        ${SHOPIFY_IMAGE_FIELDS}
       }
     }
   }
@@ -736,10 +727,7 @@ async function requestShopCollection(handle: string, limit: number): Promise<Raw
           title
           description
           image {
-            url
-            altText
-            width
-            height
+            ${SHOPIFY_IMAGE_FIELDS}
           }
           products(first: $limit) {
             nodes {
@@ -798,10 +786,7 @@ async function fetchAllShopCollection(handle: string): Promise<ShopifyCollection
                 title
                 description
                 image {
-                  url
-                  altText
-                  width
-                  height
+                  ${SHOPIFY_IMAGE_FIELDS}
                 }
                 products(first: ${SHOPIFY_PAGE_SIZE}, after: $cursor) {
                   nodes {
@@ -882,10 +867,7 @@ async function fetchShopCollections(limit = 8): Promise<ShopifyCollectionPreview
             handle
             title
             image {
-              url
-              altText
-              width
-              height
+              ${SHOPIFY_IMAGE_FIELDS}
             }
           }
         }
@@ -924,10 +906,7 @@ async function requestShopCollectionsWithProducts(
             title
             description
             image {
-              url
-              altText
-              width
-              height
+              ${SHOPIFY_IMAGE_FIELDS}
             }
             products(first: $productLimit) {
               nodes {
@@ -1128,10 +1107,7 @@ export async function searchShopProducts(
               }
             }
             featuredImage {
-              url
-              altText
-              width
-              height
+              ${SHOPIFY_IMAGE_FIELDS}
             }
             priceRange {
               minVariantPrice {

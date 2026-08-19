@@ -206,13 +206,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroCarousel
-        slides={homePage.heroSlides}
-        badges={homePage.heroBadges}
-        secondaryCta={
-          homePage.heroCtas[1] ?? { label: "Book Appointment", href: "/schedule-appointment" }
-        }
-      />
+      <HeroCarousel slides={homePage.heroSlides} />
 
       <WaveSection topWave="A" background="ivory" padded={false} className="border-b border-ink/15">
         <CollectionRail collections={categories} />

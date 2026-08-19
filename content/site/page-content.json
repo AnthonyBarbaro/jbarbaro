@@ -32,27 +32,31 @@
         "title": "Free Shipping on $400+",
         "caption": "Complete the look online and get eligible shipping rates up to $25 covered on qualifying orders.",
         "href": "/shop",
-        "image": "/images/campaign/hero-free-shipping-v1.png",
-        "imageAlt": "Man opening a delivered sport coat in a private dressing room",
+        "image": "/images/campaign/3-men-suits.png",
+        "imageAlt": "Three men modeling tailored suits and formalwear in a menswear showroom",
         "mobileFocalPoint": "right-quarter"
       },
       {
         "id": "slide-2",
-        "title": "Save 28% on a Standout Suit",
-        "caption": "The Lief Horsens Rock White suit is now $499, previously $695. A sharp choice for spring events, while sizes last.",
-        "href": "/shop/lief-horsens-suit-lh-2536-rock-white",
-        "image": "/images/campaign/hero-suit-deal-v1.png",
-        "imageAlt": "Man wearing a pale stone tailored suit outside a limestone building",
-        "mobileFocalPoint": "right-quarter"
+        "title": "Shop Canali",
+        "caption": "Explore Canali tailoring and refined Italian menswear available online.",
+        "href": "/shop/brands/canali",
+        "image": "/images/campaign/canali-hero-v2.png",
+        "imageAlt": "Model wearing a tailored blue suit in a modern Italian interior",
+        "logo": "/images/remote/www.jasonbarbaro.com/assets/media/2020/01/logo_canali-200x200.png",
+        "logoAlt": "Canali",
+        "mobileFocalPoint": "right-quarter",
+        "imageFit": "cover"
       },
       {
         "id": "slide-3",
         "title": "Tuxedo Rentals for the Whole Party",
         "caption": "Explore tuxedo and suit rentals for weddings, galas, proms, and black-tie events.",
         "href": "/suit-tuxedo-rentals",
-        "image": "/images/remote/www.barbaroformalwear.com/wp-content/uploads/2024/02/h3lg.jpg",
+        "image": "/images/campaign/rentals.png",
         "imageAlt": "Coordinated wedding party in light gray formalwear",
-        "mobileFocalPoint": "center"
+        "mobileFocalPoint": "center",
+        "desktopImagePosition": "slightly-down"
       },
       {
         "id": "slide-4",

@@ -31,7 +31,9 @@ import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types"
 type ProductRecommendationsClientProps = {
   product: ShopifyProduct;
   sameBrandCandidates: ShopifyProduct[];
-  outfitMatchCandidates: ShopifyProduct[];
+  featuredCandidates: ShopifyProduct[];
+  featuredTitle: string;
+  featuredDescription: string;
 };
 
 type RecommendationEntry = {
@@ -300,7 +302,9 @@ function RecommendationGroup({
 export function ProductRecommendationsClient({
   product,
   sameBrandCandidates,
-  outfitMatchCandidates,
+  featuredCandidates,
+  featuredTitle,
+  featuredDescription,
 }: ProductRecommendationsClientProps) {
   const [selection, setSelection] = useState<ProductSelectionDetail>(() =>
     getInitialSelection(product),
@@ -354,22 +358,21 @@ export function ProductRecommendationsClient({
     () => new Set(sameBrandProducts.map((entry) => entry.product.id)),
     [sameBrandProducts],
   );
-  const outfitMatchProducts = useMemo(
-    () =>
-      selectRecommendations(outfitMatchCandidates, product, selection, fitProfile, sameBrandIds),
-    [fitProfile, outfitMatchCandidates, product, sameBrandIds, selection],
+  const featuredProducts = useMemo(
+    () => selectRecommendations(featuredCandidates, product, selection, fitProfile, sameBrandIds),
+    [featuredCandidates, fitProfile, product, sameBrandIds, selection],
   );
 
-  if (sameBrandProducts.length === 0 && outfitMatchProducts.length === 0) {
+  if (sameBrandProducts.length === 0 && featuredProducts.length === 0) {
     return null;
   }
 
-  const hasBothGroups = sameBrandProducts.length > 0 && outfitMatchProducts.length > 0;
+  const hasBothGroups = sameBrandProducts.length > 0 && featuredProducts.length > 0;
   const summary = hasBothGroups
-    ? `More from ${product.vendor}, followed by pieces chosen to work with this item.`
+    ? `More from ${product.vendor}. ${featuredDescription}`
     : sameBrandProducts.length > 0
       ? `More available styles from ${product.vendor}.`
-      : "Available pieces chosen to work with this item.";
+      : featuredDescription;
 
   return (
     <WaveSection as="div" topWave="C" background="stone" className="overflow-x-clip">
@@ -378,7 +381,7 @@ export function ProductRecommendationsClient({
           <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-2xl">
               <h2 id="complete-look-heading" className="font-heading text-3xl text-ink sm:text-4xl">
-                Complete the Look
+                More to Explore
               </h2>
               <p className="mt-3 text-sm leading-7 text-smoke">{summary}</p>
               <p className="mt-1 text-xs leading-6 text-smoke">
@@ -392,20 +395,20 @@ export function ProductRecommendationsClient({
           </div>
 
           <div
-            className={`mt-7 grid items-stretch gap-x-3 sm:gap-x-4 md:block ${
+            className={`mt-7 grid items-start gap-x-3 sm:gap-x-4 md:block ${
               hasBothGroups ? "grid-cols-2" : "grid-cols-1"
             }`}
           >
             <RecommendationGroup
               id="same-brand-heading"
-              title="Same Brand"
+              title={`More from ${product.vendor}`}
               entries={sameBrandProducts}
               mobileColumn={hasBothGroups}
             />
             <RecommendationGroup
-              id="outfit-matches-heading"
-              title="Outfit Matches"
-              entries={outfitMatchProducts}
+              id="featured-brand-heading"
+              title={featuredTitle}
+              entries={featuredProducts}
               mobileColumn={hasBothGroups}
               className={sameBrandProducts.length > 0 ? "md:mt-8" : ""}
             />

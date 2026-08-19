@@ -21,6 +21,13 @@ type StorefrontRequest<TVariables> = {
   cache?: RequestCache;
 };
 
+export const SHOPIFY_IMAGE_FIELDS = `
+  url(transform: {preferredContentType: WEBP})
+  altText
+  width
+  height
+`;
+
 export async function storefrontRequest<TData, TVariables = Record<string, never>>({
   query,
   variables,

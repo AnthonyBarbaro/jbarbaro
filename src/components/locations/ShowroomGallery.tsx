@@ -267,9 +267,8 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
             })}
 
             <span className="absolute inset-0 z-20 bg-gradient-to-t from-ink/70 via-transparent to-ink/10" />
-            <span className="absolute top-3 right-3 z-30 inline-flex min-h-11 items-center gap-2 border border-white/35 bg-ink/70 px-3 text-[10px] font-semibold tracking-[0.12em] text-white uppercase sm:top-5 sm:right-5 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]">
-              <Expand className="h-4 w-4" />
-              View full screen
+            <span className="absolute top-3 right-3 z-30 inline-flex h-11 w-11 items-center justify-center border border-white/35 bg-ink/70 text-white sm:top-5 sm:right-5">
+              <Expand className="h-4 w-4" aria-hidden />
             </span>
             <span className="absolute bottom-5 left-4 z-30 max-w-[60%] font-heading text-2xl leading-tight text-white sm:left-6 sm:text-3xl">
               The Partridge Creek showroom
@@ -281,15 +280,14 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
               <button
                 type="button"
                 onClick={() => setIsAutoplaying((current) => !current)}
-                className="absolute top-3 left-3 z-40 inline-flex min-h-11 items-center gap-2 border border-white/30 bg-ink/72 px-3 text-[10px] font-semibold tracking-[0.12em] text-white uppercase focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/50 sm:top-5 sm:left-5 sm:px-4 sm:text-[11px] sm:tracking-[0.14em]"
+                className="absolute top-3 left-3 z-40 inline-flex h-11 w-11 items-center justify-center border border-white/30 bg-ink/72 text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/50 sm:top-5 sm:left-5"
                 aria-label={isAutoplaying ? "Pause showroom slideshow" : "Play showroom slideshow"}
               >
                 {isAutoplaying ? (
-                  <Pause className="h-3.5 w-3.5" />
+                  <Pause className="h-4 w-4" aria-hidden />
                 ) : (
-                  <Play className="h-3.5 w-3.5" />
+                  <Play className="h-4 w-4" aria-hidden />
                 )}
-                {isAutoplaying ? "Pause" : "Play"}
               </button>
               <button
                 type="button"

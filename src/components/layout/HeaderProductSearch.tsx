@@ -9,8 +9,10 @@ import type { ShopifyProductSearchResult } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
 type HeaderProductSearchProps = {
+  autoFocus?: boolean;
   className?: string;
   onNavigate?: () => void;
+  resultsClassName?: string;
 };
 
 type SearchResponse = {
@@ -35,15 +37,17 @@ function formatAvailableSizes(availableSizes: string[], limit: number) {
   const visibleSizes = availableSizes.slice(0, limit);
   const remainingCount = availableSizes.length - visibleSizes.length;
 
-  return [
-    ...visibleSizes,
-    remainingCount > 0 ? `+${remainingCount} more` : null,
-  ]
+  return [...visibleSizes, remainingCount > 0 ? `+${remainingCount} more` : null]
     .filter((value): value is string => Boolean(value))
     .join(" · ");
 }
 
-export function HeaderProductSearch({ className, onNavigate }: HeaderProductSearchProps) {
+export function HeaderProductSearch({
+  autoFocus = false,
+  className,
+  onNavigate,
+  resultsClassName,
+}: HeaderProductSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ShopifyProductSearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -136,6 +140,7 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
       >
         <Search className="h-4 w-4 shrink-0 text-smoke" />
         <input
+          autoFocus={autoFocus}
           type="search"
           name="q"
           value={query}
@@ -184,7 +189,7 @@ export function HeaderProductSearch({ className, onNavigate }: HeaderProductSear
               </p>
             </div>
           ) : results.length > 0 ? (
-            <div className="max-h-[420px] overflow-y-auto">
+            <div className={cn("max-h-[420px] overflow-y-auto", resultsClassName)}>
               {results.map((product) => (
                 <Link
                   key={product.id}

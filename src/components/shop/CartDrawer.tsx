@@ -222,7 +222,7 @@ export function CartDrawer() {
       <button
         type="button"
         onClick={() => setIsOpen(false)}
-        className="fixed inset-0 z-[170] bg-[#0b0f14]/55 backdrop-blur-[2px]"
+        className="cart-drawer-backdrop fixed inset-0 z-[170] bg-[#0b0f14]/55 backdrop-blur-[3px]"
         aria-label="Close bag"
       />
       <div
@@ -231,9 +231,16 @@ export function CartDrawer() {
         aria-modal="true"
         aria-label="Shopping bag"
         tabIndex={-1}
-        className="fixed inset-y-0 right-0 z-[175] flex w-full max-w-[26rem] flex-col bg-white shadow-[-24px_0_60px_-40px_rgba(11,15,20,0.45)] outline-none"
+        className={cn(
+          "cart-drawer-panel fixed inset-x-0 bottom-0 z-[175] flex max-h-[82dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-[0_-24px_70px_-34px_rgba(11,15,20,0.55)] outline-none lg:inset-y-0 lg:right-0 lg:left-auto lg:h-full lg:max-h-none lg:max-w-[26rem] lg:rounded-none lg:shadow-[-24px_0_60px_-40px_rgba(11,15,20,0.45)]",
+          hasLines || isLoading || error ? "h-[82dvh]" : "h-auto",
+        )}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-ink/10 px-5 py-4">
+        <div className="relative flex items-center justify-between gap-3 border-b border-ink/10 px-5 pt-6 pb-3 lg:py-4">
+          <span
+            className="absolute top-2 left-1/2 h-1 w-10 -translate-x-1/2 rounded-full bg-ink/18 lg:hidden"
+            aria-hidden
+          />
           <p className="flex items-center gap-2 text-sm font-semibold tracking-[0.16em] text-ink uppercase">
             <ShoppingBag className="h-4 w-4 text-deep-teal" />
             Your Bag

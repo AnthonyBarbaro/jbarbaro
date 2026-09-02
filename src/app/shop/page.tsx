@@ -152,6 +152,7 @@ export default async function ShopPage() {
               products={products}
               bestSellers={bestSellers}
               newArrivals={newArrivals}
+              showTopPicks={false}
             />
           </Suspense>
         ) : (

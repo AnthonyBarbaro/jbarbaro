@@ -4,6 +4,7 @@ import { Inter, Playfair_Display } from "next/font/google";
 import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
+import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { CartDrawer } from "@/components/shop/CartDrawer";
 import { buildPrimaryNavigation } from "@/data/navigation";
 import { locations } from "@/data/locations";
@@ -55,13 +56,18 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
           Skip to content
         </a>
         <SeoJsonLd
-          data={[organizationJsonLd, websiteJsonLd(), ...locations.map((location) => clothingStoreJsonLd(location))]}
+          data={[
+            organizationJsonLd,
+            websiteJsonLd(),
+            ...locations.map((location) => clothingStoreJsonLd(location)),
+          ]}
         />
         <SiteHeader navItems={navItems} />
         <main id="main-content" className="min-h-[60vh]">
           {children}
         </main>
         <SiteFooter />
+        <MobileBottomNav />
         <CartDrawer />
       </body>
     </html>

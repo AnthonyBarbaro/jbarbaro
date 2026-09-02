@@ -188,6 +188,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const [isSmartFitOpen, setIsSmartFitOpen] = useState(false);
   const [isBuyBoxInView, setIsBuyBoxInView] = useState(true);
   const galleryTouchStartXRef = useRef<number | null>(null);
+  const thumbnailRailRef = useRef<HTMLDivElement | null>(null);
   const buyBoxRef = useRef<HTMLDivElement | null>(null);
   const lightboxDialogRef = useRef<HTMLDivElement | null>(null);
   const lightboxStageRef = useRef<HTMLDivElement | null>(null);
@@ -202,6 +203,27 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     lastTap: 0,
   });
   const mouseDragRef = useRef<{ pointerId: number; x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const rail = thumbnailRailRef.current;
+    const selectedThumbnail = rail?.children.item(selectedImageIndex) as HTMLElement | null;
+
+    if (!rail || !selectedThumbnail) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      const targetLeft =
+        selectedThumbnail.offsetLeft - (rail.clientWidth - selectedThumbnail.offsetWidth) / 2;
+
+      rail.scrollTo({
+        left: Math.max(0, targetLeft),
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [selectedImageIndex]);
 
   const selectedVariant = findMatchingVariant(product, selectedOptions);
   const activeImage = images[selectedImageIndex] ?? images[0] ?? null;
@@ -791,32 +813,33 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
           </div>
 
           {hasMultipleImages ? (
-            <div className="overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              <div className="flex w-max gap-2 sm:gap-3">
-                {images.map((image, index) => (
-                  <button
-                    key={`${image.url}-${index}`}
-                    type="button"
-                    onClick={() => selectImage(index)}
-                    className={cn(
-                      "relative h-[4.5rem] w-[4.5rem] shrink-0 overflow-hidden rounded-md border bg-product-canvas transition-all sm:h-20 sm:w-20",
-                      index === selectedImageIndex
-                        ? "border-ink ring-1 ring-ink"
-                        : "border-ink/10 hover:border-ink/35",
-                    )}
-                    aria-label={`View product image ${index + 1}`}
-                    aria-pressed={index === selectedImageIndex}
-                  >
-                    <Image
-                      src={image.url}
-                      alt={image.altText || product.title}
-                      fill
-                      sizes="112px"
-                      className="object-contain p-1.5 sm:p-2"
-                    />
-                  </button>
-                ))}
-              </div>
+            <div
+              ref={thumbnailRailRef}
+              className="flex snap-x snap-proximity scroll-px-[calc(50%-2.25rem)] gap-2 overflow-x-auto overscroll-x-contain pb-1 sm:scroll-px-[calc(50%-2.5rem)] sm:gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {images.map((image, index) => (
+                <button
+                  key={`${image.url}-${index}`}
+                  type="button"
+                  onClick={() => selectImage(index)}
+                  className={cn(
+                    "relative h-[4.5rem] w-[4.5rem] shrink-0 snap-center [scroll-snap-stop:always] overflow-hidden rounded-md border bg-product-canvas transition-all sm:h-20 sm:w-20",
+                    index === selectedImageIndex
+                      ? "border-ink ring-1 ring-ink"
+                      : "border-ink/10 hover:border-ink/35",
+                  )}
+                  aria-label={`View product image ${index + 1}`}
+                  aria-pressed={index === selectedImageIndex}
+                >
+                  <Image
+                    src={image.url}
+                    alt={image.altText || product.title}
+                    fill
+                    sizes="112px"
+                    className="object-contain p-1.5 sm:p-2"
+                  />
+                </button>
+              ))}
             </div>
           ) : null}
         </section>

@@ -15,14 +15,18 @@ type CartResponse = {
 };
 
 type HeaderCartButtonProps = {
+  active?: boolean;
   className?: string;
   compact?: boolean;
+  mobileNav?: boolean;
   onNavigate?: () => void;
 };
 
 export function HeaderCartButton({
+  active = false,
   className,
   compact = false,
+  mobileNav = false,
   onNavigate,
 }: HeaderCartButtonProps) {
   const [quantity, setQuantity] = useState<number | null>(null);
@@ -76,6 +80,31 @@ export function HeaderCartButton({
     event.preventDefault();
     onNavigate?.();
     openShopifyCartDrawer();
+  }
+
+  if (mobileNav) {
+    return (
+      <Link
+        href="/cart"
+        onClick={handleCartClick}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "relative flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-xs font-semibold text-ink/65 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-deep-teal",
+          active && "text-deep-teal",
+          className,
+        )}
+      >
+        <span className="relative">
+          <ShoppingBag className="h-[18px] w-[18px]" aria-hidden />
+          {quantity && quantity > 0 ? (
+            <span className="absolute -top-3 -right-3 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-deep-teal px-1 text-xs font-semibold text-white">
+              {quantity > 99 ? "99+" : quantity}
+            </span>
+          ) : null}
+        </span>
+        <span>Cart</span>
+      </Link>
+    );
   }
 
   if (compact) {

@@ -331,17 +331,6 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
       <header className="sticky top-0 z-[96] border-b border-ink/10 bg-ivory/96 backdrop-blur-xl">
         <div className="mx-auto max-w-[84rem] px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 items-center gap-2 lg:min-h-[4.25rem] lg:gap-6">
-            <button
-              ref={menuButtonRef}
-              type="button"
-              onClick={() => setIsOpen(true)}
-              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 xl:hidden"
-              aria-label="Open navigation"
-              aria-expanded={isOpen}
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-
             <Link href="/" className="shrink-0" aria-label="J. Barbaro Clothiers Home">
               <Image
                 src={siteSettings.logoUrl}
@@ -359,9 +348,22 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
 
             <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0 lg:gap-2">
               <HeaderAccountButton compact className="h-11 w-11 rounded-md bg-ivory" />
-              <HeaderWishlistButton compact className="h-11 w-11 rounded-md bg-ivory" />
-              <HeaderCartButton compact className="h-11 w-11 rounded-md bg-ivory" />
+              <div className="hidden items-center gap-2 lg:flex">
+                <HeaderWishlistButton compact className="h-11 w-11 rounded-md bg-ivory" />
+                <HeaderCartButton compact className="h-11 w-11 rounded-md bg-ivory" />
+              </div>
             </div>
+
+            <button
+              ref={menuButtonRef}
+              type="button"
+              onClick={() => setIsOpen(true)}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 xl:hidden"
+              aria-label="Open navigation"
+              aria-expanded={isOpen}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
           </div>
 
           <nav
@@ -370,10 +372,6 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
           >
             {renderDesktopNav(desktopNavItems)}
           </nav>
-
-          <div className="pb-3 lg:hidden">
-            <HeaderProductSearch />
-          </div>
         </div>
       </header>
 
@@ -417,15 +415,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
           </button>
         </div>
 
-        <HeaderProductSearch className="mt-6" onNavigate={() => setIsOpen(false)} />
-
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <HeaderAccountButton onNavigate={() => setIsOpen(false)} />
-          <HeaderCartButton onNavigate={() => setIsOpen(false)} />
-          <HeaderWishlistButton onNavigate={() => setIsOpen(false)} className="col-span-2" />
-        </div>
-
-        <nav className="mt-6 space-y-2" aria-label="Mobile primary">
+        <nav className="mt-8 space-y-2" aria-label="Mobile primary">
           {renderMobileNav(mobileNavItems)}
         </nav>
       </aside>

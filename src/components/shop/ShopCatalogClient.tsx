@@ -55,6 +55,7 @@ type ShopCatalogClientProps = {
   bestSellers?: ShopifyProduct[];
   newArrivals?: ShopifyProduct[];
   productHeadingLevel?: "h2" | "h3" | "h4";
+  showTopPicks?: boolean;
 };
 
 type FacetKey = "availability" | "price" | "brand" | "size" | "length" | "color";
@@ -447,6 +448,7 @@ export function ShopCatalogClient({
   bestSellers = [],
   newArrivals = [],
   productHeadingLevel = "h2",
+  showTopPicks = true,
 }: ShopCatalogClientProps) {
   const TopPicksHeading = productHeadingLevel;
   const searchParams = useSearchParams();
@@ -2704,7 +2706,7 @@ export function ShopCatalogClient({
           id="top-picks-panel"
           role="tabpanel"
           aria-labelledby={`top-picks-tab-${activeTopPicksTab.id}`}
-          className="mt-3 flex snap-x snap-mandatory scroll-px-0 gap-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="mt-3 flex snap-x snap-mandatory scroll-px-[14vw] gap-4 overflow-x-auto overscroll-x-contain px-[14vw] pb-2 sm:scroll-px-0 sm:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {activeTopPicksTab.items.map((product, index) => {
             const isOnSale = Boolean(getProductSale(product));
@@ -2713,7 +2715,7 @@ export function ShopCatalogClient({
               <Link
                 key={`${activeTopPicksTab.id}-${product.id}`}
                 href={`/shop/${product.handle}`}
-                className="group w-[72vw] max-w-64 shrink-0 snap-start sm:w-[calc((100%-1rem)/2)] sm:max-w-none md:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)] min-[87.5rem]:w-[calc((100%-4rem)/5)]"
+                className="group w-[72vw] max-w-64 shrink-0 snap-center [scroll-snap-stop:always] sm:w-[calc((100%-1rem)/2)] sm:max-w-none sm:snap-start md:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-3rem)/4)] min-[87.5rem]:w-[calc((100%-4rem)/5)]"
               >
                 <div className="relative h-44 overflow-hidden rounded-lg border border-ink/10 bg-product-canvas sm:h-40 min-[87.5rem]:h-44">
                   {product.featuredImage ? (
@@ -2932,7 +2934,7 @@ export function ShopCatalogClient({
 
   return (
     <div className="mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-8 2xl:px-12">
-      {renderTopPicks()}
+      {showTopPicks ? renderTopPicks() : null}
       <div className="hidden lg:block">{renderFitProfileLauncher()}</div>
 
       {isMobileFitPromptReady && !fitProfile && !isMobileFitPromptDismissed ? (

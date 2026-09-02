@@ -47,6 +47,73 @@ body {
   min-height: 100%;
 }
 
+body:has(.mobile-bottom-nav) {
+  padding-bottom: calc(3.5rem + env(safe-area-inset-bottom));
+}
+
+@keyframes mobile-search-backdrop-enter {
+  from {
+    background-color: transparent;
+    backdrop-filter: blur(0);
+  }
+}
+
+@keyframes mobile-search-panel-enter {
+  from {
+    clip-path: inset(10% 4% 10% 4% round 0.75rem);
+    filter: blur(7px);
+    opacity: 0.45;
+    transform: translateY(18px) scale(0.965);
+  }
+}
+
+@keyframes cart-sheet-enter {
+  from {
+    clip-path: inset(8% 0 0 0 round 1rem 1rem 0 0);
+    transform: translateY(100%);
+  }
+}
+
+@keyframes cart-backdrop-enter {
+  from {
+    background-color: transparent;
+    backdrop-filter: blur(0);
+  }
+}
+
+.mobile-search-backdrop {
+  animation: mobile-search-backdrop-enter 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.mobile-search-panel {
+  animation: mobile-search-panel-enter 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (max-width: 1023px) {
+  .cart-drawer-backdrop {
+    animation: cart-backdrop-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .cart-drawer-panel {
+    animation: cart-sheet-enter 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@media (min-width: 1024px) {
+  body:has(.mobile-bottom-nav) {
+    padding-bottom: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-search-backdrop,
+  .mobile-search-panel,
+  .cart-drawer-backdrop,
+  .cart-drawer-panel {
+    animation: none;
+  }
+}
+
 @media (max-width: 639px) and (pointer: coarse) {
   html {
     scroll-snap-type: y proximity;

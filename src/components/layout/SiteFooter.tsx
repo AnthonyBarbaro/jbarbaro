@@ -12,6 +12,7 @@ import { locations } from "@/data/locations";
 import { socialLinks } from "@/data/social";
 import { NewsletterSignup } from "@/components/marketing/NewsletterSignup";
 import { ButtonLink } from "@/components/ui/Button";
+import { LEGAL_OWNER } from "@/lib/constants";
 import { formatPhone } from "@/lib/utils";
 
 function socialIcon(label: string) {
@@ -155,7 +156,9 @@ export function SiteFooter() {
             </Link>
           </p>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-between">
-            <p>© {new Date().getFullYear()} J. Barbaro Clothiers. All rights reserved.</p>
+            <p>
+              © {new Date().getFullYear()} {LEGAL_OWNER}. All rights reserved.
+            </p>
             <p>Premium menswear shopping with personal in-store service.</p>
           </div>
         </div>

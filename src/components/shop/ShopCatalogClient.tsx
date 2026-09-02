@@ -3065,23 +3065,25 @@ export function ShopCatalogClient({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <button
-            ref={mobileFilterTriggerRef}
-            type="button"
-            onClick={() => setIsMobileFiltersOpen(true)}
-            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-ink/15 bg-white px-3 text-sm font-medium text-ink transition-colors hover:border-ink/40 lg:hidden"
-            aria-expanded={isMobileFiltersOpen}
-            aria-controls="shop-filters"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Filters
-            {activeFilterCount > 0 ? (
-              <span className="rounded-full bg-deep-teal px-2 py-0.5 text-xs font-semibold text-white">
-                {activeFilterCount}
-              </span>
-            ) : null}
-          </button>
+        <div className="flex items-start gap-2 overflow-x-auto pb-1 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="shrink-0">
+            <button
+              ref={mobileFilterTriggerRef}
+              type="button"
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-ink/15 bg-white px-3 text-sm font-medium text-ink transition-colors hover:border-ink/40 lg:hidden"
+              aria-expanded={isMobileFiltersOpen}
+              aria-controls="shop-filters"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+              {activeFilterCount > 0 ? (
+                <span className="rounded-full bg-deep-teal px-2 py-0.5 text-xs font-semibold text-white">
+                  {activeFilterCount}
+                </span>
+              ) : null}
+            </button>
+          </div>
 
           <div className="relative shrink-0">
             <label htmlFor="mobile-shop-sort-toolbar" className="sr-only">
@@ -3152,37 +3154,6 @@ export function ShopCatalogClient({
               />
             </button>
           ))}
-
-          <div
-            className="inline-flex shrink-0 items-center rounded-full border border-ink/15 bg-white sm:hidden"
-            role="group"
-            aria-label="Product layout"
-          >
-            <button
-              type="button"
-              onClick={() => setMobileLayout("grid")}
-              aria-pressed={mobileLayout === "grid"}
-              aria-label="Two column grid"
-              className={cn(
-                "inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200",
-                mobileLayout === "grid" ? "bg-ink text-white" : "text-smoke hover:text-ink",
-              )}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setMobileLayout("single")}
-              aria-pressed={mobileLayout === "single"}
-              aria-label="Single column view"
-              className={cn(
-                "inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200",
-                mobileLayout === "single" ? "bg-ink text-white" : "text-smoke hover:text-ink",
-              )}
-            >
-              <Square className="h-4 w-4" />
-            </button>
-          </div>
         </div>
 
         {isSearchOpen ? (
@@ -3242,13 +3213,46 @@ export function ShopCatalogClient({
         ) : null}
       </div>
 
-      <p
-        className={cn("mt-3 text-sm text-smoke lg:hidden", isFiltering && "text-deep-teal")}
-        aria-live="polite"
-      >
-        {`Showing ${filteredProducts.length} matching ${pluralize(filteredProducts.length, "product")}`}
-        {isFiltering ? " · Updating" : ""}
-      </p>
+      <div className="mt-3 flex items-center justify-between gap-3 lg:hidden">
+        <p
+          className={cn("min-w-0 text-sm text-smoke", isFiltering && "text-deep-teal")}
+          aria-live="polite"
+        >
+          {`Showing ${filteredProducts.length} matching ${pluralize(filteredProducts.length, "product")}`}
+          {isFiltering ? " · Updating" : ""}
+        </p>
+
+        <div
+          className="inline-flex shrink-0 items-center rounded-full border border-ink/15 bg-white sm:hidden"
+          role="group"
+          aria-label="Product layout"
+        >
+          <button
+            type="button"
+            onClick={() => setMobileLayout("grid")}
+            aria-pressed={mobileLayout === "grid"}
+            aria-label="Two column grid"
+            className={cn(
+              "inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200",
+              mobileLayout === "grid" ? "bg-ink text-white" : "text-smoke hover:text-ink",
+            )}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileLayout("single")}
+            aria-pressed={mobileLayout === "single"}
+            aria-label="Single column view"
+            className={cn(
+              "inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors duration-200",
+              mobileLayout === "single" ? "bg-ink text-white" : "text-smoke hover:text-ink",
+            )}
+          >
+            <Square className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
 
       {hasActiveFilters || isFiltering ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -3319,6 +3323,7 @@ export function ShopCatalogClient({
               className={cn(
                 "mt-5 grid gap-3 transition-opacity duration-200 ease-out motion-reduce:transition-none sm:grid-cols-2 md:grid-cols-2 lg:mt-0 lg:grid-cols-3 lg:gap-4 min-[87.5rem]:grid-cols-4 min-[87.5rem]:gap-5",
                 mobileLayout === "grid" ? "grid-cols-2" : "grid-cols-1",
+                mobileLayout === "grid" ? "product-layout-to-grid" : "product-layout-to-single",
                 isFiltering ? "opacity-65" : "opacity-100",
               )}
             >

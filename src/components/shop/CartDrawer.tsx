@@ -222,7 +222,7 @@ export function CartDrawer() {
       <button
         type="button"
         onClick={() => setIsOpen(false)}
-        className="cart-drawer-backdrop fixed inset-0 z-[170] bg-[#0b0f14]/55 backdrop-blur-[3px]"
+        className="shopping-drawer-backdrop fixed inset-0 z-[170] bg-[#0b0f14]/55 backdrop-blur-[3px]"
         aria-label="Close bag"
       />
       <div
@@ -232,7 +232,7 @@ export function CartDrawer() {
         aria-label="Shopping bag"
         tabIndex={-1}
         className={cn(
-          "cart-drawer-panel fixed inset-x-0 bottom-0 z-[175] flex max-h-[82dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-[0_-24px_70px_-34px_rgba(11,15,20,0.55)] outline-none lg:inset-y-0 lg:right-0 lg:left-auto lg:h-full lg:max-h-none lg:max-w-[26rem] lg:rounded-none lg:shadow-[-24px_0_60px_-40px_rgba(11,15,20,0.45)]",
+          "shopping-drawer-panel fixed inset-x-0 bottom-0 z-[175] flex max-h-[82dvh] w-full flex-col overflow-hidden rounded-t-2xl bg-white shadow-[0_-24px_70px_-34px_rgba(11,15,20,0.55)] outline-none lg:inset-y-0 lg:right-0 lg:left-auto lg:h-full lg:max-h-none lg:max-w-[26rem] lg:rounded-none lg:shadow-[-24px_0_60px_-40px_rgba(11,15,20,0.45)]",
           hasLines || isLoading || error ? "h-[82dvh]" : "h-auto",
         )}
       >

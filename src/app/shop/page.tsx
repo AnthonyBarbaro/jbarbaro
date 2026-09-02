@@ -121,18 +121,7 @@ export default async function ShopPage() {
 
       <section id="shop-catalog" className="scroll-mt-28 border-b border-ink/10 bg-ivory">
         <Container className="max-w-[90rem] px-6 py-3 sm:px-6 sm:py-4 lg:px-8 2xl:px-12">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <h1 className="text-2xl font-semibold tracking-[-0.02em] text-ink sm:text-3xl">
-                Browse the Collection
-              </h1>
-              <p className="mt-2 text-sm leading-6 text-smoke sm:text-base">
-                {storefrontAvailable
-                  ? `Explore ${products.length} ${products.length === 1 ? "piece" : "pieces"}. Use filters or Smart Fit to find the right style and size.`
-                  : "The catalog is refreshing right now. Check back shortly or continue to the main collection pages."}
-              </p>
-            </div>
-
+          <div className="flex justify-end">
             <ButtonLink
               href="/shop/brands"
               variant="secondary"

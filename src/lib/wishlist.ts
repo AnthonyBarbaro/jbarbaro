@@ -1,7 +1,12 @@
 export const WISHLIST_STORAGE_KEY = "jbarbaro:wishlist";
 export const WISHLIST_CHANGED_EVENT = "jbarbaro:wishlist-changed";
+export const WISHLIST_OPEN_EVENT = "jbarbaro:wishlist-open";
 
 const MAX_WISHLIST_ITEMS = 100;
+
+export function openWishlistDrawer() {
+  window.dispatchEvent(new Event(WISHLIST_OPEN_EVENT));
+}
 
 export type WishlistItem = {
   id: string;

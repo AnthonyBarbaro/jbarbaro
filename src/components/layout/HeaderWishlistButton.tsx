@@ -4,7 +4,12 @@ import Link from "next/link";
 import { Heart } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { readWishlistItems, WISHLIST_CHANGED_EVENT, WISHLIST_STORAGE_KEY } from "@/lib/wishlist";
+import {
+  openWishlistDrawer,
+  readWishlistItems,
+  WISHLIST_CHANGED_EVENT,
+  WISHLIST_STORAGE_KEY,
+} from "@/lib/wishlist";
 import { cn } from "@/lib/utils";
 
 type HeaderWishlistButtonProps = {
@@ -42,11 +47,22 @@ export function HeaderWishlistButton({
     };
   }, []);
 
+  function handleWishlistClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      onNavigate?.();
+      return;
+    }
+
+    event.preventDefault();
+    onNavigate?.();
+    openWishlistDrawer();
+  }
+
   if (mobileNav) {
     return (
       <Link
         href="/wishlist"
-        onClick={onNavigate}
+        onClick={handleWishlistClick}
         aria-current={active ? "page" : undefined}
         className={cn(
           "relative flex min-h-14 flex-col items-center justify-center gap-1 px-1 text-xs font-semibold text-ink/65 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-deep-teal",
@@ -74,7 +90,7 @@ export function HeaderWishlistButton({
     return (
       <Link
         href="/wishlist"
-        onClick={onNavigate}
+        onClick={handleWishlistClick}
         className={cn(
           "relative inline-flex h-11 w-11 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors duration-200 hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2",
           className,
@@ -94,7 +110,7 @@ export function HeaderWishlistButton({
   return (
     <Link
       href="/wishlist"
-      onClick={onNavigate}
+      onClick={handleWishlistClick}
       className={cn(
         "relative inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-ink/18 bg-ivory px-4 py-2 text-[11px] font-semibold tracking-[0.14em] text-ink uppercase transition-colors duration-200 hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2",
         className,

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { CartDrawer } from "@/components/shop/CartDrawer";
+import { WishlistDrawer } from "@/components/shop/WishlistDrawer";
 import { buildPrimaryNavigation } from "@/data/navigation";
 import { locations } from "@/data/locations";
 import { siteSettings } from "@/data/site-settings";
@@ -29,6 +30,11 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = getDefaultSiteMetadata();
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 export const revalidate = 300;
 
 const organizationJsonLd = {
@@ -69,6 +75,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         <SiteFooter />
         <MobileBottomNav />
         <CartDrawer />
+        <WishlistDrawer />
       </body>
     </html>
   );

@@ -76,7 +76,7 @@ export function MobileBottomNav() {
   return (
     <>
       <nav
-        className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[95] grid grid-cols-5 border-t border-ink/10 bg-white/98 px-1 pb-[env(safe-area-inset-bottom)] shadow-[0_-10px_30px_-24px_rgba(11,15,20,0.45)] backdrop-blur-md lg:hidden"
+        className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[95] grid grid-cols-5 border-t border-ink/10 px-1 shadow-[0_-10px_30px_-24px_rgba(11,15,20,0.45)] lg:hidden"
         aria-label="Mobile shopping navigation"
       >
         <MobileNavLink

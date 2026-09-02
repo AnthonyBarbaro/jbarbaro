@@ -151,7 +151,7 @@ export function HeaderProductSearch({
             }
           }}
           placeholder="Search products, brands, sizes, or colors"
-          className="h-11 w-full bg-transparent px-3 text-sm text-ink outline-none placeholder:text-smoke"
+          className="h-11 w-full bg-transparent px-3 text-base text-ink outline-none placeholder:text-smoke sm:text-sm"
           aria-label="Search products"
           aria-controls={resultsId}
           aria-describedby={statusId}

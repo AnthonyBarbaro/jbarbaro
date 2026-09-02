@@ -8,6 +8,8 @@ import { createPortal } from "react-dom";
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import {
   FIT_PROFILE_STORAGE_KEY,
+  isSmartFitPreferenceEnabled,
+  SMART_FIT_ENABLED_STORAGE_KEY,
   getProductFitRecommendation,
   getUsJacketEquivalentLabel,
   isProductJacketLengthOption,
@@ -262,7 +264,12 @@ export function QuickAddProduct({
   }, [isOpen]);
 
   function openQuickAdd() {
-    const storedProfile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
+    const smartFitEnabled = isSmartFitPreferenceEnabled(
+      window.localStorage.getItem(SMART_FIT_ENABLED_STORAGE_KEY),
+    );
+    const storedProfile = smartFitEnabled
+      ? parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY))
+      : null;
     const storedRecommendation = storedProfile
       ? getProductFitRecommendation(fitProduct, storedProfile)
       : null;

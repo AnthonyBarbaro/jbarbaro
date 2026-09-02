@@ -37,6 +37,8 @@ import { FieldLabel, Input, Select } from "@/components/ui/Field";
 import {
   buildFitProfile,
   FIT_PROFILE_STORAGE_KEY,
+  isSmartFitPreferenceEnabled,
+  SMART_FIT_ENABLED_STORAGE_KEY,
   getProductSizeKind,
   getProductFitMatchesForProfile,
   parseFitProfile,
@@ -784,6 +786,9 @@ export function ShopCatalogClient({
     hasLoadedFitProfileRef.current = true;
     const storedFitProfile = window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY);
     const storedProfile = parseFitProfile(storedFitProfile);
+    const smartFitPreferenceEnabled = isSmartFitPreferenceEnabled(
+      window.localStorage.getItem(SMART_FIT_ENABLED_STORAGE_KEY),
+    );
 
     if (!storedProfile) {
       if (storedFitProfile) {
@@ -808,7 +813,7 @@ export function ShopCatalogClient({
         shoeSize: storedProfile.shoeSize ?? "",
       });
 
-      if (matchingSizes.length > 0) {
+      if (smartFitPreferenceEnabled && matchingSizes.length > 0) {
         setSmartFitEnabled(true);
         setSelectedSizes(createEmptySizeSelections());
         setSelectedLengths([]);

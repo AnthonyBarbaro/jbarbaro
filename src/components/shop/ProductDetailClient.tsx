@@ -31,6 +31,8 @@ import { brandSlug } from "@/lib/shopify/brand-slug";
 import { publishProductSelection, type ProductSelectionDetail } from "@/lib/shop-product-selection";
 import {
   FIT_PROFILE_STORAGE_KEY,
+  isSmartFitPreferenceEnabled,
+  SMART_FIT_ENABLED_STORAGE_KEY,
   getProductFitRecommendation,
   getProductSuitSizeSystem,
   getUsJacketEquivalentLabel,
@@ -590,6 +592,12 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   }
 
   useEffect(() => {
+    if (
+      !isSmartFitPreferenceEnabled(window.localStorage.getItem(SMART_FIT_ENABLED_STORAGE_KEY))
+    ) {
+      return;
+    }
+
     const profile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
     const recommendation = profile ? getProductFitRecommendation(product, profile) : null;
     const matchingVariant = recommendation?.variantId

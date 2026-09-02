@@ -1,6 +1,11 @@
 import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
 
 export const FIT_PROFILE_STORAGE_KEY = "jbarbaro_fit_profile_v1";
+export const SMART_FIT_ENABLED_STORAGE_KEY = "jbarbaro_smart_fit_enabled_v1";
+
+export function isSmartFitPreferenceEnabled(value: string | null) {
+  return value !== "false";
+}
 
 export type FitBuild = "slim" | "average" | "athletic" | "broad" | "full";
 

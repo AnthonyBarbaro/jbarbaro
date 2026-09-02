@@ -9,6 +9,7 @@ import { ChevronDown, Menu, MoveUpRight, X } from "lucide-react";
 import { HeaderAccountButton } from "@/components/layout/HeaderAccountButton";
 import { HeaderCartButton } from "@/components/layout/HeaderCartButton";
 import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
+import { HeaderSmartFitButton } from "@/components/layout/HeaderSmartFitButton";
 import { HeaderWishlistButton } from "@/components/layout/HeaderWishlistButton";
 import { primaryNavigation } from "@/data/navigation";
 import type { NavItem } from "@/data/navigation";
@@ -347,6 +348,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
             </div>
 
             <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0 lg:gap-2">
+              <HeaderSmartFitButton />
               <HeaderAccountButton compact className="h-11 w-11 rounded-md bg-ivory" />
               <div className="hidden items-center gap-2 lg:flex">
                 <HeaderWishlistButton compact className="h-11 w-11 rounded-md bg-ivory" />

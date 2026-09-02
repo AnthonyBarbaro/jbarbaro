@@ -65,7 +65,7 @@ export function BrandProductRail({ brandName, brandSlug, children }: BrandProduc
     <section
       aria-labelledby={`${railId}-heading`}
       aria-roledescription="carousel"
-      className="min-w-0 overflow-hidden border-t border-ink/15 py-8 first:border-t-0"
+      className="brand-product-rail min-w-0 overflow-hidden border-t border-ink/15 py-8 first:border-t-0"
     >
       <div className="flex min-w-0 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
         <h3 id={`${railId}-heading`} className="font-heading text-3xl text-ink sm:text-4xl">
@@ -85,7 +85,7 @@ export function BrandProductRail({ brandName, brandSlug, children }: BrandProduc
           id={railId}
           ref={railRef}
           aria-label={`${brandName} best-selling products`}
-          className="flex snap-x snap-mandatory scroll-px-0 gap-px overflow-x-auto overscroll-x-contain bg-ink/10 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory scroll-px-[12vw] overflow-x-auto overscroll-x-contain bg-white px-[12vw] pb-px sm:scroll-px-0 sm:px-0 [scrollbar-width:none] [&>li]:border-r [&>li]:border-ink/10 [&>li:first-child]:border-l [&::-webkit-scrollbar]:hidden"
         >
           {children}
         </ul>

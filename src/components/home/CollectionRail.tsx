@@ -99,12 +99,12 @@ export function CollectionRail({ collections }: CollectionRailProps) {
           id={railId}
           ref={railRef}
           aria-label="Shop all collections"
-          className="flex snap-x snap-mandatory scroll-px-0 gap-px overflow-x-auto overscroll-x-contain bg-ink/15 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory scroll-px-[12vw] overflow-x-auto overscroll-x-contain bg-white px-[12vw] sm:scroll-px-0 sm:px-0 [scrollbar-width:none] [&>li]:border-r [&>li]:border-ink/15 [&>li:first-child]:border-l [&::-webkit-scrollbar]:hidden"
         >
           {collections.map((collection) => (
             <li
               key={collection.slug}
-              className="w-[76vw] shrink-0 snap-start sm:w-[42vw] md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw]"
+              className="w-[76vw] shrink-0 snap-center [scroll-snap-stop:always] sm:w-[42vw] sm:snap-start md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw]"
             >
               <Link
                 href={collection.href}

@@ -361,7 +361,7 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
           }}
           onPointerUp={() => setIsPointerActive(false)}
           onPointerCancel={() => setIsPointerActive(false)}
-          className="flex snap-x snap-mandatory scroll-px-0 gap-px overflow-x-auto overscroll-x-contain bg-ink/10 pb-px [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory scroll-px-[12vw] overflow-x-auto overscroll-x-contain bg-white px-[12vw] pb-px sm:scroll-px-0 sm:px-0 [scrollbar-width:none] [&>li]:border-r [&>li]:border-ink/10 [&>li:first-child]:border-l [&::-webkit-scrollbar]:hidden"
         >
           {children}
         </ul>

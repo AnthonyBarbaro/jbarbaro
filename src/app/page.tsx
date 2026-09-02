@@ -239,7 +239,7 @@ export default async function HomePage() {
                   {brand.products.map((product) => (
                     <li
                       key={product.id}
-                      className="w-[76vw] shrink-0 snap-start sm:w-[42vw] md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw] min-[100rem]:w-[14.285vw]"
+                      className="w-[76vw] shrink-0 snap-center [scroll-snap-stop:always] sm:w-[42vw] sm:snap-start md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw] min-[100rem]:w-[14.285vw]"
                     >
                       <ShopProductCard
                         product={product}
@@ -317,7 +317,7 @@ export default async function HomePage() {
               {newArrivals.map((product) => (
                 <li
                   key={product.id}
-                  className="w-[76vw] shrink-0 snap-start sm:w-[42vw] md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw] min-[100rem]:w-[14.285vw]"
+                  className="w-[76vw] shrink-0 snap-center [scroll-snap-stop:always] sm:w-[42vw] sm:snap-start md:w-[30vw] lg:w-[23vw] xl:w-[19vw] 2xl:w-[16.666vw] min-[100rem]:w-[14.285vw]"
                 >
                   <ShopProductCard
                     product={product}

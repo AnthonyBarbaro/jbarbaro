@@ -186,10 +186,8 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const [smartFitRecommendation, setSmartFitRecommendation] =
     useState<ProductFitRecommendation | null>(null);
   const [isSmartFitOpen, setIsSmartFitOpen] = useState(false);
-  const [isBuyBoxInView, setIsBuyBoxInView] = useState(true);
   const galleryTouchStartXRef = useRef<number | null>(null);
   const thumbnailRailRef = useRef<HTMLDivElement | null>(null);
-  const buyBoxRef = useRef<HTMLDivElement | null>(null);
   const lightboxDialogRef = useRef<HTMLDivElement | null>(null);
   const lightboxStageRef = useRef<HTMLDivElement | null>(null);
   const lightboxTriggerRef = useRef<HTMLElement | null>(null);
@@ -631,27 +629,6 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   }, [product.id, selectedVariant]);
 
   useEffect(() => {
-    const node = buyBoxRef.current;
-
-    if (!node || typeof IntersectionObserver === "undefined") {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsBuyBoxInView(entry.isIntersecting);
-      },
-      { rootMargin: "-72px 0px 0px 0px" },
-    );
-
-    observer.observe(node);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
-  useEffect(() => {
     if (!isLightboxOpen) {
       return;
     }
@@ -879,7 +856,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               </div>
             </header>
 
-            <div ref={buyBoxRef} className="border-t border-ink/10 pt-5">
+            <div className="border-t border-ink/10 pt-5">
               <div className="flex flex-wrap items-center gap-3">
                 <div className="flex flex-wrap items-baseline gap-3">
                   <p
@@ -1132,7 +1109,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         </section>
       </div>
 
-      {!isBuyBoxInView && !isLightboxOpen && selectedVariant ? (
+      {!isLightboxOpen && initialVariant ? (
         <div className="mobile-product-buy-bar fixed inset-x-0 z-[120] border-t border-ink/10 bg-white px-4 pt-3 pb-3 shadow-[0_-18px_40px_-32px_rgba(11,15,20,0.4)] lg:hidden">
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">
@@ -1152,8 +1129,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
               </div>
             </div>
             <AddToCartButton
-              merchandiseId={selectedVariant.id}
-              availableForSale={selectedVariant.availableForSale}
+              merchandiseId={selectedVariant?.id ?? initialVariant.id}
+              availableForSale={Boolean(selectedVariant?.availableForSale)}
+              disabledLabel="Select a Size"
               itemName={product.title}
               className="min-h-11 shrink-0 rounded-md border-ink bg-ink px-5 text-xs !text-white hover:border-deep-teal hover:bg-deep-teal"
               label="Add to Bag"

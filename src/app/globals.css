@@ -58,6 +58,10 @@ body:has(.mobile-bottom-nav) {
   transform: translateZ(0);
 }
 
+.mobile-product-buy-bar {
+  bottom: calc(3.5rem + max(env(safe-area-inset-bottom), 0.5rem));
+}
+
 @keyframes mobile-search-backdrop-enter {
   from {
     background-color: transparent;

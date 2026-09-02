@@ -1133,7 +1133,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
       </div>
 
       {!isBuyBoxInView && !isLightboxOpen && selectedVariant ? (
-        <div className="fixed inset-x-0 bottom-0 z-[120] border-t border-ink/10 bg-white/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-[0_-18px_40px_-32px_rgba(11,15,20,0.4)] backdrop-blur lg:hidden">
+        <div className="mobile-product-buy-bar fixed inset-x-0 z-[120] border-t border-ink/10 bg-white px-4 pt-3 pb-3 shadow-[0_-18px_40px_-32px_rgba(11,15,20,0.4)] lg:hidden">
           <div className="mx-auto flex max-w-2xl items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="truncate text-xs font-semibold text-smoke">{product.title}</p>

@@ -12,31 +12,31 @@ colors:
   sale: "#8f2632"
 typography:
   display:
-    fontFamily: "Playfair Display, Palatino Linotype, Book Antiqua, Palatino, Georgia, serif"
+    fontFamily: "Cormorant Garamond, Iowan Old Style, Baskerville, Georgia, Times New Roman, serif"
     fontSize: "2.8rem"
-    fontWeight: 400
+    fontWeight: 600
     lineHeight: 0.98
     letterSpacing: "normal"
   headline:
-    fontFamily: "Playfair Display, Palatino Linotype, Book Antiqua, Palatino, Georgia, serif"
+    fontFamily: "Cormorant Garamond, Iowan Old Style, Baskerville, Georgia, Times New Roman, serif"
     fontSize: "2.25rem"
-    fontWeight: 400
+    fontWeight: 600
     lineHeight: 1.1
     letterSpacing: "normal"
   title:
-    fontFamily: "Inter, Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontFamily: "Manrope, Avenir Next, Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif"
     fontSize: "1rem"
     fontWeight: 600
     lineHeight: 1.5
     letterSpacing: "-0.01em"
   body:
-    fontFamily: "Inter, Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontFamily: "Manrope, Avenir Next, Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif"
     fontSize: "1rem"
     fontWeight: 400
     lineHeight: 1.75
     letterSpacing: "normal"
   label:
-    fontFamily: "Inter, Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif"
+    fontFamily: "Manrope, Avenir Next, Segoe UI, Helvetica Neue, Helvetica, Arial, sans-serif"
     fontSize: "0.75rem"
     fontWeight: 600
     lineHeight: 1.25
@@ -141,16 +141,16 @@ The palette is a clean showroom foundation with two disciplined accents: Tailor'
 
 ## Typography
 
-**Display Font:** Playfair Display (with Palatino and Georgia fallbacks)
+**Display Font:** Cormorant Garamond (with Iowan Old Style, Baskerville, and Georgia fallbacks)
 
-**Body Font:** Inter (with Segoe UI, Helvetica, and Arial fallbacks)
+**Body Font:** Manrope (with Avenir Next, Segoe UI, Helvetica, and Arial fallbacks)
 
-**Character:** Playfair gives campaign and section headlines the authority of a clothier's editorial voice. Inter keeps product names, prices, filters, forms, and transactional states fast to scan.
+**Character:** Cormorant Garamond gives campaign and section headlines a bold, tailored voice with clear fashion-editorial character. Manrope keeps product names, prices, filters, forms, and transactional states modern and fast to scan.
 
 ### Hierarchy
 
-- **Display** (regular, 2.8rem rising to 4.5rem, 0.98 line-height): Hero and campaign statements only.
-- **Headline** (regular, 2.25rem rising to 3rem, approximately 1.1 line-height): Major merchandising and service sections.
+- **Display** (semibold, 2.8rem rising to 4.5rem, 0.98 line-height): Hero and campaign statements only.
+- **Headline** (semibold, 2.25rem rising to 3rem, approximately 1.1 line-height): Major merchandising and service sections.
 - **Title** (semibold, 1rem, 1.5 line-height): Product names, card titles, and action-oriented subheads.
 - **Body** (regular, 1rem, 1.75 line-height): Descriptions and guidance, generally kept below 70 characters per line.
 - **Label** (semibold, 0.75rem, 0.16em letter-spacing, uppercase): Buttons, badges, filters, product metadata, and short retail signposts.
@@ -239,6 +239,6 @@ Product cards use a consistent image stage, vendor eyebrow, two-line product tit
 
 - **Don't** turn the site into a generic marketplace or a discount-first visual system.
 - **Don't** hide shopping utilities behind decorative luxury conventions.
-- **Don't** use Playfair Display for dense transactional text, controls, prices, or form mechanics.
+- **Don't** use Cormorant Garamond for dense transactional text, controls, prices, or form mechanics.
 - **Don't** introduce new claims, badges, scarcity messages, testimonials, or promotional prices without real data.
 - **Don't** add new corner, shadow, or accent treatments when an existing component role already fits.

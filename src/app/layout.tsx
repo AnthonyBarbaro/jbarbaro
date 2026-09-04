@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Playfair_Display } from "next/font/google";
+import { Cormorant_Garamond, Manrope } from "next/font/google";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -17,15 +17,15 @@ import { clothingStoreJsonLd, websiteJsonLd } from "@/lib/structured-data";
 
 import "./globals.css";
 
-const inter = Inter({
+const manrope = Manrope({
   subsets: ["latin"],
-  variable: "--font-inter",
+  variable: "--font-manrope",
   display: "swap",
 });
 
-const playfair = Playfair_Display({
+const cormorantGaramond = Cormorant_Garamond({
   subsets: ["latin"],
-  variable: "--font-playfair",
+  variable: "--font-cormorant-garamond",
   display: "swap",
 });
 
@@ -53,7 +53,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const navItems = buildPrimaryNavigation();
 
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${manrope.variable} ${cormorantGaramond.variable}`}>
       <body className="luxe-shell antialiased">
         <a
           href="#main-content"

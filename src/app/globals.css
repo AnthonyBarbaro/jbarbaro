@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  /* --font-inter and --font-playfair are provided by next/font in src/app/layout.tsx */
-  --font-fallback-sans: "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --font-fallback-serif: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+  /* Primary font variables are provided by next/font in src/app/layout.tsx. */
+  --font-fallback-sans: "Avenir Next", "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-fallback-serif: "Iowan Old Style", Baskerville, Georgia, "Times New Roman", serif;
 
   --color-ink: #0b0f14;
   --color-ivory: #ffffff;
@@ -25,8 +25,8 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-inter), var(--font-fallback-sans);
-  --font-heading: var(--font-playfair), var(--font-fallback-serif);
+  --font-sans: var(--font-manrope), var(--font-fallback-sans);
+  --font-heading: var(--font-cormorant-garamond), var(--font-fallback-serif);
 
   --color-ink: var(--color-ink);
   --color-ivory: var(--color-ivory);
@@ -36,6 +36,12 @@
   --color-smoke: var(--color-smoke);
   --color-product-canvas: var(--color-product-canvas);
   --color-sale: var(--color-sale);
+}
+
+@layer base {
+  .font-heading {
+    font-weight: 600;
+  }
 }
 
 * {
@@ -187,7 +193,7 @@ body {
   overflow-x: hidden;
   background: var(--color-ivory);
   color: var(--color-ink);
-  font-family: var(--font-inter), var(--font-fallback-sans);
+  font-family: var(--font-manrope), var(--font-fallback-sans);
   text-rendering: optimizeLegibility;
 }
 

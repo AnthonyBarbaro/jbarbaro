@@ -1,0 +1,122 @@
+[
+  {
+    "file": "eton-travel-flatlay.jpg",
+    "source": "eton ss26/2025_WEEK_49_STYLE_ON_THE_MOVE1448.jpg",
+    "width": 4500,
+    "height": 3000,
+    "bytes": 10887171,
+    "sha256": "bdbb635ccd4c3d21b77b84a9845159dd8bfd41138563ef681ee740df2a778858",
+    "recommendedUse": "First choice: general OG",
+    "notes": "Coordinated neutral and navy outfit; clear merchandise story without an embedded campaign logo. Keep the suitcase edges in frame; use a fitted composition if a wide crop loses accessories."
+  },
+  {
+    "file": "eton-neutral-wardrobe.jpg",
+    "source": "eton ss26/2025_WEEK_49_CATENTRANCE1046.jpg",
+    "width": 4500,
+    "height": 3000,
+    "bytes": 10196279,
+    "sha256": "5493370be1ecdfc79438d8267c22cb0f961171c40471d30f77965f73d25f89c3",
+    "recommendedUse": "First choice: desktop hero",
+    "notes": "Clothing is grouped on the right with generous quiet space on the left for copy. Strongest general banner candidate."
+  },
+  {
+    "file": "eton-overshirt-still-life.jpg",
+    "source": "eton ss26/2025_WEEK_49_CATENTRANCE0379.jpg",
+    "width": 6952,
+    "height": 4500,
+    "bytes": 21379828,
+    "sha256": "6636f0f5a3dd923fa24817b5bf6ee72b9a68d9aec8c82a4f4fca05df5bb2ea3d",
+    "recommendedUse": "Alternate desktop hero",
+    "notes": "Warm neutral wall and garment on the right leave room for a short headline on the left."
+  },
+  {
+    "file": "eton-city-vest.jpg",
+    "source": "eton ss26/05_LOOK_11_10978.jpg",
+    "width": 6000,
+    "height": 4002,
+    "bytes": 10860167,
+    "sha256": "4e87f7d26c9edc196d1e838fde24850093650c1f4505848cd9434ef80e3d42c5",
+    "recommendedUse": "Eton designer hero",
+    "notes": "Model on the right, warm architectural background. Embedded ETON logo at upper left: avoid clipping it or overlapping it with the headline."
+  },
+  {
+    "file": "eton-city-cream-jacket.jpg",
+    "source": "eton ss26/02_LOOK_12_9905.jpg",
+    "width": 6000,
+    "height": 4002,
+    "bytes": 11955586,
+    "sha256": "16d33c1c3a559135aa206d2f812b6d236ada876b538bb625c60bce0af7a26d2a",
+    "recommendedUse": "Eton designer OG",
+    "notes": "Strong tailoring portrait with a soft city background. Embedded ETON logo at lower right; preserve it and avoid an aggressive face crop."
+  },
+  {
+    "file": "eton-city-striped-shirt.jpg",
+    "source": "eton ss26/08_LOOK_7_11811.jpg",
+    "width": 6000,
+    "height": 4002,
+    "bytes": 11053087,
+    "sha256": "7d75b3bae333b4cd22d26d1216bd2cd8f6ca0a9ce865451dfe63043d0188e8ef",
+    "recommendedUse": "Eton shirts banner",
+    "notes": "Readable blue shirt and editorial city setting. Embedded ETON logo at upper left needs safe space."
+  },
+  {
+    "file": "formalwear-prom-group.jpg",
+    "source": "prom_group_horizontal-22.jpg",
+    "width": 7136,
+    "height": 4760,
+    "bytes": 8387251,
+    "sha256": "c089c18f219ebf66d8dd90aa9b988d2c6136fb86da360b40597186a78e5971e8",
+    "recommendedUse": "First choice: formalwear hero and OG",
+    "notes": "High-resolution horizontal group with varied formalwear. Preserve every face; use a separate mobile composition instead of a narrow center crop."
+  },
+  {
+    "file": "canali-coastal-tailoring-portrait.jpg",
+    "source": "canali ss26/fec81df0-b7af-4e91-8a64-d4246e8e6ddb___98cb9bea9bf6ef267bf9a4d282266f71.jpg",
+    "width": 1599,
+    "height": 1898,
+    "bytes": 264392,
+    "sha256": "d71e2e34889ef4efcc36a2edb5980b329c3c484125772a13e8098447e8e4f3dd",
+    "recommendedUse": "Canali mobile hero or editorial tile",
+    "notes": "Best-resolution Canali source in this folder. Portrait composition suits vertical placements; do not stretch it into a desktop banner."
+  },
+  {
+    "file": "stenstroms-sailing.jpg",
+    "source": "stenstroms ss26/14_250909_DAY1_1352jpg.jpg",
+    "width": 1024,
+    "height": 690,
+    "bytes": 392814,
+    "sha256": "9dc3bce1367cdc8bec93519b1bbf873c4d13cf16a7446416f916da83767546b4",
+    "recommendedUse": "Secondary seasonal banner",
+    "notes": "Airy sailing scene with a light shirt. Only 1024 pixels wide; use for smaller placements or request a larger original before a full-width desktop hero."
+  },
+  {
+    "file": "stenstroms-navy-suit.jpg",
+    "source": "stenstroms ss26/250428_STENSTRÖMS_14_1800.jpg",
+    "width": 1024,
+    "height": 682,
+    "bytes": 279760,
+    "sha256": "fd0791ab405984d4239b39ba3744eea2da7a110463324badb556c8763e5764fd",
+    "recommendedUse": "Secondary tailoring banner",
+    "notes": "Navy tailoring on a neutral studio background with space to the left. Only 1024 pixels wide; larger original needed for a sharp desktop hero."
+  },
+  {
+    "file": "stenstroms-striped-shirt-detail.jpg",
+    "source": "stenstroms ss26/stenströms25082523960.jpg",
+    "width": 1024,
+    "height": 682,
+    "bytes": 387114,
+    "sha256": "53964f26df8d0f9d6b200c28952e61afeed6b107d2e8ac8275f0866d376927da",
+    "recommendedUse": "Shirts category social candidate",
+    "notes": "Clear blue striped shirt detail reads well at small sizes. Source is 1024 pixels wide; avoid enlarging for a larger export."
+  },
+  {
+    "file": "stenstroms-shirt-palette.jpg",
+    "source": "stenstroms ss26/stenströms25082524381.jpg",
+    "width": 1024,
+    "height": 682,
+    "bytes": 321560,
+    "sha256": "688375ee6522bc5ef60e7a8958aedc01f916edfccaaaef2dfbace641252b1e0a",
+    "recommendedUse": "Seasonal shirts supporting banner",
+    "notes": "Horizontal arrangement communicates color choice without a model crop. Source is 1024 pixels wide; use at modest display sizes."
+  }
+]

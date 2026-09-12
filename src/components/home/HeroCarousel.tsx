@@ -40,6 +40,10 @@ function getPrimaryCtaLabel(slide: HeroSlide) {
     return "Explore the Store";
   }
 
+  if (slide.href === "/shop/brands/canali") {
+    return "Shop Now";
+  }
+
   if (slide.href.startsWith("/shop/brands/")) {
     return slide.title.startsWith("Shop ") ? slide.title : "Shop Brand";
   }
@@ -61,11 +65,13 @@ function getImagePosition(slide: HeroSlide) {
   }
 
   const desktopImagePosition =
-    slide.desktopImagePosition === "slightly-up"
-      ? "sm:object-[center_55%]"
-      : slide.desktopImagePosition === "slightly-down"
-        ? "sm:object-[center_45%]"
-        : "sm:object-center";
+    slide.desktopImagePosition === "top"
+      ? "sm:object-top"
+      : slide.desktopImagePosition === "slightly-up"
+        ? "sm:object-[center_55%]"
+        : slide.desktopImagePosition === "slightly-down"
+          ? "sm:object-[center_45%]"
+          : "sm:object-center";
 
   switch (slide.mobileFocalPoint) {
     case "left":
@@ -256,7 +262,9 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
               sizes="100vw"
               className={cn("object-cover", getImagePosition(slide))}
             />
-            <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(20,17,12,0.92),rgba(20,17,12,0.64)_48%,rgba(20,17,12,0.18))]" />
+            {!slide.imageHasLogo ? (
+              <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(20,17,12,0.92),rgba(20,17,12,0.64)_48%,rgba(20,17,12,0.18))]" />
+            ) : null}
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,20,0.02),rgba(11,15,20,0.62))]" />
             <div className="hero-page-fold absolute inset-0" aria-hidden />
           </article>
@@ -289,9 +297,20 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
         </div>
       ) : null}
 
-      <div className="relative z-10 flex min-h-[540px] w-full items-end px-4 pt-10 pb-20 sm:min-h-[600px] sm:items-center sm:px-6 sm:py-14 lg:min-h-[680px] lg:px-8 lg:py-16 xl:px-10 2xl:px-12">
+      <div
+        className={cn(
+          "relative z-10 flex min-h-[540px] w-full items-end px-4 pt-10 pb-20 sm:min-h-[600px] sm:px-6 sm:py-14 lg:min-h-[680px] lg:px-8 lg:py-16 xl:px-10 2xl:px-12",
+          activeSlide.imageHasLogo ? "sm:items-end" : "sm:items-center",
+        )}
+      >
         <div className="w-full">
-          <div key={activeSlide.id} className="hero-copy-enter max-w-4xl">
+          <div
+            key={activeSlide.id}
+            className={cn(
+              "hero-copy-enter max-w-4xl",
+              activeSlide.imageHasLogo && "sm:ml-auto sm:max-w-md sm:text-right",
+            )}
+          >
             {activeSlide.logo ? (
               <h1 className="relative -my-8 h-40 w-48 overflow-hidden sm:-my-10 sm:h-48 sm:w-56">
                 <Image
@@ -303,7 +322,12 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
                 />
               </h1>
             ) : (
-              <h1 className="max-w-5xl text-balance font-heading text-5xl leading-[0.94] tracking-[-0.025em] sm:text-6xl lg:text-7xl">
+              <h1
+                className={cn(
+                  "max-w-5xl text-balance font-heading text-5xl leading-[0.94] tracking-[-0.025em] sm:text-6xl lg:text-7xl",
+                  activeSlide.imageHasLogo && "sm:sr-only",
+                )}
+              >
                 {activeSlide.title}
               </h1>
             )}
@@ -311,7 +335,12 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
               {activeSlide.caption}
             </p>
 
-            <div className="mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap">
+            <div
+              className={cn(
+                "mt-7 flex flex-col gap-3 sm:mt-8 sm:flex-row sm:flex-wrap",
+                activeSlide.imageHasLogo && "sm:justify-end",
+              )}
+            >
               <ButtonLink
                 href={activeSlide.href}
                 target={activeSlide.external ? "_blank" : undefined}

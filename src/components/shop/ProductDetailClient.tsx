@@ -7,13 +7,10 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
   HelpCircle,
   Maximize2,
   Minus,
   Plus,
-  ShieldCheck,
-  Truck,
   X,
 } from "lucide-react";
 import {
@@ -1035,28 +1032,6 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                     This product does not have an available variant yet.
                   </p>
                 )}
-              </div>
-
-              <p className="mt-3 flex items-center justify-center gap-2 text-xs text-smoke">
-                <ShieldCheck className="h-4 w-4 text-deep-teal" />
-                Secure checkout powered by Shopify
-              </p>
-
-              <div className="mt-5 grid grid-cols-3 divide-x divide-ink/10 border-y border-ink/10 py-3">
-                <div className="flex flex-col items-center gap-1.5 px-2 text-center">
-                  <HelpCircle className="h-4 w-4 text-deep-teal" />
-                  <span className="text-xs font-semibold leading-4 text-ink">Fit guidance</span>
-                </div>
-                <div className="flex flex-col items-center gap-1.5 px-2 text-center">
-                  <Truck className="h-4 w-4 text-deep-teal" />
-                  <span className="text-xs font-semibold leading-4 text-ink">
-                    Shipping at checkout
-                  </span>
-                </div>
-                <div className="flex flex-col items-center gap-1.5 px-2 text-center">
-                  <CreditCard className="h-4 w-4 text-deep-teal" />
-                  <span className="text-xs font-semibold leading-4 text-ink">Shopify checkout</span>
-                </div>
               </div>
             </div>
 

@@ -58,10 +58,11 @@ export type HeroSlide = {
   href: string;
   image: string;
   imageAlt: string;
+  imageHasLogo?: boolean;
   logo?: string;
   logoAlt?: string;
   mobileFocalPoint?: "center" | "left" | "right-quarter" | "right";
-  desktopImagePosition?: "center" | "slightly-down" | "slightly-up";
+  desktopImagePosition?: "center" | "slightly-down" | "slightly-up" | "top";
   imageFit?: "cover" | "contain-right";
   external?: boolean;
 };

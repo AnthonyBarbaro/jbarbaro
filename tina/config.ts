@@ -404,6 +404,7 @@ export default defineConfig({
                   textField("href", "Href"),
                   imageField("image", "Image"),
                   { ...textField("imageAlt", "Image Alt Text"), required: true },
+                  { type: "boolean", name: "imageHasLogo", label: "Image Includes Logo" },
                   imageField("logo", "Logo"),
                   textField("logoAlt", "Logo Alt Text"),
                   {
@@ -416,7 +417,7 @@ export default defineConfig({
                     type: "string",
                     name: "desktopImagePosition",
                     label: "Desktop Image Position",
-                    options: ["center", "slightly-down", "slightly-up"],
+                    options: ["center", "slightly-down", "slightly-up", "top"],
                   },
                   {
                     type: "string",

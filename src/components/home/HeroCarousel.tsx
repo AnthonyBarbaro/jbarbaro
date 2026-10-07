@@ -19,7 +19,11 @@ type SwipeGesture = {
   isDragging: boolean;
 };
 
-function getPrimaryCtaLabel(slide: HeroSlide) {
+function getPrimaryCtaLabel(slide: HeroSlide): string {
+  if (slide.ctaLabel) {
+    return slide.ctaLabel;
+  }
+
   if (slide.href === "/register-your-wedding") {
     return "Register Wedding";
   }

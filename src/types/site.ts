@@ -56,6 +56,7 @@ export type HeroSlide = {
   title: string;
   caption: string;
   href: string;
+  ctaLabel?: string;
   image: string;
   imageAlt: string;
   imageHasLogo?: boolean;

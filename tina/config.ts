@@ -402,6 +402,7 @@ export default defineConfig({
                   textField("title", "Title"),
                   textField("caption", "Caption", true),
                   textField("href", "Href"),
+                  textField("ctaLabel", "Button Label"),
                   imageField("image", "Image"),
                   { ...textField("imageAlt", "Image Alt Text"), required: true },
                   { type: "boolean", name: "imageHasLogo", label: "Image Includes Logo" },

@@ -37,6 +37,16 @@
         "mobileFocalPoint": "right-quarter"
       },
       {
+        "id": "slide-5",
+        "title": "Holiday Gifts, Thoughtfully Wrapped",
+        "caption": "Give thoughtful style this holiday season. Select the gift-wrap add-on on product pages for a beautifully finished gift.",
+        "href": "/shop",
+        "ctaLabel": "Shop Holiday Gifts",
+        "image": "/images/campaign/ss26/eton-overshirt-still-life-hero.webp",
+        "imageAlt": "Cream Eton overshirt layered over a light blue shirt on a wooden stand against a warm textured wall",
+        "mobileFocalPoint": "right-quarter"
+      },
+      {
         "id": "slide-2",
         "title": "Shop Canali",
         "caption": "Explore Canali tailoring and refined Italian menswear available online.",

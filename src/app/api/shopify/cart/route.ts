@@ -8,17 +8,28 @@ import {
   removeCartLines,
   updateCartLines,
 } from "@/lib/shopify/cart";
+import {
+  confirmCartLinesAdded,
+  confirmCartLinesRemoved,
+  confirmCartLinesUpdated,
+} from "@/lib/shopify/cart-confirmation";
 import { getShopifyConfigStatus } from "@/lib/shopify/config";
 import {
   clearShopifyCartSessionId,
   getShopifyCartSessionId,
   setShopifyCartSessionId,
 } from "@/lib/shopify/session";
+import type { ShopifyCartMutationResult, ShopifyCartResponse } from "@/lib/shopify/types";
 
 export const dynamic = "force-dynamic";
 
 const addCartLinesSchema = z.object({
-  lines: z.array(z.object({ merchandiseId: z.string().min(1), quantity: z.number().int().positive().max(25) })).min(1).max(25),
+  lines: z
+    .array(
+      z.object({ merchandiseId: z.string().min(1), quantity: z.number().int().positive().max(25) }),
+    )
+    .min(1)
+    .max(25),
 });
 
 const updateCartLinesSchema = z.object({
@@ -42,7 +53,7 @@ const removeCartLinesSchema = z.object({
   lineIds: z.array(z.string().min(1)).min(1).max(25),
 });
 
-function getBuyerIp(request: NextRequest) {
+function getBuyerIp(request: NextRequest): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
 
   if (forwarded) {
@@ -52,20 +63,71 @@ function getBuyerIp(request: NextRequest) {
   return request.headers.get("x-real-ip");
 }
 
-function getUnavailableResponse() {
-  const status = getShopifyConfigStatus();
+type CartResponsePayload = Omit<ShopifyCartResponse, "warnings" | "userErrors"> &
+  Partial<Pick<ShopifyCartResponse, "warnings" | "userErrors">>;
 
+function cartResponse(payload: CartResponsePayload, status = 200): NextResponse {
   return NextResponse.json(
     {
-      configured: false,
-      missingKeys: status.missingKeys,
-      message: "Shopping bag is temporarily unavailable.",
+      ...payload,
+      warnings: payload.warnings ?? [],
+      userErrors: payload.userErrors ?? [],
     },
-    { status: 503 },
+    { status, headers: { "Cache-Control": "private, no-store" } },
   );
 }
 
-export async function GET(request: NextRequest) {
+function getUnavailableResponse(): NextResponse {
+  return cartResponse(
+    {
+      configured: false,
+      message: "Shopping bag is temporarily unavailable. Please try again later.",
+    },
+    503,
+  );
+}
+
+function mutationResponse(
+  result: ShopifyCartMutationResult,
+  confirmed: boolean,
+  successStatus = 200,
+): NextResponse {
+  const hasErrors = result.userErrors.length > 0;
+  const changeConfirmed = confirmed && !hasErrors;
+
+  return cartResponse(
+    {
+      configured: true,
+      ...(result.cart ? { cart: result.cart } : {}),
+      warnings: result.warnings,
+      userErrors: result.userErrors,
+      confirmed: changeConfirmed,
+      ...(hasErrors
+        ? { message: result.userErrors.map((error) => error.message).join(" ") }
+        : !changeConfirmed
+          ? {
+              message:
+                "We could not confirm the full requested change. Review your updated bag before trying again.",
+            }
+          : {}),
+    },
+    hasErrors ? 409 : successStatus,
+  );
+}
+
+function getExpiredResponse(): NextResponse {
+  return cartResponse(
+    {
+      configured: true,
+      cart: null,
+      confirmed: false,
+      message: "Your bag session has expired. Refresh your bag, then add your items again.",
+    },
+    404,
+  );
+}
+
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const status = getShopifyConfigStatus();
 
@@ -76,7 +138,7 @@ export async function GET(request: NextRequest) {
     const cartId = await getShopifyCartSessionId();
 
     if (!cartId) {
-      return NextResponse.json({ configured: true, cart: null });
+      return cartResponse({ configured: true, cart: null });
     }
 
     const cart = await getCart(cartId, getBuyerIp(request));
@@ -84,17 +146,23 @@ export async function GET(request: NextRequest) {
     if (!cart) {
       await clearShopifyCartSessionId();
 
-      return NextResponse.json({ configured: true, cart: null });
+      return cartResponse({ configured: true, cart: null });
     }
 
-    return NextResponse.json({ configured: true, cart });
+    return cartResponse({ configured: true, cart });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Unexpected bag error." }, { status: 500 });
+    console.error(
+      "Unable to load Shopify cart.",
+      error instanceof Error ? error.name : "Unknown error",
+    );
+    return cartResponse(
+      { configured: true, message: "We could not load your bag. Refresh your bag to try again." },
+      500,
+    );
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const status = getShopifyConfigStatus();
 
@@ -110,14 +178,28 @@ export async function POST(request: NextRequest) {
       try {
         parsedJson = JSON.parse(rawBody) as unknown;
       } catch {
-        return NextResponse.json({ message: "Invalid cart line items." }, { status: 400 });
+        return cartResponse(
+          {
+            configured: true,
+            confirmed: false,
+            message: "Please choose a valid item and a quantity from 1 to 25.",
+          },
+          400,
+        );
       }
     }
 
     const parsedBody = rawBody ? addCartLinesSchema.safeParse(parsedJson) : null;
 
     if (rawBody && (!parsedBody || !parsedBody.success)) {
-      return NextResponse.json({ message: "Invalid cart line items." }, { status: 400 });
+      return cartResponse(
+        {
+          configured: true,
+          confirmed: false,
+          message: "Please choose a valid item and a quantity from 1 to 25.",
+        },
+        400,
+      );
     }
 
     const requestedLines = parsedBody?.success ? parsedBody.data.lines : undefined;
@@ -129,12 +211,15 @@ export async function POST(request: NextRequest) {
 
       if (existingCart) {
         if (!requestedLines) {
-          return NextResponse.json({ configured: true, cart: existingCart });
+          return cartResponse({ configured: true, cart: existingCart });
         }
 
-        const updatedCart = await addCartLines(existingCartId, requestedLines, buyerIp);
+        const result = await addCartLines(existingCartId, requestedLines, buyerIp);
 
-        return NextResponse.json({ configured: true, cart: updatedCart });
+        return mutationResponse(
+          result,
+          confirmCartLinesAdded(existingCart, result.cart, requestedLines),
+        );
       }
 
       await clearShopifyCartSessionId();
@@ -145,16 +230,33 @@ export async function POST(request: NextRequest) {
       lines: requestedLines,
     });
 
-    await setShopifyCartSessionId(createdCart.cartId);
+    if (createdCart.cartId) {
+      await setShopifyCartSessionId(createdCart.cartId);
+    }
 
-    return NextResponse.json({ configured: true, cart: createdCart.cart }, { status: 201 });
+    return mutationResponse(
+      createdCart,
+      confirmCartLinesAdded(null, createdCart.cart, requestedLines ?? []),
+      201,
+    );
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Unexpected bag error." }, { status: 500 });
+    console.error(
+      "Unable to add Shopify cart lines.",
+      error instanceof Error ? error.name : "Unknown error",
+    );
+    return cartResponse(
+      {
+        configured: true,
+        confirmed: false,
+        message:
+          "We could not confirm whether the item was added. Refresh your bag and check its contents before trying again.",
+      },
+      500,
+    );
   }
 }
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(request: NextRequest): Promise<NextResponse> {
   try {
     const status = getShopifyConfigStatus();
 
@@ -165,25 +267,53 @@ export async function PATCH(request: NextRequest) {
     const cartId = await getShopifyCartSessionId();
 
     if (!cartId) {
-      return NextResponse.json({ message: "No active cart session." }, { status: 404 });
+      return getExpiredResponse();
     }
 
-    const parsed = updateCartLinesSchema.safeParse(await request.json());
+    const parsed = updateCartLinesSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {
-      return NextResponse.json({ message: "Invalid cart line update payload." }, { status: 400 });
+      return cartResponse(
+        {
+          configured: true,
+          confirmed: false,
+          message: "Please choose a valid item or size and a quantity from 1 to 25.",
+        },
+        400,
+      );
     }
 
-    const cart = await updateCartLines(cartId, parsed.data.lines, getBuyerIp(request));
+    const buyerIp = getBuyerIp(request);
+    const existingCart = await getCart(cartId, buyerIp);
 
-    return NextResponse.json({ configured: true, cart });
+    if (!existingCart) {
+      await clearShopifyCartSessionId();
+      return getExpiredResponse();
+    }
+
+    const result = await updateCartLines(cartId, parsed.data.lines, buyerIp);
+
+    return mutationResponse(
+      result,
+      confirmCartLinesUpdated(existingCart, result.cart, parsed.data.lines),
+    );
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Unexpected bag error." }, { status: 500 });
+    console.error(
+      "Unable to update Shopify cart lines.",
+      error instanceof Error ? error.name : "Unknown error",
+    );
+    return cartResponse(
+      {
+        configured: true,
+        confirmed: false,
+        message: "We could not confirm this bag change. Refresh your bag before trying again.",
+      },
+      500,
+    );
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE(request: NextRequest): Promise<NextResponse> {
   try {
     const status = getShopifyConfigStatus();
 
@@ -194,20 +324,46 @@ export async function DELETE(request: NextRequest) {
     const cartId = await getShopifyCartSessionId();
 
     if (!cartId) {
-      return NextResponse.json({ message: "No active cart session." }, { status: 404 });
+      return getExpiredResponse();
     }
 
-    const parsed = removeCartLinesSchema.safeParse(await request.json());
+    const parsed = removeCartLinesSchema.safeParse(await request.json().catch(() => null));
 
     if (!parsed.success) {
-      return NextResponse.json({ message: "Invalid cart line removal payload." }, { status: 400 });
+      return cartResponse(
+        {
+          configured: true,
+          confirmed: false,
+          message: "Please choose an item in your bag to remove.",
+        },
+        400,
+      );
     }
 
-    const cart = await removeCartLines(cartId, parsed.data.lineIds, getBuyerIp(request));
+    const buyerIp = getBuyerIp(request);
+    const existingCart = await getCart(cartId, buyerIp);
 
-    return NextResponse.json({ configured: true, cart });
+    if (!existingCart) {
+      await clearShopifyCartSessionId();
+      return getExpiredResponse();
+    }
+
+    const result = await removeCartLines(cartId, parsed.data.lineIds, buyerIp);
+
+    return mutationResponse(result, confirmCartLinesRemoved(result.cart, parsed.data.lineIds));
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Unexpected bag error." }, { status: 500 });
+    console.error(
+      "Unable to remove Shopify cart lines.",
+      error instanceof Error ? error.name : "Unknown error",
+    );
+    return cartResponse(
+      {
+        configured: true,
+        confirmed: false,
+        message:
+          "We could not confirm whether the item was removed. Refresh your bag before trying again.",
+      },
+      500,
+    );
   }
 }

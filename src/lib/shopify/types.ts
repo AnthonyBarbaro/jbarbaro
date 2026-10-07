@@ -101,3 +101,41 @@ export type ShopifyCartSnapshot = {
     variants: ShopifyProductVariant[];
   }>;
 };
+
+export type ShopifyCartLineInput = {
+  merchandiseId: string;
+  quantity: number;
+};
+
+export type ShopifyCartLineUpdate = {
+  id: string;
+  quantity?: number;
+  merchandiseId?: string;
+};
+
+export type ShopifyCartWarning = {
+  code: string;
+  message: string;
+  target: string | null;
+};
+
+export type ShopifyCartUserError = {
+  code: string | null;
+  field: string[] | null;
+  message: string;
+};
+
+export type ShopifyCartMutationResult = {
+  cart: ShopifyCartSnapshot | null;
+  warnings: ShopifyCartWarning[];
+  userErrors: ShopifyCartUserError[];
+};
+
+export type ShopifyCartResponse = {
+  configured: boolean;
+  cart?: ShopifyCartSnapshot | null;
+  warnings: ShopifyCartWarning[];
+  userErrors: ShopifyCartUserError[];
+  confirmed?: boolean;
+  message?: string;
+};

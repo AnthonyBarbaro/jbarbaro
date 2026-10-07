@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 import {
   ArrowRight,
   LockKeyhole,
@@ -17,16 +17,18 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
-import { notifyShopifyCartChanged } from "@/lib/shopify/cart-events";
+import { SHOPIFY_CART_CHANGED_EVENT, notifyShopifyCartChanged } from "@/lib/shopify/cart-events";
+import {
+  isShopifyCartMutationPending,
+  requestShopifyCartMutation,
+} from "@/lib/shopify/cart-request";
 import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
-import type { ShopifyCartSnapshot } from "@/lib/shopify/types";
+import type {
+  ShopifyCartResponse,
+  ShopifyCartSnapshot,
+  ShopifyCartWarning,
+} from "@/lib/shopify/types";
 import { formatMoney } from "@/lib/utils";
-
-type CartResponse = {
-  configured: boolean;
-  cart: ShopifyCartSnapshot | null;
-  message?: string;
-};
 
 function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]) {
   if (cartLine.selectedOptions.length > 0) {
@@ -116,162 +118,377 @@ function getSizeChoices(cartLine: ShopifyCartSnapshot["lines"][number]) {
   );
 }
 
-export function ShopifyCartClient() {
+export function ShopifyCartClient(): ReactElement {
   const [cart, setCart] = useState<ShopifyCartSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
   const [mutatingLineId, setMutatingLineId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(true);
+  const [warnings, setWarnings] = useState<ShopifyCartWarning[]>([]);
+  const [needsRefresh, setNeedsRefresh] = useState(false);
+  const requestGenerationRef = useRef(0);
+  const isRefreshingRef = useRef(false);
+  const isWorkingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const needsRefreshRef = useRef(false);
 
-  async function loadCart() {
+  const applyPayload = useCallback((payload: ShopifyCartResponse): void => {
+    requestGenerationRef.current += 1;
+    isRefreshingRef.current = false;
+    setIsLoading(false);
+
+    if ("cart" in payload) {
+      setCart(payload.cart ?? null);
+    }
+
+    if (payload.confirmed !== false || "cart" in payload) {
+      setIsConfigured(payload.configured);
+    }
+
+    setWarnings(payload.warnings ?? []);
+    setError(payload.message || payload.userErrors?.[0]?.message || null);
+    needsRefreshRef.current = payload.confirmed === false;
+    setNeedsRefresh(needsRefreshRef.current);
+  }, []);
+
+  const loadCart = useCallback(async (): Promise<void> => {
+    if (isRefreshingRef.current || isWorkingRef.current) {
+      return;
+    }
+
+    if (isShopifyCartMutationPending()) {
+      setError("Your bag is updating. Please wait before refreshing.");
+      return;
+    }
+
+    const generation = ++requestGenerationRef.current;
+    isRefreshingRef.current = true;
+    const main = document.getElementById("main-content");
+    if (main?.contains(document.activeElement)) {
+      const heading = main.querySelector<HTMLElement>("h1");
+      if (heading) {
+        heading.tabIndex = -1;
+        heading.focus({ preventScroll: true });
+      }
+    }
     setIsLoading(true);
     setError(null);
+    let failureMessage = "We couldn't load your bag. Please try again.";
 
     try {
       const response = await fetch("/api/shopify/cart", { cache: "no-store" });
-      const payload = (await response.json()) as CartResponse;
+      const payload = (await response.json().catch(() => null)) as ShopifyCartResponse | null;
 
-      setIsConfigured(payload.configured);
-      setCart(payload.cart);
+      if (generation !== requestGenerationRef.current || !isMountedRef.current) {
+        return;
+      }
+
+      if (!payload || typeof payload !== "object" || typeof payload.configured !== "boolean") {
+        throw new Error(failureMessage);
+      }
 
       if (!response.ok) {
-        throw new Error(payload.message || "Unable to load cart.");
+        if ("cart" in payload) {
+          setCart(payload.cart ?? null);
+        }
+        if (payload.confirmed === true) {
+          setIsConfigured(payload.configured);
+        }
+        setWarnings(payload.warnings ?? []);
+        failureMessage = payload.message || failureMessage;
+        throw new Error(failureMessage);
       }
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to load cart.");
+
+      if (!("cart" in payload)) {
+        throw new Error(failureMessage);
+      }
+
+      applyPayload(payload);
+      notifyShopifyCartChanged(payload);
+    } catch {
+      if (generation !== requestGenerationRef.current || !isMountedRef.current) {
+        return;
+      }
+
+      setError(failureMessage);
+      needsRefreshRef.current = true;
+      setNeedsRefresh(true);
     } finally {
-      setIsLoading(false);
+      if (generation === requestGenerationRef.current && isMountedRef.current) {
+        isRefreshingRef.current = false;
+        setIsLoading(false);
+      }
     }
-  }
+  }, [applyPayload]);
 
   useEffect(() => {
-    void loadCart();
-  }, []);
+    isMountedRef.current = true;
 
-  async function updateQuantity(lineId: string, quantity: number) {
+    function handleCartChanged(event: Event): void {
+      const payload =
+        event instanceof CustomEvent
+          ? (event.detail as ShopifyCartResponse | undefined)
+          : undefined;
+
+      if (payload) {
+        applyPayload(payload);
+      } else {
+        void loadCart();
+      }
+    }
+
+    window.addEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
+    void loadCart();
+
+    return () => {
+      isMountedRef.current = false;
+      requestGenerationRef.current += 1;
+      isRefreshingRef.current = false;
+      window.removeEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
+    };
+  }, [applyPayload, loadCart]);
+
+  function beginAction(lineId: string | null): boolean {
+    if (isWorkingRef.current || isRefreshingRef.current || needsRefreshRef.current) {
+      return false;
+    }
+
+    if (isShopifyCartMutationPending()) {
+      setError("Your bag is updating. Please wait before making another change.");
+      return false;
+    }
+
+    isWorkingRef.current = true;
+    requestGenerationRef.current += 1;
     setIsMutating(true);
     setMutatingLineId(lineId);
     setError(null);
+    return true;
+  }
+
+  async function mutateCart(
+    lineId: string,
+    options: RequestInit,
+    fallbackMessage: string,
+  ): Promise<void> {
+    if (!beginAction(lineId)) {
+      return;
+    }
+
+    setWarnings([]);
+    let requestStarted = false;
 
     try {
-      const response = await fetch("/api/shopify/cart", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          lines: [{ id: lineId, quantity }],
-        }),
+      const { response, payload } = await requestShopifyCartMutation(async () => {
+        requestStarted = true;
+        const response = await fetch("/api/shopify/cart", options);
+        const payload = (await response.json()) as ShopifyCartResponse;
+        return { response, payload };
       });
 
-      const payload = (await response.json()) as CartResponse;
-
-      if (!response.ok) {
-        throw new Error(payload.message || "Unable to update cart.");
+      if (!isMountedRef.current) {
+        return;
       }
 
-      setCart(payload.cart);
-      notifyShopifyCartChanged();
+      const feedback: ShopifyCartResponse =
+        response.ok && payload.confirmed === true && "cart" in payload
+          ? payload
+          : {
+              ...payload,
+              confirmed: false,
+              message:
+                payload.message ||
+                "We couldn't confirm your bag update. Refresh your bag to review it before trying again.",
+            };
+      applyPayload(feedback);
+      notifyShopifyCartChanged(feedback);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to update cart.");
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      const message = requestStarted
+        ? "We couldn't confirm your bag update. Refresh your bag to review it before trying again."
+        : caughtError instanceof Error
+          ? caughtError.message
+          : fallbackMessage;
+      setError(message);
+
+      if (requestStarted) {
+        const feedback: ShopifyCartResponse = {
+          configured: true,
+          warnings: [],
+          userErrors: [],
+          confirmed: false,
+          message,
+        };
+        applyPayload(feedback);
+        notifyShopifyCartChanged(feedback);
+      }
     } finally {
-      setIsMutating(false);
-      setMutatingLineId(null);
+      isWorkingRef.current = false;
+      if (isMountedRef.current) {
+        setIsMutating(false);
+        setMutatingLineId(null);
+      }
     }
+  }
+
+  async function updateQuantity(lineId: string, quantity: number): Promise<void> {
+    await mutateCart(
+      lineId,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lines: [{ id: lineId, quantity }] }),
+      },
+      "Unable to update your bag.",
+    );
   }
 
   async function updateLineVariant(
     cartLine: ShopifyCartSnapshot["lines"][number],
     merchandiseId: string,
-  ) {
+  ): Promise<void> {
     if (!merchandiseId || merchandiseId === cartLine.variantId) {
       return;
     }
 
-    setIsMutating(true);
-    setMutatingLineId(cartLine.id);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/shopify/cart", {
+    await mutateCart(
+      cartLine.id,
+      {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lines: [{ id: cartLine.id, merchandiseId, quantity: cartLine.quantity }],
         }),
-      });
-
-      const payload = (await response.json()) as CartResponse;
-
-      if (!response.ok) {
-        throw new Error(payload.message || "Unable to update size.");
-      }
-
-      setCart(payload.cart);
-      notifyShopifyCartChanged();
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to update size.");
-    } finally {
-      setIsMutating(false);
-      setMutatingLineId(null);
-    }
+      },
+      "Unable to update size.",
+    );
   }
 
-  async function removeLine(lineId: string) {
-    setIsMutating(true);
-    setMutatingLineId(lineId);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/shopify/cart", {
+  async function removeLine(lineId: string): Promise<void> {
+    await mutateCart(
+      lineId,
+      {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          lineIds: [lineId],
-        }),
-      });
-
-      const payload = (await response.json()) as CartResponse;
-
-      if (!response.ok) {
-        throw new Error(payload.message || "Unable to remove item.");
-      }
-
-      setCart(payload.cart);
-      notifyShopifyCartChanged();
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to remove item.");
-    } finally {
-      setIsMutating(false);
-      setMutatingLineId(null);
-    }
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineIds: [lineId] }),
+      },
+      "Unable to remove item.",
+    );
   }
 
-  async function goToCheckout() {
-    setIsMutating(true);
-    setError(null);
+  async function goToCheckout(): Promise<void> {
+    if (!beginAction(null)) {
+      return;
+    }
+
+    let requestStarted = false;
+    let feedbackPublished = false;
+    let failureMessage = "We couldn't start checkout. Refresh your bag, then try again.";
 
     try {
-      const response = await fetch("/api/shopify/cart/checkout", { method: "POST" });
-      const payload = (await response.json()) as { checkoutUrl?: string; message?: string };
+      const { response, payload } = await requestShopifyCartMutation(async () => {
+        requestStarted = true;
+        const response = await fetch("/api/shopify/cart/checkout", { method: "POST" });
+        const payload = (await response.json().catch(() => null)) as
+          | (ShopifyCartResponse & { checkoutUrl?: string })
+          | null;
+        return { response, payload };
+      });
+
+      if (!isMountedRef.current) {
+        return;
+      }
+
+      if (!payload || typeof payload !== "object" || typeof payload.configured !== "boolean") {
+        throw new Error(failureMessage);
+      }
+
+      const feedback: ShopifyCartResponse = {
+        ...payload,
+        confirmed: response.ok && Boolean(payload.checkoutUrl),
+        ...(!response.ok || !payload.checkoutUrl
+          ? { message: payload.message || failureMessage }
+          : {}),
+      };
+      applyPayload(feedback);
+      notifyShopifyCartChanged(feedback);
+      feedbackPublished = true;
 
       if (!response.ok || !payload.checkoutUrl) {
-        throw new Error(payload.message || "Unable to start checkout.");
+        failureMessage = payload.message || failureMessage;
+        throw new Error(failureMessage);
       }
 
       window.location.assign(payload.checkoutUrl);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Unable to start checkout.");
-      setIsMutating(false);
+      if (isMountedRef.current) {
+        setError(
+          requestStarted
+            ? failureMessage
+            : caughtError instanceof Error
+              ? caughtError.message
+              : failureMessage,
+        );
+        if (requestStarted) {
+          needsRefreshRef.current = true;
+          setNeedsRefresh(true);
+          if (!feedbackPublished) {
+            const feedback: ShopifyCartResponse = {
+              configured: true,
+              warnings: [],
+              userErrors: [],
+              confirmed: false,
+              message: failureMessage,
+            };
+            applyPayload(feedback);
+            notifyShopifyCartChanged(feedback);
+          }
+        }
+        setIsMutating(false);
+      }
+    } finally {
+      isWorkingRef.current = false;
     }
   }
 
-  if (isLoading) {
+  const controlsDisabled = isMutating || isLoading || needsRefresh;
+  const warningFeedback =
+    warnings.length > 0 ? (
+      <div
+        className="rounded-lg border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-ink"
+        role="status"
+        aria-live="polite"
+      >
+        {warnings.map((warning, index) => (
+          <p key={`${warning.code}-${index}`} className={index > 0 ? "mt-2" : undefined}>
+            {warning.message}
+          </p>
+        ))}
+      </div>
+    ) : null;
+  const errorFeedback = error ? (
+    <div
+      className="rounded-lg border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-ink"
+      role="alert"
+    >
+      <p>{error}</p>
+      <button
+        type="button"
+        disabled={isMutating || isLoading}
+        onClick={() => void loadCart()}
+        className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold tracking-[0.12em] text-deep-teal uppercase underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        <RefreshCcw className="mr-2 h-4 w-4" />
+        {isLoading ? "Refreshing Bag..." : "Refresh Bag"}
+      </button>
+    </div>
+  ) : null;
+
+  if (isLoading && !cart) {
     return (
       <Container className="pb-12">
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_360px]">
@@ -291,6 +508,31 @@ export function ShopifyCartClient() {
             </CardContent>
           </Card>
         </div>
+      </Container>
+    );
+  }
+
+  if (error && !cart) {
+    return (
+      <Container className="pb-12">
+        <Card>
+          <CardContent>
+            <div role="alert">
+              <h2 className="font-heading text-3xl text-ink">We couldn&apos;t load your bag.</h2>
+              <p className="mt-3 text-sm leading-7 text-smoke">{error}</p>
+            </div>
+            {warningFeedback ? <div className="mt-4">{warningFeedback}</div> : null}
+            <Button
+              className="mt-5"
+              variant="secondary"
+              disabled={isMutating || isLoading}
+              onClick={() => void loadCart()}
+            >
+              <RefreshCcw className="mr-2 h-4 w-4" />
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </Container>
     );
   }
@@ -338,13 +580,22 @@ export function ShopifyCartClient() {
               >
                 Continue Shopping
               </Link>
-              <Button variant="secondary" onClick={() => void loadCart()}>
+              <Button
+                variant="secondary"
+                disabled={isMutating || isLoading}
+                onClick={() => void loadCart()}
+              >
                 <RefreshCcw className="mr-2 h-4 w-4" />
-                Refresh Bag
+                {isLoading ? "Refreshing Bag..." : "Refresh Bag"}
               </Button>
             </div>
           </CardContent>
-          {error ? <p className="px-5 pb-5 text-sm text-ink sm:px-7 sm:pb-7">{error}</p> : null}
+          {warningFeedback || errorFeedback ? (
+            <div className="space-y-3 px-5 pb-5 sm:px-7 sm:pb-7">
+              {warningFeedback}
+              {errorFeedback}
+            </div>
+          ) : null}
         </Card>
       </Container>
     );
@@ -359,11 +610,8 @@ export function ShopifyCartClient() {
             {cart.totalQuantity === 1 ? "" : "s"} in your bag
           </div>
 
-          {error ? (
-            <div className="rounded-lg border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-ink">
-              {error}
-            </div>
-          ) : null}
+          {warningFeedback}
+          {errorFeedback}
 
           <div className="hidden rounded-lg border border-ink/10 bg-stone/60 px-6 py-4 lg:grid lg:grid-cols-[minmax(0,2.05fr)_100px_148px_108px] lg:items-center lg:gap-4">
             <p className="text-xs font-semibold tracking-[0.14em] text-smoke uppercase">Product</p>
@@ -435,7 +683,7 @@ export function ShopifyCartClient() {
                           <select
                             id={`cart-line-size-${line.id}`}
                             value={line.variantId ?? ""}
-                            disabled={isMutating}
+                            disabled={controlsDisabled}
                             onChange={(event) => void updateLineVariant(line, event.target.value)}
                             className="mt-2 h-10 w-full rounded-md border border-ink/15 bg-white px-3 text-sm font-medium text-ink outline-none transition-colors focus:border-deep-teal focus:ring-2 focus:ring-deep-teal/10 disabled:cursor-not-allowed disabled:bg-stone/70 disabled:text-smoke"
                           >
@@ -465,7 +713,7 @@ export function ShopifyCartClient() {
                       <button
                         type="button"
                         className="mt-5 text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase transition-colors hover:text-ink disabled:cursor-not-allowed disabled:text-smoke/50"
-                        disabled={isMutating}
+                        disabled={controlsDisabled}
                         onClick={() => void removeLine(line.id)}
                       >
                         {isLineMutating ? "Updating..." : "Remove"}
@@ -490,7 +738,7 @@ export function ShopifyCartClient() {
                       <button
                         type="button"
                         className="inline-flex h-11 w-11 items-center justify-center rounded-l-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
-                        disabled={isMutating || line.quantity <= 1}
+                        disabled={controlsDisabled || line.quantity <= 1}
                         onClick={() => void updateQuantity(line.id, line.quantity - 1)}
                         aria-label={`Decrease quantity for ${line.productTitle || "item"}`}
                       >
@@ -502,7 +750,7 @@ export function ShopifyCartClient() {
                       <button
                         type="button"
                         className="inline-flex h-11 w-11 items-center justify-center rounded-r-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
-                        disabled={isMutating}
+                        disabled={controlsDisabled}
                         onClick={() => void updateQuantity(line.id, line.quantity + 1)}
                         aria-label={`Increase quantity for ${line.productTitle || "item"}`}
                       >
@@ -567,7 +815,7 @@ export function ShopifyCartClient() {
               <div className="mt-6 space-y-3">
                 <Button
                   className="w-full"
-                  disabled={isMutating}
+                  disabled={controlsDisabled}
                   onClick={() => void goToCheckout()}
                 >
                   <span>{isMutating ? "Working..." : "Proceed to Checkout"}</span>

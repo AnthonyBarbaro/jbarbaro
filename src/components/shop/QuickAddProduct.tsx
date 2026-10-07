@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { Plus, ShoppingBag, X } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactElement } from "react";
 import { createPortal } from "react-dom";
 
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
@@ -171,7 +171,7 @@ export function QuickAddProduct({
   preferredVariantId,
   jacketSizeSystem,
   fitVariants,
-}: QuickAddProductProps) {
+}: QuickAddProductProps): ReactElement | null {
   const fitProduct = fitVariants ? { ...product, variants: fitVariants } : product;
   const availableVariants = useMemo(
     () => product.variants.filter((variant) => variant.availableForSale),
@@ -568,6 +568,11 @@ export function QuickAddProduct({
                     itemName={product.title}
                     className="min-h-12 w-full border-ink bg-ink text-white hover:border-deep-teal hover:bg-deep-teal focus-visible:ring-deep-teal"
                     openCartOnSuccess={false}
+                    onReviewCart={() => {
+                      shouldRestoreFocusRef.current = true;
+                      setIsOpen(false);
+                      window.setTimeout(openShopifyCartDrawer, 0);
+                    }}
                     onAdded={() => {
                       shouldRestoreFocusRef.current = true;
                       setIsOpen(false);

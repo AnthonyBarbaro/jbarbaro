@@ -3,10 +3,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getCart } from "@/lib/shopify/cart";
 import { getShopifyConfigStatus } from "@/lib/shopify/config";
 import { clearShopifyCartSessionId, getShopifyCartSessionId } from "@/lib/shopify/session";
+import type { ShopifyCartResponse } from "@/lib/shopify/types";
 
 export const dynamic = "force-dynamic";
 
-function getBuyerIp(request: NextRequest) {
+function checkoutResponse(
+  payload: Omit<ShopifyCartResponse, "warnings" | "userErrors"> & { checkoutUrl?: string },
+  status = 200,
+): NextResponse {
+  return NextResponse.json(
+    { ...payload, warnings: [], userErrors: [] },
+    { status, headers: { "Cache-Control": "private, no-store" } },
+  );
+}
+
+function getBuyerIp(request: NextRequest): string | null {
   const forwarded = request.headers.get("x-forwarded-for");
 
   if (forwarded) {
@@ -16,44 +27,74 @@ function getBuyerIp(request: NextRequest) {
   return request.headers.get("x-real-ip");
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const status = getShopifyConfigStatus();
 
     if (!status.configured) {
-      return NextResponse.json(
+      return checkoutResponse(
         {
           configured: false,
-          missingKeys: status.missingKeys,
-          message: "Checkout is temporarily unavailable.",
+          message: "Checkout is temporarily unavailable. Please try again later.",
         },
-        { status: 503 },
+        503,
       );
     }
 
     const cartId = await getShopifyCartSessionId();
 
     if (!cartId) {
-      return NextResponse.json({ message: "No active cart session." }, { status: 404 });
+      return checkoutResponse(
+        {
+          configured: true,
+          cart: null,
+          message: "Your bag session has expired. Refresh your bag, then add your items again.",
+        },
+        404,
+      );
     }
 
     const cart = await getCart(cartId, getBuyerIp(request));
 
     if (!cart) {
       await clearShopifyCartSessionId();
-      return NextResponse.json({ message: "Cart session has expired." }, { status: 404 });
+      return checkoutResponse(
+        {
+          configured: true,
+          cart: null,
+          message: "Your bag session has expired. Refresh your bag, then add your items again.",
+        },
+        404,
+      );
     }
 
     if (cart.totalQuantity < 1) {
-      return NextResponse.json({ message: "Your cart is empty." }, { status: 400 });
+      return checkoutResponse(
+        {
+          configured: true,
+          cart,
+          message: "Your bag is empty. Add an item before starting checkout.",
+        },
+        400,
+      );
     }
 
-    return NextResponse.json({
+    return checkoutResponse({
       configured: true,
+      cart,
       checkoutUrl: cart.checkoutUrl,
     });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Unexpected checkout error." }, { status: 500 });
+    console.error(
+      "Unable to start Shopify checkout.",
+      error instanceof Error ? error.name : "Unknown error",
+    );
+    return checkoutResponse(
+      {
+        configured: true,
+        message: "We could not start checkout. Refresh your bag, then try checkout again.",
+      },
+      500,
+    );
   }
 }

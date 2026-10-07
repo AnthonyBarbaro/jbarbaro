@@ -2,17 +2,11 @@
 
 import Link from "next/link";
 import { ShoppingBag } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 
 import { SHOPIFY_CART_CHANGED_EVENT, openShopifyCartDrawer } from "@/lib/shopify/cart-events";
-import type { ShopifyCartSnapshot } from "@/lib/shopify/types";
+import type { ShopifyCartResponse } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils";
-
-type CartResponse = {
-  configured: boolean;
-  cart: ShopifyCartSnapshot | null;
-  message?: string;
-};
 
 type HeaderCartButtonProps = {
   active?: boolean;
@@ -28,24 +22,32 @@ export function HeaderCartButton({
   compact = false,
   mobileNav = false,
   onNavigate,
-}: HeaderCartButtonProps) {
+}: HeaderCartButtonProps): ReactElement | null {
   const [quantity, setQuantity] = useState<number | null>(null);
   const [isConfigured, setIsConfigured] = useState(true);
 
   useEffect(() => {
     let isMounted = true;
+    let requestVersion = 0;
 
-    async function loadCart() {
+    async function loadCart(): Promise<void> {
+      const version = ++requestVersion;
+
       try {
         const response = await fetch("/api/shopify/cart", { cache: "no-store" });
-        const payload = (await response.json()) as CartResponse;
+        const payload = (await response.json()) as ShopifyCartResponse;
 
-        if (!isMounted) {
+        if (!isMounted || version !== requestVersion) {
           return;
         }
 
-        setIsConfigured(payload.configured);
-        setQuantity(payload.cart?.totalQuantity ?? 0);
+        if (response.ok && typeof payload.configured === "boolean") {
+          setIsConfigured(payload.configured);
+        }
+
+        if (response.ok && "cart" in payload) {
+          setQuantity(payload.cart?.totalQuantity ?? 0);
+        }
       } catch (error) {
         if (isMounted) {
           console.error(error);
@@ -55,8 +57,18 @@ export function HeaderCartButton({
 
     void loadCart();
 
-    const handleCartChanged = () => {
-      void loadCart();
+    const handleCartChanged = (event: Event): void => {
+      const payload = (event as CustomEvent<ShopifyCartResponse | undefined>).detail;
+
+      if (payload) {
+        requestVersion += 1;
+        if ("cart" in payload) {
+          setIsConfigured(payload.configured);
+          setQuantity(payload.cart?.totalQuantity ?? 0);
+        }
+      } else {
+        void loadCart();
+      }
     };
 
     window.addEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
@@ -71,7 +83,7 @@ export function HeaderCartButton({
     return null;
   }
 
-  function handleCartClick(event: React.MouseEvent<HTMLAnchorElement>) {
+  function handleCartClick(event: React.MouseEvent<HTMLAnchorElement>): void {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
       onNavigate?.();
       return;

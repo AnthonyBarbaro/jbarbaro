@@ -1,7 +1,18 @@
 import "server-only";
 
 import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
-import type { ShopifyCartSnapshot, ShopifyMoney, ShopifyProductVariant } from "@/lib/shopify/types";
+import type {
+  ShopifyCartLineInput,
+  ShopifyCartLineUpdate,
+  ShopifyCartMutationResult,
+  ShopifyCartSnapshot,
+  ShopifyCartUserError,
+  ShopifyCartWarning,
+  ShopifyMoney,
+  ShopifyProductVariant,
+} from "@/lib/shopify/types";
+
+export type { ShopifyCartLineInput, ShopifyCartLineUpdate } from "@/lib/shopify/types";
 
 type MoneyV2 = {
   amount: string;
@@ -9,6 +20,7 @@ type MoneyV2 = {
 };
 
 type RawCart = {
+  id?: string;
   checkoutUrl: string;
   totalQuantity: number;
   cost: {
@@ -37,48 +49,43 @@ type RawCartLine = {
     totalAmount: MoneyV2;
     amountPerQuantity: MoneyV2;
   };
-  merchandise:
-    | {
-        id: string;
-        title: string;
-        selectedOptions: { name: string; value: string }[];
-        image: {
-          url: string;
-          altText: string | null;
-          width: number | null;
-          height: number | null;
-        } | null;
-        product: {
-          title: string;
-          handle: string;
-          productType: string;
-          variants: {
-            nodes: RawProductVariant[];
-          };
-        };
-      }
-    | null;
+  merchandise: {
+    id: string;
+    title: string;
+    selectedOptions: { name: string; value: string }[];
+    image: {
+      url: string;
+      altText: string | null;
+      width: number | null;
+      height: number | null;
+    } | null;
+    product: {
+      title: string;
+      handle: string;
+      productType: string;
+      variants: {
+        nodes: RawProductVariant[];
+      };
+    };
+  } | null;
 };
 
 type CartUserError = {
+  code: string | null;
   field: string[] | null;
   message: string;
+};
+
+type CartWarning = {
+  code: string;
+  message: string;
+  target: string;
 };
 
 type CartMutationPayload = {
   cart: RawCart | null;
   userErrors: CartUserError[];
-};
-
-export type ShopifyCartLineInput = {
-  merchandiseId: string;
-  quantity: number;
-};
-
-export type ShopifyCartLineUpdate = {
-  id: string;
-  quantity?: number;
-  merchandiseId?: string;
+  warnings: CartWarning[];
 };
 
 type CartQueryResponse = {
@@ -212,30 +219,89 @@ function normalizeCart(cart: RawCart): ShopifyCartSnapshot {
       image: line.merchandise?.image ?? null,
       unitPrice: toCartMoney(line.cost.amountPerQuantity),
       totalPrice: toCartMoney(line.cost.totalAmount),
-      variants: line.merchandise ? normalizeCartVariants(line.merchandise.product.variants.nodes) : [],
+      variants: line.merchandise
+        ? normalizeCartVariants(line.merchandise.product.variants.nodes)
+        : [],
     })),
   };
 }
 
-function assertCartMutationResult(payload: CartMutationPayload | undefined, operation: string): RawCart {
+function normalizeWarning(warning: CartWarning): ShopifyCartWarning {
+  const code = /^[A-Z][A-Z0-9_]{0,100}$/.test(warning.code) ? warning.code : "UNKNOWN";
+  let message = "Your bag was adjusted. Review your items and totals before checking out.";
+
+  if (code === "MERCHANDISE_OUT_OF_STOCK") {
+    message = "An item in your bag is now sold out. Review your bag before checking out.";
+  } else if (code === "MERCHANDISE_NOT_ENOUGH_STOCK") {
+    message = "The requested quantity is not available. Review the updated quantity in your bag.";
+  } else if (code.startsWith("DISCOUNT_")) {
+    message = "A discount could not be applied. Review your bag totals before checking out.";
+  }
+
+  return {
+    code,
+    message,
+    target:
+      warning.target.startsWith("gid://shopify/CartLine/") && !/[?&]key=/i.test(warning.target)
+        ? warning.target
+        : null,
+  };
+}
+
+function normalizeUserError(error: CartUserError): ShopifyCartUserError {
+  const code = error.code && /^[A-Z][A-Z0-9_]{0,100}$/.test(error.code) ? error.code : null;
+  let message =
+    "We could not make this bag change. Refresh your bag and review your selection before trying again.";
+
+  if (code === "MAXIMUM_EXCEEDED" || code === "LESS_THAN") {
+    message = "The requested quantity exceeds the limit for this item. Choose a lower quantity.";
+  } else if (code === "MINIMUM_NOT_MET") {
+    message = "The requested quantity is below the minimum for this item. Review your quantity.";
+  } else if (code === "INVALID_INCREMENT") {
+    message = "This item requires a different quantity increment. Review your quantity.";
+  } else if (code === "INVALID_MERCHANDISE_LINE") {
+    message =
+      "This item has changed or is no longer in your bag. Refresh your bag before trying again.";
+  } else if (code === "MERCHANDISE_NOT_APPLICABLE" || code === "VARIANT_REQUIRES_SELLING_PLAN") {
+    message = "This item cannot be purchased with the selected options. Review your selection.";
+  } else if (code === "CART_TOO_LARGE") {
+    message = "Your bag has reached its item limit. Remove an item before adding another.";
+  } else if (code === "SERVICE_UNAVAILABLE") {
+    message = "Shopping is temporarily unavailable. Refresh your bag before trying again.";
+  }
+
+  return {
+    code,
+    field: error.field?.every((part) => /^(?:[A-Za-z][A-Za-z0-9_]*|\d+)$/.test(part))
+      ? error.field
+      : null,
+    message,
+  };
+}
+
+function normalizeCartMutationResult(
+  payload: CartMutationPayload | undefined,
+  operation: string,
+): ShopifyCartMutationResult {
   if (!payload) {
     throw new Error(`Shopify ${operation} did not return a payload.`);
   }
 
-  if (payload.userErrors.length > 0) {
-    const message = payload.userErrors.map((error) => error.message).join(" ");
-
-    throw new Error(`Shopify ${operation} failed. ${message}`);
-  }
-
-  if (!payload.cart) {
+  if (!payload.cart && payload.userErrors.length === 0) {
     throw new Error(`Shopify ${operation} did not return a cart.`);
   }
 
-  return payload.cart;
+  return {
+    cart: payload.cart ? normalizeCart(payload.cart) : null,
+    warnings: (payload.warnings ?? []).map(normalizeWarning),
+    userErrors: payload.userErrors.map(normalizeUserError),
+  };
 }
 
-export async function getCart(cartId: string, buyerIp?: string | null): Promise<ShopifyCartSnapshot | null> {
+export async function getCart(
+  cartId: string,
+  buyerIp?: string | null,
+): Promise<ShopifyCartSnapshot | null> {
   const data = await storefrontRequest<CartQueryResponse, { cartId: string }>({
     buyerIp,
     cache: "no-store",
@@ -258,8 +324,11 @@ export async function getCart(cartId: string, buyerIp?: string | null): Promise<
 export async function createCart(options?: {
   lines?: ShopifyCartLineInput[];
   buyerIp?: string | null;
-}): Promise<{ cartId: string; cart: ShopifyCartSnapshot }> {
-  const data = await storefrontRequest<CartCreateResponse, { input?: { lines?: ShopifyCartLineInput[] } }>({
+}): Promise<ShopifyCartMutationResult & { cartId: string | null }> {
+  const data = await storefrontRequest<
+    CartCreateResponse,
+    { input?: { lines?: ShopifyCartLineInput[] } }
+  >({
     buyerIp: options?.buyerIp,
     cache: "no-store",
     query: `
@@ -271,8 +340,14 @@ export async function createCart(options?: {
             ...CartSnapshotFields
           }
           userErrors {
+            code
             field
             message
+          }
+          warnings {
+            code
+            message
+            target
           }
         }
       }
@@ -286,16 +361,28 @@ export async function createCart(options?: {
       : undefined,
   });
 
-  const cart = assertCartMutationResult(data.cartCreate, "cartCreate");
+  const result = normalizeCartMutationResult(data.cartCreate, "cartCreate");
+  const cartId = data.cartCreate.cart?.id ?? null;
+
+  if (result.cart && !cartId) {
+    throw new Error("Shopify cartCreate did not return a cart ID.");
+  }
 
   return {
-    cartId: (cart as RawCart & { id: string }).id,
-    cart: normalizeCart(cart),
+    ...result,
+    cartId,
   };
 }
 
-export async function addCartLines(cartId: string, lines: ShopifyCartLineInput[], buyerIp?: string | null) {
-  const data = await storefrontRequest<CartLinesAddResponse, { cartId: string; lines: ShopifyCartLineInput[] }>({
+export async function addCartLines(
+  cartId: string,
+  lines: ShopifyCartLineInput[],
+  buyerIp?: string | null,
+): Promise<ShopifyCartMutationResult> {
+  const data = await storefrontRequest<
+    CartLinesAddResponse,
+    { cartId: string; lines: ShopifyCartLineInput[] }
+  >({
     buyerIp,
     cache: "no-store",
     query: `
@@ -306,8 +393,14 @@ export async function addCartLines(cartId: string, lines: ShopifyCartLineInput[]
             ...CartSnapshotFields
           }
           userErrors {
+            code
             field
             message
+          }
+          warnings {
+            code
+            message
+            target
           }
         }
       }
@@ -318,11 +411,18 @@ export async function addCartLines(cartId: string, lines: ShopifyCartLineInput[]
     },
   });
 
-  return normalizeCart(assertCartMutationResult(data.cartLinesAdd, "cartLinesAdd"));
+  return normalizeCartMutationResult(data.cartLinesAdd, "cartLinesAdd");
 }
 
-export async function updateCartLines(cartId: string, lines: ShopifyCartLineUpdate[], buyerIp?: string | null) {
-  const data = await storefrontRequest<CartLinesUpdateResponse, { cartId: string; lines: ShopifyCartLineUpdate[] }>({
+export async function updateCartLines(
+  cartId: string,
+  lines: ShopifyCartLineUpdate[],
+  buyerIp?: string | null,
+): Promise<ShopifyCartMutationResult> {
+  const data = await storefrontRequest<
+    CartLinesUpdateResponse,
+    { cartId: string; lines: ShopifyCartLineUpdate[] }
+  >({
     buyerIp,
     cache: "no-store",
     query: `
@@ -333,8 +433,14 @@ export async function updateCartLines(cartId: string, lines: ShopifyCartLineUpda
             ...CartSnapshotFields
           }
           userErrors {
+            code
             field
             message
+          }
+          warnings {
+            code
+            message
+            target
           }
         }
       }
@@ -345,11 +451,18 @@ export async function updateCartLines(cartId: string, lines: ShopifyCartLineUpda
     },
   });
 
-  return normalizeCart(assertCartMutationResult(data.cartLinesUpdate, "cartLinesUpdate"));
+  return normalizeCartMutationResult(data.cartLinesUpdate, "cartLinesUpdate");
 }
 
-export async function removeCartLines(cartId: string, lineIds: string[], buyerIp?: string | null) {
-  const data = await storefrontRequest<CartLinesRemoveResponse, { cartId: string; lineIds: string[] }>({
+export async function removeCartLines(
+  cartId: string,
+  lineIds: string[],
+  buyerIp?: string | null,
+): Promise<ShopifyCartMutationResult> {
+  const data = await storefrontRequest<
+    CartLinesRemoveResponse,
+    { cartId: string; lineIds: string[] }
+  >({
     buyerIp,
     cache: "no-store",
     query: `
@@ -360,8 +473,14 @@ export async function removeCartLines(cartId: string, lineIds: string[], buyerIp
             ...CartSnapshotFields
           }
           userErrors {
+            code
             field
             message
+          }
+          warnings {
+            code
+            message
+            target
           }
         }
       }
@@ -372,5 +491,5 @@ export async function removeCartLines(cartId: string, lineIds: string[], buyerIp
     },
   });
 
-  return normalizeCart(assertCartMutationResult(data.cartLinesRemove, "cartLinesRemove"));
+  return normalizeCartMutationResult(data.cartLinesRemove, "cartLinesRemove");
 }

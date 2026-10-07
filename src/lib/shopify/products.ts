@@ -5,6 +5,7 @@ import { unstable_cache } from "next/cache";
 import { getVariantSizeValue } from "@/lib/fit-profile";
 import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
 import { SHOPIFY_STOREFRONT_REVALIDATE_SECONDS } from "@/lib/shopify/config";
+import { sanitizeProductDescriptionHtml } from "@/lib/shopify/product-description.server";
 import type {
   ShopifyCollection,
   ShopifyCollectionPreview,
@@ -322,7 +323,7 @@ function normalizeProduct(product: RawProduct): ShopifyProduct {
     title: product.title,
     createdAt: product.createdAt,
     description: product.description,
-    descriptionHtml: product.descriptionHtml,
+    descriptionHtml: sanitizeProductDescriptionHtml(product.descriptionHtml),
     vendor: product.vendor,
     productType: product.productType,
     tags: product.tags,
@@ -714,7 +715,12 @@ const getShopProductCached = unstable_cache(fetchShopProduct, ["shopify-product"
 });
 
 export async function getShopProduct(handle: string): Promise<ShopifyProduct | null> {
-  return getShopProductCached(handle);
+  const product = await getShopProductCached(handle);
+
+  // Previously cached products also pass through the current HTML policy.
+  return product
+    ? { ...product, descriptionHtml: sanitizeProductDescriptionHtml(product.descriptionHtml) }
+    : null;
 }
 
 async function requestShopCollection(handle: string, limit: number): Promise<RawCollection | null> {

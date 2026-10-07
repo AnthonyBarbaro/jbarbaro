@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { ProductDetailClient } from "@/components/shop/ProductDetailClient";
 import { ProductRecommendationsClient } from "@/components/shop/ProductRecommendationsClient";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
@@ -260,10 +261,7 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
 
   return (
     <div className="overflow-x-clip">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-      />
+      <SeoJsonLd data={productJsonLd} />
       <Breadcrumbs
         items={[
           { name: "Home", href: "/" },

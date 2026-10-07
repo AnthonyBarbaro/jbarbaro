@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import {
   type PointerEvent as ReactPointerEvent,
+  type ReactElement,
   type TouchEvent as ReactTouchEvent,
   type WheelEvent as ReactWheelEvent,
   useEffect,
@@ -39,7 +40,15 @@ import {
   type ProductFitRecommendation,
 } from "@/lib/fit-profile";
 import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
-import type { ShopifyProduct, ShopifyProductVariant } from "@/lib/shopify/types";
+import { getRichTextFallback } from "@/lib/shopify/product-description";
+import {
+  applyProductFitRecommendation,
+  changeProductOptionSelection,
+  findProductSelectedVariant,
+  getInitialProductOptions,
+  getProductOptionGroups,
+} from "@/lib/shopify/product-option-selection";
+import type { ShopifyProduct } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
 type ProductDetailClientProps = {
@@ -51,7 +60,7 @@ const MAX_IMAGE_ZOOM = 5;
 const IMAGE_ZOOM_STEP = 0.5;
 const DOUBLE_TAP_IMAGE_ZOOM = 2.5;
 
-function getProductImages(product: ShopifyProduct) {
+function getProductImages(product: ShopifyProduct): ShopifyProduct["images"] {
   if (product.images.length > 0) {
     return product.images;
   }
@@ -59,32 +68,11 @@ function getProductImages(product: ShopifyProduct) {
   return product.featuredImage ? [product.featuredImage] : [];
 }
 
-function getOptionMap(product: ShopifyProduct) {
-  const optionMap = new Map<string, string[]>();
-
-  for (const variant of product.variants) {
-    for (const option of variant.selectedOptions) {
-      const existingValues = optionMap.get(option.name) ?? [];
-
-      if (!existingValues.includes(option.value)) {
-        optionMap.set(option.name, [...existingValues, option.value]);
-      }
-    }
-  }
-
-  return Array.from(optionMap.entries())
-    .map(([name, values]) => ({
-      name,
-      values: values.filter((value) => value.trim().toLowerCase() !== "default title"),
-    }))
-    .filter((group) => group.name.trim().toLowerCase() !== "title" && group.values.length > 0);
-}
-
 function getProductOptionLabel(
   product: ShopifyProduct,
   name: string,
   optionPresentation: ReturnType<typeof getProductOptionPresentation>,
-) {
+): string {
   const importedLabel = optionPresentation.getLabel(name);
 
   if (importedLabel !== name) {
@@ -104,59 +92,9 @@ function getProductOptionLabel(
     : name;
 }
 
-function findMatchingVariant(product: ShopifyProduct, selectedOptions: Record<string, string>) {
-  return (
-    product.variants.find((variant) =>
-      variant.selectedOptions.every((option) => selectedOptions[option.name] === option.value),
-    ) ?? null
-  );
-}
-
-function findAvailableVariantForOption(
+function getPrimaryCollection(
   product: ShopifyProduct,
-  optionName: string,
-  optionValue: string,
-  selectedOptions: Record<string, string>,
-) {
-  const matchingVariants = product.variants.filter(
-    (variant) =>
-      variant.availableForSale &&
-      variant.selectedOptions.some(
-        (option) => option.name === optionName && option.value === optionValue,
-      ),
-  );
-
-  if (matchingVariants.length === 0) {
-    return null;
-  }
-
-  return (
-    matchingVariants.find((variant) =>
-      variant.selectedOptions.every((option) =>
-        option.name === optionName
-          ? option.value === optionValue
-          : selectedOptions[option.name] === option.value,
-      ),
-    ) ?? matchingVariants[0]
-  );
-}
-
-function buildInitialOptionState(variant: ShopifyProductVariant | undefined) {
-  return Object.fromEntries(
-    (variant?.selectedOptions ?? []).map((option) => [option.name, option.value]),
-  );
-}
-
-function getRichTextFallback(description: string) {
-  return description
-    .split(/\n{2,}/)
-    .map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .map((paragraph) => `<p>${paragraph}</p>`)
-    .join("");
-}
-
-function getPrimaryCollection(product: ShopifyProduct) {
+): ShopifyProduct["collections"][number] | null {
   return (
     product.collections.find(
       (collection) => collection.title.trim().toLowerCase() !== "shop all",
@@ -169,21 +107,23 @@ function getPrimaryCollection(product: ShopifyProduct) {
 const shopifyRichTextClassName =
   "[&_a]:font-semibold [&_a]:text-deep-teal [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-ink [&_b]:font-semibold [&_b]:text-ink [&_blockquote]:border-l-2 [&_blockquote]:border-gold/60 [&_blockquote]:pl-4 [&_blockquote]:italic [&_em]:italic [&_h2]:mt-8 [&_h2]:font-heading [&_h2]:text-xl [&_h2]:text-ink [&_h3]:mt-7 [&_h3]:font-heading [&_h3]:text-lg [&_h3]:text-ink [&_li]:leading-8 [&_li]:marker:text-gold [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:text-base [&_p]:leading-8 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 max-w-none space-y-4 text-smoke";
 
-export function ProductDetailClient({ product }: ProductDetailClientProps) {
+export function ProductDetailClient({ product }: ProductDetailClientProps): ReactElement {
   const initialVariant =
     product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
   const images = getProductImages(product);
-  const optionGroups = getOptionMap(product);
+  const optionGroups = getProductOptionGroups(product);
   const optionPresentation = getProductOptionPresentation(product);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(
-    buildInitialOptionState(initialVariant),
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(() =>
+    getInitialProductOptions(product),
   );
+  const [selectionNotice, setSelectionNotice] = useState("");
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [smartFitRecommendation, setSmartFitRecommendation] =
     useState<ProductFitRecommendation | null>(null);
+  const [hasAppliedSmartFit, setHasAppliedSmartFit] = useState(false);
   const [isSmartFitOpen, setIsSmartFitOpen] = useState(false);
   const galleryTouchStartXRef = useRef<number | null>(null);
   const thumbnailRailRef = useRef<HTMLDivElement | null>(null);
@@ -222,7 +162,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     return () => window.cancelAnimationFrame(frameId);
   }, [selectedImageIndex]);
 
-  const selectedVariant = findMatchingVariant(product, selectedOptions);
+  const selectedVariant = findProductSelectedVariant(product, selectedOptions);
   const activeImage = images[selectedImageIndex] ?? images[0] ?? null;
   const hasMultipleImages = images.length > 1;
   const primaryCollection = getPrimaryCollection(product);
@@ -251,11 +191,24 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
         )
       : null;
   const selectedVariantIsAvailable = Boolean(selectedVariant?.availableForSale);
-  const availabilityMessage = selectedVariant
-    ? selectedVariantIsAvailable
-      ? "In stock, ready to ship"
-      : "Sold out"
-    : "Choose a size to continue";
+  const hasAvailableVariant = product.variants.some((variant) => variant.availableForSale);
+  const missingOptionGroups = optionGroups.filter((group) => !selectedOptions[group.name]);
+  const selectionPrompt = missingOptionGroups.some((group) => /size/i.test(group.name))
+    ? "Select a Size"
+    : missingOptionGroups.length === 1
+      ? `Select ${getProductOptionLabel(product, missingOptionGroups[0].name, optionPresentation)}`
+      : "Select Options";
+  const disabledPurchaseLabel =
+    !hasAvailableVariant || (selectedVariant && !selectedVariantIsAvailable)
+      ? "Sold Out"
+      : selectionPrompt;
+  const availabilityMessage = !hasAvailableVariant
+    ? "Sold out"
+    : selectedVariant
+      ? selectedVariantIsAvailable
+        ? "In stock, ready to ship"
+        : "Sold out"
+      : `${selectionPrompt} to continue`;
   const selectedOptionSummary = selectedVariant?.selectedOptions
     .filter(
       (option) =>
@@ -268,7 +221,7 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
   const visibleOptionGroups = optionGroups;
   const smartFitUnavailable = Boolean(smartFitRecommendation && !smartFitRecommendation.variantId);
   const smartFitSupportingCopy = smartFitRecommendation
-    ? (() => {
+    ? ((): string => {
         const suitRecommendation = smartFitRecommendation.suit;
         const equivalence = suitRecommendation?.converted
           ? `Equivalent to your saved ${suitRecommendation.savedLabel}. `
@@ -284,13 +237,17 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             : `${equivalence}That jacket size is not currently available online. This style does not list jacket length separately.`;
         }
 
+        if (!hasAppliedSmartFit) {
+          return "Use this suggestion to select your size, or choose your options below.";
+        }
+
         if (!suitRecommendation) {
-          return "We selected the recommended size for this item. You can still change it before adding it to your bag.";
+          return "You selected the suggested size. Review your options before adding this item to your bag.";
         }
 
         return suitRecommendation.lengthOffered
-          ? `${equivalence}We selected the available size and jacket length.`
-          : `${equivalence}We selected the available jacket size. This style does not list jacket length separately.`;
+          ? `${equivalence}You selected the suggested size and jacket length. Review your other options before adding this item.`
+          : `${equivalence}You selected the suggested jacket size. This style does not list jacket length separately.`;
       })()
     : "";
 
@@ -558,64 +515,46 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
     changeZoom(event.deltaY < 0 ? IMAGE_ZOOM_STEP : -IMAGE_ZOOM_STEP);
   }
 
-  function handleOptionChange(optionName: string, optionValue: string) {
-    setSmartFitRecommendation(null);
-    setSelectedOptions((current) => {
-      const nextVariant = findAvailableVariantForOption(product, optionName, optionValue, current);
-
-      if (!nextVariant) {
-        return current;
-      }
-
-      return buildInitialOptionState(nextVariant);
-    });
-  }
-
-  function handleFitRecommendation(recommendation: ProductFitRecommendation) {
-    if (!recommendation.variantId) {
-      return;
-    }
-
-    const matchingVariant = product.variants.find(
-      (variant) => variant.availableForSale && variant.id === recommendation.variantId,
+  function getSelectionNotice(clearedOptionNames: string[]): string {
+    const labels = clearedOptionNames.map((name) =>
+      getProductOptionLabel(product, name, optionPresentation),
     );
 
-    if (matchingVariant) {
-      setSelectedOptions(buildInitialOptionState(matchingVariant));
+    return labels.length > 0 ? `Select ${labels.join(" and ")} again for this combination.` : "";
+  }
+
+  function handleOptionChange(optionName: string, optionValue: string): void {
+    const change = changeProductOptionSelection(product, selectedOptions, optionName, optionValue);
+    setSmartFitRecommendation(null);
+    setHasAppliedSmartFit(false);
+    setSelectedOptions(change.selectedOptions);
+    setSelectionNotice(getSelectionNotice(change.clearedOptionNames));
+  }
+
+  function handleFitRecommendation(recommendation: ProductFitRecommendation): void {
+    const change = applyProductFitRecommendation(product, selectedOptions, recommendation);
+
+    if (change) {
+      setSelectedOptions(change.selectedOptions);
+      setSelectionNotice(getSelectionNotice(change.clearedOptionNames));
       setSmartFitRecommendation(recommendation);
+      setHasAppliedSmartFit(true);
     }
 
     setIsSmartFitOpen(false);
   }
 
   useEffect(() => {
-    if (
-      !isSmartFitPreferenceEnabled(window.localStorage.getItem(SMART_FIT_ENABLED_STORAGE_KEY))
-    ) {
+    if (!isSmartFitPreferenceEnabled(window.localStorage.getItem(SMART_FIT_ENABLED_STORAGE_KEY))) {
       return;
     }
 
     const profile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
     const recommendation = profile ? getProductFitRecommendation(product, profile) : null;
-    const matchingVariant = recommendation?.variantId
-      ? (product.variants.find(
-          (variant) => variant.availableForSale && variant.id === recommendation.variantId,
-        ) ?? null)
-      : null;
 
     const frameId = window.requestAnimationFrame(() => {
-      if (!matchingVariant) {
-        setSmartFitRecommendation(recommendation);
-
-        if (recommendation?.suit) {
-          setSelectedOptions({});
-        }
-
-        return;
-      }
-
-      setSelectedOptions(buildInitialOptionState(matchingVariant));
       setSmartFitRecommendation(recommendation);
+      setHasAppliedSmartFit(false);
     });
 
     return () => {
@@ -898,9 +837,18 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   )}
                 >
                   <p className="font-semibold text-ink">
-                    Smart Fit match: {smartFitRecommendation.label}
+                    Smart Fit suggestion: {smartFitRecommendation.label}
                   </p>
                   <p className="mt-1">{smartFitSupportingCopy}</p>
+                  {!smartFitUnavailable && !hasAppliedSmartFit ? (
+                    <button
+                      type="button"
+                      onClick={() => handleFitRecommendation(smartFitRecommendation)}
+                      className="mt-2 inline-flex min-h-11 items-center text-sm font-semibold text-deep-teal underline underline-offset-4 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal"
+                    >
+                      Use Suggested Size
+                    </button>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -951,20 +899,21 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                           role="group"
                           aria-labelledby={labelId}
                           aria-describedby={
-                            smartFitRecommendation ? "smart-fit-match-status" : undefined
+                            smartFitRecommendation
+                              ? "product-option-selection-status smart-fit-match-status"
+                              : "product-option-selection-status"
                           }
                           className="mt-3 flex flex-wrap gap-2"
                         >
                           {group.values.map((value) => {
                             const displayValue = optionPresentation.getValue(group.name, value);
                             const isSelected = selectedValue === value;
-                            const isAvailable = Boolean(
-                              findAvailableVariantForOption(
-                                product,
-                                group.name,
-                                value,
-                                selectedOptions,
-                              ),
+                            const isAvailable = product.variants.some(
+                              (variant) =>
+                                variant.availableForSale &&
+                                variant.selectedOptions.some(
+                                  (option) => option.name === group.name && option.value === value,
+                                ),
                             );
                             const usJacketEquivalent = isEuropeanJacketSize
                               ? getUsJacketEquivalentLabel(value)
@@ -1009,6 +958,15 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                   })}
                 </div>
               ) : null}
+              <p
+                id="product-option-selection-status"
+                role="status"
+                aria-live="polite"
+                aria-atomic="true"
+                className={selectionNotice ? "mt-3 text-sm leading-6 text-deep-teal" : "sr-only"}
+              >
+                {selectionNotice}
+              </p>
 
               <div className="mt-6">
                 {selectedVariant ? (
@@ -1018,12 +976,15 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
                     itemName={product.title}
                     className="min-h-14 w-full rounded-lg border-ink bg-ink text-sm tracking-[0.08em] !text-white hover:border-deep-teal hover:bg-deep-teal"
                     label="Add to Bag"
+                    disabledLabel={disabledPurchaseLabel}
+                    ariaLabel={selectedVariantIsAvailable ? "Add to Bag" : disabledPurchaseLabel}
                   />
                 ) : initialVariant ? (
                   <AddToCartButton
                     merchandiseId={initialVariant.id}
                     availableForSale={false}
-                    disabledLabel="Select a Size"
+                    disabledLabel={disabledPurchaseLabel}
+                    ariaLabel={disabledPurchaseLabel}
                     itemName={product.title}
                     className="min-h-14 w-full rounded-lg border-ink bg-ink text-sm tracking-[0.08em] !text-white hover:border-deep-teal hover:bg-deep-teal"
                   />
@@ -1114,11 +1075,13 @@ export function ProductDetailClient({ product }: ProductDetailClientProps) {
             <AddToCartButton
               merchandiseId={selectedVariant?.id ?? initialVariant.id}
               availableForSale={Boolean(selectedVariant?.availableForSale)}
-              disabledLabel="Select a Size"
+              disabledLabel={disabledPurchaseLabel}
               itemName={product.title}
               className="min-h-11 shrink-0 rounded-md border-ink bg-ink px-5 text-xs !text-white hover:border-deep-teal hover:bg-deep-teal"
               label="Add to Bag"
-              ariaLabel={`Add ${product.title} to bag`}
+              ariaLabel={
+                selectedVariantIsAvailable ? `Add ${product.title} to bag` : disabledPurchaseLabel
+              }
             />
           </div>
         </div>

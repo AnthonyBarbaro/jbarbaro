@@ -4,13 +4,16 @@ import { Check, LoaderCircle, Plus } from "lucide-react";
 import { useEffect, useRef, useState, type ReactElement } from "react";
 
 import { Button } from "@/components/ui/Button";
+import { useCartQuantityStatus } from "@/components/shop/CartQuantityContext";
 import {
   SHOPIFY_CART_CHANGED_EVENT,
   notifyShopifyCartChanged,
   openShopifyCartDrawer,
 } from "@/lib/shopify/cart-events";
 import { getCartAdditionFeedback } from "@/lib/shopify/cart-feedback";
+import { getCartDisplayWarnings, getVariantCartQuantity } from "@/lib/shopify/cart-quantity-state";
 import { requestShopifyCartMutation } from "@/lib/shopify/cart-request";
+import { getCartGiftWrapIssue } from "@/lib/shopify/gift-wrap";
 import type { ShopifyCartResponse } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils";
 
@@ -23,8 +26,15 @@ type AddToCartButtonProps = {
   iconOnly?: boolean;
   ariaLabel?: string;
   disabledLabel?: string;
+  disabled?: boolean;
+  giftWrap?: boolean;
+  giftWrapVariantId?: string;
+  stockLimitMessage?: string;
+  showStockLimitMessage?: boolean;
   itemName?: string;
   onAdded?: () => void;
+  onPendingChange?: (pending: boolean) => void;
+  onReviewRequiredChange?: (required: boolean) => void;
   onReviewCart?: () => void;
   openCartOnSuccess?: boolean;
 };
@@ -38,16 +48,34 @@ export function AddToCartButton({
   iconOnly = false,
   ariaLabel,
   disabledLabel = "Sold Out",
+  disabled = false,
+  giftWrap = false,
+  giftWrapVariantId,
+  stockLimitMessage: providedStockLimitMessage,
+  showStockLimitMessage = true,
   itemName = "Item",
   onAdded,
+  onPendingChange,
+  onReviewRequiredChange,
   onReviewCart,
   openCartOnSuccess = true,
 }: AddToCartButtonProps): ReactElement {
+  const quantityStatus = useCartQuantityStatus();
+  const stockLimitReached = !quantityStatus.canAddVariant(merchandiseId);
+  const giftWrapStockLimitReached = Boolean(
+    giftWrap && giftWrapVariantId && !quantityStatus.canAddVariant(giftWrapVariantId),
+  );
+  const stockLimitMessage = stockLimitReached
+    ? providedStockLimitMessage || "No more available for this option."
+    : null;
   const [isPending, setIsPending] = useState(false);
   const [hasAdded, setHasAdded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [needsReview, setNeedsReview] = useState(false);
+  const [hasOnlyStockWarnings, setHasOnlyStockWarnings] = useState(false);
+  const hideStockFeedback =
+    (stockLimitReached || giftWrapStockLimitReached) && hasOnlyStockWarnings;
   const isSubmittingRef = useRef(false);
 
   useEffect(() => {
@@ -74,6 +102,7 @@ export function AddToCartButton({
 
       if (payload && "cart" in payload && payload.confirmed !== false) {
         setNeedsReview(false);
+        onReviewRequiredChange?.(false);
         setError(null);
       }
     }
@@ -81,18 +110,28 @@ export function AddToCartButton({
     window.addEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
 
     return () => window.removeEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
-  }, [needsReview]);
+  }, [needsReview, onReviewRequiredChange]);
 
   async function handleAddToCart(): Promise<void> {
-    if (isSubmittingRef.current || needsReview || !availableForSale) {
+    if (
+      isSubmittingRef.current ||
+      needsReview ||
+      !availableForSale ||
+      disabled ||
+      stockLimitReached ||
+      giftWrapStockLimitReached
+    ) {
       return;
     }
 
+    const quantityBefore = quantityStatus.getVariantQuantity(merchandiseId);
     isSubmittingRef.current = true;
     setIsPending(true);
+    onPendingChange?.(true);
     setHasAdded(false);
     setError(null);
     setNotice(null);
+    setHasOnlyStockWarnings(false);
     let requestStarted = false;
 
     try {
@@ -104,7 +143,7 @@ export function AddToCartButton({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            lines: [{ merchandiseId, quantity: 1 }],
+            lines: [{ merchandiseId, quantity: 1, ...(giftWrap ? { giftWrap: true } : {}) }],
           }),
         });
         const decoded = (await response.json().catch(() => null)) as ShopifyCartResponse | null;
@@ -116,7 +155,27 @@ export function AddToCartButton({
         return { response, payload };
       });
 
-      const feedback = getCartAdditionFeedback(payload, merchandiseId);
+      const feedback = getCartAdditionFeedback(payload, merchandiseId, giftWrap);
+      const hasPartialGiftWrapAddition =
+        giftWrap &&
+        !feedback.confirmed &&
+        getVariantCartQuantity(payload?.cart ?? null, merchandiseId) > quantityBefore;
+      setHasOnlyStockWarnings(
+        Boolean(
+          payload?.cart &&
+          !payload.giftWrapIncomplete &&
+          !getCartGiftWrapIssue(payload.cart) &&
+          !hasPartialGiftWrapAddition &&
+          payload?.warnings?.length &&
+          !payload.userErrors?.length &&
+          getCartDisplayWarnings(payload.cart, payload.warnings).length === 0 &&
+          payload.warnings.every(
+            (warning) =>
+              warning.code === "MERCHANDISE_OUT_OF_STOCK" ||
+              warning.code === "MERCHANDISE_NOT_ENOUGH_STOCK",
+          ),
+        ),
+      );
 
       if (!response.ok || !feedback.confirmed) {
         const message =
@@ -133,6 +192,7 @@ export function AddToCartButton({
         });
         setError(message);
         setNeedsReview(true);
+        onReviewRequiredChange?.(true);
         return;
       }
 
@@ -152,6 +212,7 @@ export function AddToCartButton({
           : "We couldn't add this item. Please try again.";
       setError(message);
       setNeedsReview(requestStarted);
+      onReviewRequiredChange?.(requestStarted);
       if (requestStarted) {
         notifyShopifyCartChanged({
           configured: true,
@@ -164,6 +225,7 @@ export function AddToCartButton({
     } finally {
       isSubmittingRef.current = false;
       setIsPending(false);
+      onPendingChange?.(false);
     }
   }
 
@@ -171,13 +233,26 @@ export function AddToCartButton({
     <div className={cn("space-y-2", containerClassName)}>
       <Button
         onClick={handleAddToCart}
-        disabled={!availableForSale || isPending || needsReview}
+        disabled={
+          !availableForSale ||
+          isPending ||
+          needsReview ||
+          disabled ||
+          stockLimitReached ||
+          giftWrapStockLimitReached
+        }
         className={className}
-        aria-label={ariaLabel || label}
-        title={iconOnly ? ariaLabel || label : undefined}
+        aria-label={
+          stockLimitReached
+            ? "No More Available"
+            : giftWrapStockLimitReached
+              ? "No additional gift wrap available"
+              : ariaLabel || label
+        }
+        title={iconOnly ? stockLimitMessage || ariaLabel || label : undefined}
       >
         {iconOnly ? (
-          !availableForSale ? (
+          !availableForSale || stockLimitReached ? (
             <span className="text-xs tracking-[0.08em]">Out</span>
           ) : isPending ? (
             <LoaderCircle className="h-4 w-4 animate-spin" />
@@ -199,6 +274,10 @@ export function AddToCartButton({
           )
         ) : !availableForSale ? (
           disabledLabel
+        ) : stockLimitReached ? (
+          "No More Available"
+        ) : giftWrapStockLimitReached ? (
+          "No More Gift Wrap"
         ) : isPending ? (
           "Adding..."
         ) : hasAdded ? (
@@ -210,12 +289,17 @@ export function AddToCartButton({
       <p className="sr-only" role="status" aria-live="polite">
         {isPending ? `Adding ${itemName} to bag` : hasAdded ? `${itemName} added to bag` : ""}
       </p>
-      {notice ? (
+      {stockLimitMessage && showStockLimitMessage ? (
+        <p className={iconOnly ? "sr-only" : "text-xs leading-5 text-smoke"} role="status">
+          {stockLimitMessage}
+        </p>
+      ) : null}
+      {notice && !hideStockFeedback ? (
         <p className="text-xs leading-5 text-smoke" role="status">
           {notice}
         </p>
       ) : null}
-      {error ? (
+      {error && !hideStockFeedback ? (
         <p
           className={cn(
             "text-xs text-sale",
@@ -239,7 +323,7 @@ export function AddToCartButton({
           }}
           className="inline-flex min-h-11 items-center text-xs font-semibold text-deep-teal underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-teal"
         >
-          Review Bag
+          {hideStockFeedback ? "View Bag" : "Review Bag"}
         </button>
       ) : null}
     </div>

@@ -5,6 +5,7 @@ import { unstable_cache } from "next/cache";
 import { getVariantSizeValue } from "@/lib/fit-profile";
 import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
 import { SHOPIFY_STOREFRONT_REVALIDATE_SECONDS } from "@/lib/shopify/config";
+import { GIFT_WRAP_PRODUCT_HANDLE } from "@/lib/shopify/gift-wrap";
 import { sanitizeProductDescriptionHtml } from "@/lib/shopify/product-description.server";
 import type {
   ShopifyCollection,
@@ -347,6 +348,14 @@ function normalizeCollection(collection: RawCollection): ShopifyCollection {
   };
 }
 
+function withoutGiftWrap<T extends { handle: string }>(products: T[]): T[] {
+  return products.filter((product) => product.handle !== GIFT_WRAP_PRODUCT_HANDLE);
+}
+
+function withoutCollectionGiftWrap(collection: ShopifyCollection | null): ShopifyCollection | null {
+  return collection ? { ...collection, products: withoutGiftWrap(collection.products) } : null;
+}
+
 async function fetchWithRetry<T>(
   request: () => Promise<T>,
   shouldRetry: (value: T) => boolean,
@@ -432,7 +441,7 @@ const getShopProductsCached = unstable_cache(fetchShopProducts, ["shopify-produc
 });
 
 export async function getShopProducts(limit = 12): Promise<ShopifyProduct[]> {
-  return getShopProductsCached(limit);
+  return withoutGiftWrap(await getShopProductsCached(limit));
 }
 
 async function fetchNewArrivalProducts(limit = 20): Promise<ShopifyProduct[]> {
@@ -468,7 +477,7 @@ const getNewArrivalProductsCached = unstable_cache(
 );
 
 export async function getNewArrivalProducts(limit = 20): Promise<ShopifyProduct[]> {
-  return getNewArrivalProductsCached(limit);
+  return withoutGiftWrap(await getNewArrivalProductsCached(limit));
 }
 
 async function fetchAllShopProductsPage(cursor: string | null) {
@@ -514,7 +523,7 @@ async function fetchAllShopProducts(): Promise<ShopifyProduct[]> {
 }
 
 export async function getAllShopProducts(): Promise<ShopifyProduct[]> {
-  return fetchAllShopProducts();
+  return withoutGiftWrap(await fetchAllShopProducts());
 }
 
 async function fetchProductsByVendor(
@@ -554,7 +563,7 @@ export async function getProductsByVendor(
   limit = 60,
   availableOnly = false,
 ): Promise<ShopifyProduct[]> {
-  return getProductsByVendorCached(vendor, limit, availableOnly);
+  return withoutGiftWrap(await getProductsByVendorCached(vendor, limit, availableOnly));
 }
 
 async function fetchAllProductsByVendor(
@@ -613,7 +622,7 @@ export async function getAllProductsByVendor(
   vendor: string,
   availableOnly = false,
 ): Promise<ShopifyProduct[]> {
-  return getAllProductsByVendorCached(vendor, availableOnly);
+  return withoutGiftWrap(await getAllProductsByVendorCached(vendor, availableOnly));
 }
 
 async function fetchBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
@@ -644,7 +653,7 @@ const getBestSellingProductsCached = unstable_cache(
 );
 
 export async function getBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
-  return getBestSellingProductsCached(limit);
+  return withoutGiftWrap(await getBestSellingProductsCached(limit));
 }
 
 async function fetchBestSellingProductsByVendor(
@@ -682,7 +691,7 @@ export async function getBestSellingProductsByVendor(
   vendor: string,
   limit = 8,
 ): Promise<ShopifyProduct[]> {
-  return getBestSellingProductsByVendorCached(vendor, limit);
+  return withoutGiftWrap(await getBestSellingProductsByVendorCached(vendor, limit));
 }
 
 async function fetchShopProduct(handle: string): Promise<ShopifyProduct | null> {
@@ -769,7 +778,7 @@ export async function getShopCollection(
   handle: string,
   limit = 12,
 ): Promise<ShopifyCollection | null> {
-  return getShopCollectionCached(handle, limit);
+  return withoutCollectionGiftWrap(await getShopCollectionCached(handle, limit));
 }
 
 async function fetchAllShopCollection(handle: string): Promise<ShopifyCollection | null> {
@@ -860,7 +869,7 @@ const getAllShopCollectionCached = unstable_cache(
 );
 
 export async function getAllShopCollection(handle: string): Promise<ShopifyCollection | null> {
-  return getAllShopCollectionCached(handle);
+  return withoutCollectionGiftWrap(await getAllShopCollectionCached(handle));
 }
 
 async function fetchShopCollections(limit = 8): Promise<ShopifyCollectionPreview[]> {
@@ -960,7 +969,10 @@ export async function getShopCollectionsWithProducts(
   limit = 8,
   productLimit = 4,
 ): Promise<ShopifyCollection[]> {
-  return getShopCollectionsWithProductsCached(limit, productLimit);
+  return (await getShopCollectionsWithProductsCached(limit, productLimit)).map((collection) => ({
+    ...collection,
+    products: withoutGiftWrap(collection.products),
+  }));
 }
 
 async function fetchShopProductPreviews(limit = 100): Promise<ShopifyProductPreview[]> {
@@ -993,7 +1005,7 @@ const getShopProductPreviewsCached = unstable_cache(
 );
 
 export async function getShopProductPreviews(limit = 100): Promise<ShopifyProductPreview[]> {
-  return getShopProductPreviewsCached(limit);
+  return withoutGiftWrap(await getShopProductPreviewsCached(limit));
 }
 
 async function fetchAllShopProductPreviews(): Promise<ShopifyProductPreview[]> {
@@ -1033,7 +1045,7 @@ const getAllShopProductPreviewsCached = unstable_cache(
 );
 
 export async function getAllShopProductPreviews(): Promise<ShopifyProductPreview[]> {
-  return getAllShopProductPreviewsCached();
+  return withoutGiftWrap(await getAllShopProductPreviewsCached());
 }
 
 async function fetchRecommendedProducts(
@@ -1079,7 +1091,9 @@ export async function getRecommendedProducts(
   limit = 10,
   intent: ProductRecommendationIntent = "RELATED",
 ): Promise<ShopifyProduct[]> {
-  return getRecommendedProductsCached(productId, excludeHandle, limit, intent);
+  return withoutGiftWrap(
+    await getRecommendedProductsCached(productId, excludeHandle, limit, intent),
+  );
 }
 
 export async function searchShopProducts(
@@ -1136,7 +1150,7 @@ export async function searchShopProducts(
     cache: "no-store",
   });
 
-  return data.predictiveSearch.products.map((product) => ({
+  return withoutGiftWrap(data.predictiveSearch.products).map((product) => ({
     id: product.id,
     handle: product.handle,
     title: product.title,

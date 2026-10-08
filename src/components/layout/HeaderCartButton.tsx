@@ -5,6 +5,7 @@ import { ShoppingBag } from "lucide-react";
 import { useEffect, useState, type ReactElement } from "react";
 
 import { SHOPIFY_CART_CHANGED_EVENT, openShopifyCartDrawer } from "@/lib/shopify/cart-events";
+import { getCartItemQuantity } from "@/lib/shopify/gift-wrap";
 import type { ShopifyCartResponse } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,7 @@ export function HeaderCartButton({
         }
 
         if (response.ok && "cart" in payload) {
-          setQuantity(payload.cart?.totalQuantity ?? 0);
+          setQuantity(payload.cart ? getCartItemQuantity(payload.cart) : 0);
         }
       } catch (error) {
         if (isMounted) {
@@ -64,7 +65,7 @@ export function HeaderCartButton({
         requestVersion += 1;
         if ("cart" in payload) {
           setIsConfigured(payload.configured);
-          setQuantity(payload.cart?.totalQuantity ?? 0);
+          setQuantity(payload.cart ? getCartItemQuantity(payload.cart) : 0);
         }
       } else {
         void loadCart();

@@ -6,6 +6,7 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { CartDrawer } from "@/components/shop/CartDrawer";
+import { CartQuantityProvider } from "@/components/shop/CartQuantityContext";
 import { WishlistDrawer } from "@/components/shop/WishlistDrawer";
 import { buildPrimaryNavigation } from "@/data/navigation";
 import { locations } from "@/data/locations";
@@ -68,14 +69,16 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             ...locations.map((location) => clothingStoreJsonLd(location)),
           ]}
         />
-        <SiteHeader navItems={navItems} />
-        <main id="main-content" className="min-h-[60vh]">
-          {children}
-        </main>
-        <SiteFooter />
-        <MobileBottomNav />
-        <CartDrawer />
-        <WishlistDrawer />
+        <CartQuantityProvider>
+          <SiteHeader navItems={navItems} />
+          <main id="main-content" className="min-h-[60vh]">
+            {children}
+          </main>
+          <SiteFooter />
+          <MobileBottomNav />
+          <CartDrawer />
+          <WishlistDrawer />
+        </CartQuantityProvider>
       </body>
     </html>
   );

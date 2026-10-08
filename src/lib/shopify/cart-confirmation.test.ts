@@ -6,10 +6,14 @@ import {
   confirmCartLinesRemoved,
   confirmCartLinesUpdated,
 } from "@/lib/shopify/cart-confirmation";
-import type { ShopifyCartSnapshot } from "@/lib/shopify/types";
+import { GIFT_WRAP_GROUP_ATTRIBUTE } from "@/lib/shopify/gift-wrap";
+import type { ShopifyCartLine, ShopifyCartSnapshot } from "@/lib/shopify/types";
 
 function cart(
-  lines: Array<{ id: string; variantId: string; quantity: number }>,
+  lines: Array<
+    Pick<ShopifyCartLine, "id" | "variantId" | "quantity"> &
+      Partial<Pick<ShopifyCartLine, "attributes" | "parentLineId" | "productHandle">>
+  >,
 ): ShopifyCartSnapshot {
   const totalQuantity = lines.reduce((total, line) => total + line.quantity, 0);
   const money = { amount: String(totalQuantity * 50), currencyCode: "USD" };
@@ -24,7 +28,7 @@ function cart(
       ...line,
       variantTitle: null,
       productTitle: "Test Shirt",
-      productHandle: "test-shirt",
+      productHandle: line.productHandle ?? "test-shirt",
       productType: "Shirt",
       selectedOptions: [],
       image: null,
@@ -264,4 +268,161 @@ test("removal confirms all requested line IDs are gone from an actual returned c
   assert.equal(confirmCartLinesRemoved(remaining, ["remove-one", "keep"]), false);
   assert.equal(confirmCartLinesRemoved(cart([]), ["last-line"]), true);
   assert.equal(confirmCartLinesRemoved(null, ["last-line"]), false);
+});
+
+test("wrapped adds confirm native attachment rather than the service variant total alone", () => {
+  const attributes = [{ key: GIFT_WRAP_GROUP_ATTRIBUTE, value: "new-group" }];
+  const before = cart([{ id: "existing", variantId: "small-navy", quantity: 2 }]);
+  const parent = { id: "new-parent", variantId: "small-navy", quantity: 1, attributes };
+  const child = {
+    id: "wrap",
+    variantId: "gift-wrap",
+    quantity: 1,
+    attributes,
+    parentLineId: parent.id,
+    productHandle: "gift-wrap",
+  };
+  const requested = [
+    { merchandiseId: "small-navy", quantity: 1, attributes },
+    { merchandiseId: "gift-wrap", quantity: 1, attributes, parent: { lineId: parent.id } },
+  ];
+
+  assert.equal(
+    confirmCartLinesAdded(before, cart([...before.lines, parent, child]), requested),
+    true,
+  );
+  assert.equal(
+    confirmCartLinesAdded(
+      before,
+      cart([...before.lines, parent, { ...child, parentLineId: "existing" }]),
+      requested,
+    ),
+    false,
+  );
+  assert.equal(
+    confirmCartLinesAdded(
+      before,
+      cart([...before.lines, parent, { ...child, parentLineId: null }]),
+      requested,
+    ),
+    false,
+  );
+});
+
+test("wrap requests require the server-generated groups on the returned parent and child", () => {
+  const attributes = [{ key: GIFT_WRAP_GROUP_ATTRIBUTE, value: "new-group" }];
+  const parent = { id: "parent", variantId: "small-navy", quantity: 1, attributes };
+  const child = {
+    id: "wrap",
+    variantId: "gift-wrap",
+    quantity: 1,
+    attributes,
+    parentLineId: parent.id,
+    productHandle: "gift-wrap",
+  };
+  const requested = [
+    { merchandiseId: "small-navy", quantity: 1, attributes },
+    { merchandiseId: "gift-wrap", quantity: 1, attributes, parent: { lineId: parent.id } },
+  ];
+
+  assert.equal(
+    confirmCartLinesAdded(null, cart([parent, { ...child, attributes: [] }]), requested),
+    false,
+  );
+  assert.equal(
+    confirmCartLinesAdded(null, cart([{ ...parent, attributes: [] }, child]), requested),
+    false,
+  );
+});
+
+test("parent creation can be confirmed before a gift-wrap charge is added", () => {
+  const attributes = [{ key: GIFT_WRAP_GROUP_ATTRIBUTE, value: "new-group" }];
+
+  assert.equal(
+    confirmCartLinesAdded(
+      null,
+      cart([{ id: "parent", variantId: "small-navy", quantity: 1, attributes }]),
+      [{ merchandiseId: "small-navy", quantity: 1, attributes }],
+    ),
+    true,
+  );
+});
+
+test("wrapped size changes confirm the stable group after Shopify changes line IDs", () => {
+  const attributes = [{ key: GIFT_WRAP_GROUP_ATTRIBUTE, value: "stable-group" }];
+  const before = cart([
+    { id: "small", variantId: "small-navy", quantity: 1, attributes },
+    {
+      id: "wrap",
+      variantId: "gift-wrap",
+      quantity: 1,
+      attributes,
+      productHandle: "gift-wrap",
+      parentLineId: "small",
+    },
+  ]);
+  const after = cart([
+    { id: "large-new", variantId: "large-navy", quantity: 1, attributes },
+    {
+      id: "wrap-new",
+      variantId: "gift-wrap",
+      quantity: 1,
+      attributes,
+      productHandle: "gift-wrap",
+      parentLineId: "large-new",
+    },
+  ]);
+  const requested = [{ id: "small", merchandiseId: "large-navy" }];
+
+  assert.equal(confirmCartLinesUpdated(before, after, requested), true);
+  assert.equal(
+    confirmCartLinesUpdated(
+      before,
+      { ...after, lines: after.lines.map((line) => ({ ...line, attributes: [] })) },
+      requested,
+    ),
+    false,
+  );
+  assert.equal(
+    confirmCartLinesUpdated(
+      before,
+      cart([
+        { ...after.lines[0], attributes: [] },
+        { ...after.lines[1], parentLineId: "wrong-parent" },
+      ]),
+      requested,
+    ),
+    false,
+  );
+  assert.equal(confirmCartLinesUpdated(before, cart([after.lines[0]]), requested), false);
+});
+
+test("parent quantity updates must keep their exact attached wrap quantity in sync", () => {
+  const attributes = [{ key: GIFT_WRAP_GROUP_ATTRIBUTE, value: "stable-group" }];
+  const before = cart([
+    { id: "parent", variantId: "small-navy", quantity: 1, attributes },
+    {
+      id: "wrap",
+      variantId: "gift-wrap",
+      quantity: 1,
+      attributes,
+      productHandle: "gift-wrap",
+      parentLineId: "parent",
+    },
+  ]);
+  const requested = [
+    { id: "parent", quantity: 2 },
+    { id: "wrap", quantity: 2 },
+  ];
+  const after = cart(before.lines.map((line) => ({ ...line, quantity: 2 })));
+
+  assert.equal(confirmCartLinesUpdated(before, after, requested), true);
+  assert.equal(
+    confirmCartLinesUpdated(
+      before,
+      cart([{ ...before.lines[0], quantity: 2 }, before.lines[1]]),
+      requested,
+    ),
+    false,
+  );
 });

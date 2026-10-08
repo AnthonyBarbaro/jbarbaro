@@ -1,9 +1,11 @@
 import "server-only";
 
 import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
+import { GIFT_WRAP_GROUP_ATTRIBUTE } from "@/lib/shopify/gift-wrap";
 import type {
   ShopifyCartLineInput,
   ShopifyCartLineUpdate,
+  ShopifyCartLine,
   ShopifyCartMutationResult,
   ShopifyCartSnapshot,
   ShopifyCartUserError,
@@ -45,6 +47,9 @@ type RawProductVariant = {
 type RawCartLine = {
   id: string;
   quantity: number;
+  attributes?: { key: string; value: string }[];
+  parentRelationship?: { parent: { id: string } } | null;
+  instructions?: { canRemove: boolean; canUpdateQuantity: boolean };
   cost: {
     totalAmount: MoneyV2;
     amountPerQuantity: MoneyV2;
@@ -126,10 +131,25 @@ const CART_FRAGMENT = `
         currencyCode
       }
     }
-    lines(first: 50) {
+    lines(first: 250) {
       nodes {
         id
         quantity
+        attributes {
+          key
+          value
+        }
+        ... on CartLine {
+          parentRelationship {
+            parent {
+              id
+            }
+          }
+          instructions {
+            canRemove
+            canUpdateQuantity
+          }
+        }
         cost {
           totalAmount {
             amount
@@ -215,6 +235,11 @@ function normalizeCart(cart: RawCart): ShopifyCartSnapshot {
       productTitle: line.merchandise?.product.title ?? null,
       productHandle: line.merchandise?.product.handle ?? null,
       productType: line.merchandise?.product.productType ?? null,
+      attributes: (line.attributes ?? []).filter(
+        (attribute) => attribute.key === GIFT_WRAP_GROUP_ATTRIBUTE,
+      ),
+      parentLineId: line.parentRelationship?.parent.id ?? null,
+      instructions: line.instructions ?? { canRemove: true, canUpdateQuantity: true },
       selectedOptions: line.merchandise?.selectedOptions ?? [],
       image: line.merchandise?.image ?? null,
       unitPrice: toCartMoney(line.cost.amountPerQuantity),
@@ -226,25 +251,67 @@ function normalizeCart(cart: RawCart): ShopifyCartSnapshot {
   };
 }
 
-function normalizeWarning(warning: CartWarning): ShopifyCartWarning {
+function getWarningItemLabel(line: ShopifyCartLine): string {
+  const options = line.selectedOptions
+    .filter((option) => option.name.toLowerCase() !== "title")
+    .map((option) => `${option.name}: ${option.value}`)
+    .join(", ");
+
+  return `${line.productTitle || "This item"}${options ? ` (${options})` : ""}`
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+}
+
+function normalizeWarning(
+  warning: CartWarning,
+  cart: ShopifyCartSnapshot | null,
+): ShopifyCartWarning {
   const code = /^[A-Z][A-Z0-9_]{0,100}$/.test(warning.code) ? warning.code : "UNKNOWN";
+  const target =
+    typeof warning.target === "string" &&
+    warning.target.startsWith("gid://shopify/CartLine/") &&
+    !/[?&]key=/i.test(warning.target)
+      ? warning.target
+      : null;
+  const affectedLine = target ? cart?.lines.find((line) => line.id === target) : null;
   let message = "Your bag was adjusted. Review your items and totals before checking out.";
 
   if (code === "MERCHANDISE_OUT_OF_STOCK") {
-    message = "An item in your bag is now sold out. Review your bag before checking out.";
+    message = "An item in your bag is out of stock.";
   } else if (code === "MERCHANDISE_NOT_ENOUGH_STOCK") {
-    message = "The requested quantity is not available. Review the updated quantity in your bag.";
+    message = "The requested quantity is unavailable.";
   } else if (code.startsWith("DISCOUNT_")) {
     message = "A discount could not be applied. Review your bag totals before checking out.";
+  }
+
+  if (
+    affectedLine &&
+    (code === "MERCHANDISE_OUT_OF_STOCK" || code === "MERCHANDISE_NOT_ENOUGH_STOCK")
+  ) {
+    const label = getWarningItemLabel(affectedLine);
+    const acceptedQuantity = affectedLine.variantId
+      ? (cart?.lines.reduce(
+          (quantity, line) =>
+            quantity +
+            (line.variantId === affectedLine.variantId && line.quantity > 0 ? line.quantity : 0),
+          0,
+        ) ?? 0)
+      : 0;
+
+    if (code === "MERCHANDISE_OUT_OF_STOCK" && acceptedQuantity > 0) {
+      message = `No more ${label} are available.`;
+    } else if (code === "MERCHANDISE_OUT_OF_STOCK") {
+      message = `${label} is out of stock.`;
+    } else {
+      message = `Only the available quantity of ${label} was added.`;
+    }
   }
 
   return {
     code,
     message,
-    target:
-      warning.target.startsWith("gid://shopify/CartLine/") && !/[?&]key=/i.test(warning.target)
-        ? warning.target
-        : null,
+    target,
   };
 }
 
@@ -291,9 +358,22 @@ function normalizeCartMutationResult(
     throw new Error(`Shopify ${operation} did not return a cart.`);
   }
 
+  const cart = payload.cart ? normalizeCart(payload.cart) : null;
+  const seenWarnings = new Set<string>();
+  const warnings = (payload.warnings ?? [])
+    .map((warning) => normalizeWarning(warning, cart))
+    .filter((warning) => {
+      const key = JSON.stringify([warning.code, warning.target]);
+
+      if (seenWarnings.has(key)) return false;
+
+      seenWarnings.add(key);
+      return true;
+    });
+
   return {
-    cart: payload.cart ? normalizeCart(payload.cart) : null,
-    warnings: (payload.warnings ?? []).map(normalizeWarning),
+    cart,
+    warnings,
     userErrors: payload.userErrors.map(normalizeUserError),
   };
 }
@@ -302,6 +382,16 @@ export async function getCart(
   cartId: string,
   buyerIp?: string | null,
 ): Promise<ShopifyCartSnapshot | null> {
+  return (await getCartWithLineAttributes(cartId, buyerIp)).cart;
+}
+
+export async function getCartWithLineAttributes(
+  cartId: string,
+  buyerIp?: string | null,
+): Promise<{
+  cart: ShopifyCartSnapshot | null;
+  lineAttributes: Map<string, { key: string; value: string }[]>;
+}> {
   const data = await storefrontRequest<CartQueryResponse, { cartId: string }>({
     buyerIp,
     cache: "no-store",
@@ -318,7 +408,13 @@ export async function getCart(
     },
   });
 
-  return data.cart ? normalizeCart(data.cart) : null;
+  return {
+    cart: data.cart ? normalizeCart(data.cart) : null,
+    // Keep other line properties on the server when replacing the attribute array.
+    lineAttributes: new Map(
+      (data.cart?.lines.nodes ?? []).map((line) => [line.id, line.attributes ?? []]),
+    ),
+  };
 }
 
 export async function createCart(options?: {

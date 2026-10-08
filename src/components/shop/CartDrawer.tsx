@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 import { ArrowRight, LockKeyhole, Minus, Plus, ShoppingBag, X } from "lucide-react";
 
+import { GiftWrapCartDetails } from "@/components/shop/GiftWrapCartDetails";
+import {
+  CartGiftWrapOption,
+  getConfirmedGiftWrapParent,
+} from "@/components/shop/CartGiftWrapOption";
+import { useCartQuantityStatus } from "@/components/shop/CartQuantityContext";
+import { ClearBagButton } from "@/components/shop/ClearBagButton";
 import {
   SHOPIFY_CART_CHANGED_EVENT,
   SHOPIFY_CART_OPEN_EVENT,
@@ -14,15 +21,24 @@ import {
   isShopifyCartMutationPending,
   requestShopifyCartMutation,
 } from "@/lib/shopify/cart-request";
+import { getCartDisplayWarnings } from "@/lib/shopify/cart-quantity-state";
 import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
+import {
+  getCartGiftWrapIssue,
+  getCartItemQuantity,
+  getGiftWrapLinesForParent,
+  isCartLinePlaceholder,
+  isGiftWrapLine,
+} from "@/lib/shopify/gift-wrap";
 import type {
   ShopifyCartResponse,
   ShopifyCartSnapshot,
   ShopifyCartWarning,
+  ShopifyGiftWrapOffer,
 } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
-function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]) {
+function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]): string | null {
   if (cartLine.selectedOptions.length > 0) {
     const optionPresentation = getProductOptionPresentation(cartLine);
 
@@ -39,13 +55,18 @@ function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]) {
 }
 
 export function CartDrawer(): ReactElement | null {
+  const { canAddVariant } = useCartQuantityStatus();
   const [isOpen, setIsOpen] = useState(false);
   const [cart, setCart] = useState<ShopifyCartSnapshot | null>(null);
+  const [giftWrapOffer, setGiftWrapOffer] = useState<ShopifyGiftWrapOffer | null>(null);
+  const [addingGiftWrapLineId, setAddingGiftWrapLineId] = useState<string | null>(null);
+  const [giftWrapAnnouncement, setGiftWrapAnnouncement] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [mutatingLineId, setMutatingLineId] = useState<string | null>(null);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<ShopifyCartWarning[]>([]);
+  const [isKnownStockAdjustment, setIsKnownStockAdjustment] = useState(false);
   const [needsRefresh, setNeedsRefresh] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -55,17 +76,30 @@ export function CartDrawer(): ReactElement | null {
   const isMountedRef = useRef(true);
   const needsRefreshRef = useRef(false);
   const pendingOpenPayloadRef = useRef<ShopifyCartResponse | null>(null);
+  const giftWrapFocusTargetRef = useRef<string | null>(null);
 
   const applyPayload = useCallback((payload: ShopifyCartResponse): void => {
     requestGenerationRef.current += 1;
     isRefreshingRef.current = false;
     setIsLoading(false);
+    setGiftWrapAnnouncement("");
 
     if ("cart" in payload) {
       setCart(payload.cart ?? null);
     }
+    if ("giftWrapOffer" in payload) {
+      setGiftWrapOffer(payload.giftWrapOffer ?? null);
+    }
 
     setWarnings(payload.warnings ?? []);
+    setIsKnownStockAdjustment(
+      payload.confirmed === false &&
+        !payload.giftWrapIncomplete &&
+        Boolean(payload.cart) &&
+        (payload.userErrors?.length ?? 0) === 0 &&
+        (payload.warnings?.length ?? 0) > 0 &&
+        getCartDisplayWarnings(payload.cart ?? null, payload.warnings ?? []).length === 0,
+    );
     setError(payload.message || payload.userErrors?.[0]?.message || null);
     needsRefreshRef.current = payload.confirmed === false;
     setNeedsRefresh(needsRefreshRef.current);
@@ -90,6 +124,7 @@ export function CartDrawer(): ReactElement | null {
     }
     setIsLoading(true);
     setError(null);
+    setIsKnownStockAdjustment(false);
     let failureMessage = "We couldn't load your bag. Please try again.";
 
     try {
@@ -201,7 +236,11 @@ export function CartDrawer(): ReactElement | null {
         'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
       );
 
-      (firstFocusable ?? panelRef.current)?.focus();
+      (
+        panelRef.current?.querySelector<HTMLElement>('button[aria-label="Close bag"]') ??
+        firstFocusable ??
+        panelRef.current
+      )?.focus();
     });
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -247,8 +286,29 @@ export function CartDrawer(): ReactElement | null {
     };
   }, [isOpen]);
 
-  async function updateQuantity(lineId: string, quantity: number): Promise<void> {
-    if (isWorkingRef.current || isRefreshingRef.current || needsRefreshRef.current) {
+  useEffect(() => {
+    const targetId = giftWrapFocusTargetRef.current;
+    if (targetId) {
+      giftWrapFocusTargetRef.current = null;
+      if (isOpen) {
+        (document.getElementById(targetId) ?? document.getElementById("cart-drawer-close"))?.focus({
+          preventScroll: true,
+        });
+      }
+    }
+  }, [cart, isOpen]);
+
+  async function mutateCart(
+    lineId: string,
+    options: RequestInit,
+    isClearingBag = false,
+    giftWrapParent?: ShopifyCartSnapshot["lines"][number],
+  ): Promise<void> {
+    if (
+      isWorkingRef.current ||
+      isRefreshingRef.current ||
+      (needsRefreshRef.current && !isClearingBag)
+    ) {
       return;
     }
 
@@ -260,20 +320,21 @@ export function CartDrawer(): ReactElement | null {
     isWorkingRef.current = true;
     requestGenerationRef.current += 1;
     setMutatingLineId(lineId);
+    setAddingGiftWrapLineId(giftWrapParent?.id ?? null);
+    setGiftWrapAnnouncement(giftWrapParent ? "Adding gift wrap..." : "");
     setError(null);
     setWarnings([]);
+    const unconfirmedMessage = isClearingBag
+      ? "We couldn’t confirm your bag was cleared. Refresh your bag to review what remains."
+      : giftWrapParent
+        ? "We couldn’t confirm gift wrap. Refresh your bag to review it before trying again."
+        : "We couldn't confirm your bag update. Refresh your bag to review it before trying again.";
     let requestStarted = false;
 
     try {
       const { response, payload } = await requestShopifyCartMutation(async () => {
         requestStarted = true;
-        const response = await fetch("/api/shopify/cart", {
-          method: quantity <= 0 ? "DELETE" : "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(
-            quantity <= 0 ? { lineIds: [lineId] } : { lines: [{ id: lineId, quantity }] },
-          ),
-        });
+        const response = await fetch("/api/shopify/cart", options);
         const payload = (await response.json()) as ShopifyCartResponse;
         return { response, payload };
       });
@@ -283,24 +344,41 @@ export function CartDrawer(): ReactElement | null {
       }
 
       const feedback: ShopifyCartResponse =
-        response.ok && payload.confirmed === true && "cart" in payload
+        response.ok &&
+        payload.confirmed === true &&
+        "cart" in payload &&
+        (!giftWrapParent || getConfirmedGiftWrapParent(payload, giftWrapParent, giftWrapOffer)) &&
+        (!isClearingBag ||
+          !payload.cart ||
+          (payload.cart.totalQuantity === 0 && payload.cart.lines.length === 0))
           ? payload
           : {
               ...payload,
               confirmed: false,
-              message:
-                payload.message ||
-                "We couldn't confirm your bag update. Refresh your bag to review it before trying again.",
+              message: payload.message || unconfirmedMessage,
             };
+      const attachedParent = giftWrapParent
+        ? getConfirmedGiftWrapParent(feedback, giftWrapParent, giftWrapOffer)
+        : null;
+      if (giftWrapParent) {
+        giftWrapFocusTargetRef.current = `cart-drawer-item-title-${attachedParent?.id ?? giftWrapParent.id}`;
+      }
       applyPayload(feedback);
       notifyShopifyCartChanged(feedback);
+      if (giftWrapParent) {
+        if (attachedParent) {
+          setGiftWrapAnnouncement(
+            `Gift wrap added for ${attachedParent.productTitle || "this item"}${formatLineMeta(attachedParent) ? ` · ${formatLineMeta(attachedParent)}` : ""}.`,
+          );
+        }
+      }
     } catch (caughtError) {
       if (!isMountedRef.current) {
         return;
       }
 
       const message = requestStarted
-        ? "We couldn't confirm your bag update. Refresh your bag to review it before trying again."
+        ? unconfirmedMessage
         : caughtError instanceof Error
           ? caughtError.message
           : "Unable to update your bag.";
@@ -321,8 +399,48 @@ export function CartDrawer(): ReactElement | null {
       isWorkingRef.current = false;
       if (isMountedRef.current) {
         setMutatingLineId(null);
+        setAddingGiftWrapLineId(null);
       }
     }
+  }
+
+  async function updateQuantity(
+    lineId: string,
+    quantity: number,
+    isClearingBag = false,
+  ): Promise<void> {
+    await mutateCart(
+      lineId,
+      {
+        method: isClearingBag || quantity <= 0 ? "DELETE" : "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(
+          isClearingBag
+            ? { clear: true }
+            : quantity <= 0
+              ? { lineIds: [lineId] }
+              : { lines: [{ id: lineId, quantity }] },
+        ),
+      },
+      isClearingBag,
+    );
+  }
+
+  async function addGiftWrap(line: ShopifyCartSnapshot["lines"][number]): Promise<void> {
+    if (!giftWrapOffer?.availableForSale || !cart || getGiftWrapLinesForParent(cart, line).length) {
+      return;
+    }
+    document.getElementById(`cart-drawer-item-title-${line.id}`)?.focus({ preventScroll: true });
+    await mutateCart(
+      line.id,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ giftWrap: { lineId: line.id } }),
+      },
+      false,
+      line,
+    );
   }
 
   async function goToCheckout(): Promise<void> {
@@ -412,8 +530,22 @@ export function CartDrawer(): ReactElement | null {
     return null;
   }
 
-  const hasLines = Boolean(cart && cart.lines.length > 0);
   const controlsDisabled = isLoading || Boolean(mutatingLineId) || isCheckingOut || needsRefresh;
+  const itemLines =
+    cart?.lines.filter((line) => !isGiftWrapLine(line) && !isCartLinePlaceholder(line)) ?? [];
+  const unattachedGiftWrapLines =
+    cart?.lines.filter(
+      (line) =>
+        isGiftWrapLine(line) &&
+        !isCartLinePlaceholder(line) &&
+        !itemLines.some((parent) => parent.id === line.parentLineId),
+    ) ?? [];
+  const itemQuantity = cart ? getCartItemQuantity(cart) : 0;
+  const giftWrapIssue = cart ? getCartGiftWrapIssue(cart) : null;
+  const hasLines = itemLines.length > 0 || unattachedGiftWrapLines.length > 0;
+  const displayWarnings = getCartDisplayWarnings(cart, warnings);
+  const handledStockWarnings = warnings.length > 0 && displayWarnings.length === 0;
+  const compactStockFeedback = handledStockWarnings && isKnownStockAdjustment && !giftWrapIssue;
 
   return (
     <>
@@ -442,29 +574,45 @@ export function CartDrawer(): ReactElement | null {
           <p className="flex items-center gap-2 text-sm font-semibold tracking-[0.16em] text-ink uppercase">
             <ShoppingBag className="h-4 w-4 text-deep-teal" />
             Your Bag
-            {cart && cart.totalQuantity > 0 ? (
+            {itemQuantity > 0 ? (
               <span className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-deep-teal px-1.5 text-[10px] font-semibold text-white">
-                {cart.totalQuantity > 99 ? "99+" : cart.totalQuantity}
+                {itemQuantity > 99 ? "99+" : itemQuantity}
               </span>
             ) : null}
           </p>
-          <button
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/12 text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
-            aria-label="Close bag"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            {hasLines ? (
+              <ClearBagButton
+                disabled={isLoading || Boolean(mutatingLineId) || isCheckingOut}
+                pending={mutatingLineId === "clear-bag"}
+                onConfirm={() => updateQuantity("clear-bag", 0, true)}
+                focusTargetId="cart-drawer-close"
+              />
+            ) : null}
+            <button
+              type="button"
+              id="cart-drawer-close"
+              onClick={() => setIsOpen(false)}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/12 text-ink transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
+              aria-label="Close bag"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
           {error && cart ? (
             <div
-              className="mb-4 rounded-md border border-sale/25 bg-sale/8 px-4 py-3 text-sm text-ink"
-              role="alert"
+              className={
+                compactStockFeedback
+                  ? "mb-3 flex flex-wrap items-center gap-x-3 text-xs text-smoke"
+                  : "mb-4 rounded-md border border-sale/25 bg-sale/8 px-4 py-3 text-sm text-ink"
+              }
+              role={compactStockFeedback ? "status" : "alert"}
+              aria-live={compactStockFeedback ? "polite" : undefined}
             >
-              <p>{error}</p>
+              <p>{compactStockFeedback ? "Quantity adjusted to availability." : error}</p>
               <button
                 type="button"
                 disabled={isLoading || Boolean(mutatingLineId) || isCheckingOut}
@@ -476,17 +624,35 @@ export function CartDrawer(): ReactElement | null {
             </div>
           ) : null}
 
-          {warnings.length > 0 ? (
+          {displayWarnings.length > 0 ? (
             <div
               className="mb-4 rounded-md border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-ink"
               role="status"
               aria-live="polite"
             >
-              {warnings.map((warning, index) => (
+              {displayWarnings.map((warning, index) => (
                 <p key={`${warning.code}-${index}`} className={index > 0 ? "mt-2" : undefined}>
                   {warning.message}
                 </p>
               ))}
+            </div>
+          ) : null}
+          {giftWrapIssue && giftWrapIssue !== error ? (
+            <div
+              role="alert"
+              className="mb-4 rounded-md border border-sale/25 bg-sale/8 px-4 py-3 text-sm leading-6 text-ink"
+            >
+              <p>{giftWrapIssue}</p>
+              {!error ? (
+                <button
+                  type="button"
+                  disabled={isLoading || Boolean(mutatingLineId) || isCheckingOut}
+                  onClick={() => void loadCart()}
+                  className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold tracking-[0.12em] text-deep-teal uppercase underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isLoading ? "Refreshing Bag..." : "Refresh Bag"}
+                </button>
+              ) : null}
             </div>
           ) : null}
 
@@ -526,8 +692,21 @@ export function CartDrawer(): ReactElement | null {
             </div>
           ) : hasLines && cart ? (
             <ul className="divide-y divide-ink/8">
-              {cart.lines.map((line) => {
+              {itemLines.map((line) => {
                 const lineMeta = formatLineMeta(line);
+                const giftWrapLines = getGiftWrapLinesForParent(cart, line);
+                const hasGiftWrap = giftWrapLines.length > 0;
+                const canRemove = line.instructions?.canRemove !== false;
+                const canUpdateQuantity =
+                  line.instructions?.canUpdateQuantity !== false &&
+                  giftWrapLines.every(
+                    (giftWrapLine) => giftWrapLine.instructions?.canUpdateQuantity !== false,
+                  );
+                const stockLimitReached = Boolean(line.variantId && !canAddVariant(line.variantId));
+                const giftWrapLimitReached = giftWrapLines.some(
+                  (giftWrapLine) =>
+                    giftWrapLine.variantId && !canAddVariant(giftWrapLine.variantId),
+                );
                 const productHref = line.productHandle ? `/shop/${line.productHandle}` : null;
                 const isLineMutating = mutatingLineId === line.id;
 
@@ -554,7 +733,11 @@ export function CartDrawer(): ReactElement | null {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-ink">
+                          <p
+                            id={`cart-drawer-item-title-${line.id}`}
+                            tabIndex={-1}
+                            className="truncate rounded-sm text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-teal"
+                          >
                             {productHref ? (
                               <Link
                                 href={productHref}
@@ -570,20 +753,29 @@ export function CartDrawer(): ReactElement | null {
                           {lineMeta ? (
                             <p className="mt-0.5 text-xs text-smoke">{lineMeta}</p>
                           ) : null}
+                          {hasGiftWrap ? (
+                            <p className="mt-1 text-xs font-semibold text-deep-teal">
+                              Gift-wrapped
+                            </p>
+                          ) : null}
                         </div>
                         <p className="shrink-0 text-sm font-semibold text-ink">
                           {formatMoney(line.totalPrice.amount, line.totalPrice.currencyCode)}
                         </p>
                       </div>
 
-                      <div className="mt-3 flex items-center justify-between gap-3">
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                         <div className="inline-flex items-center rounded-md border border-ink/15 bg-white">
                           <button
                             type="button"
                             className="inline-flex h-11 w-11 items-center justify-center rounded-l-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
-                            disabled={controlsDisabled}
+                            disabled={
+                              controlsDisabled ||
+                              !canUpdateQuantity ||
+                              (line.quantity <= 1 && !canRemove)
+                            }
                             onClick={() => void updateQuantity(line.id, line.quantity - 1)}
-                            aria-label={`Decrease quantity for ${line.productTitle || "item"}`}
+                            aria-label={`Decrease quantity for ${line.productTitle || "item"}${hasGiftWrap ? " with gift wrap" : ""}`}
                           >
                             <Minus className="h-3.5 w-3.5" />
                           </button>
@@ -593,9 +785,14 @@ export function CartDrawer(): ReactElement | null {
                           <button
                             type="button"
                             className="inline-flex h-11 w-11 items-center justify-center rounded-r-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
-                            disabled={controlsDisabled}
+                            disabled={
+                              controlsDisabled ||
+                              !canUpdateQuantity ||
+                              stockLimitReached ||
+                              giftWrapLimitReached
+                            }
                             onClick={() => void updateQuantity(line.id, line.quantity + 1)}
-                            aria-label={`Increase quantity for ${line.productTitle || "item"}`}
+                            aria-label={`Increase quantity for ${line.productTitle || "item"}${hasGiftWrap ? " with gift wrap" : ""}`}
                           >
                             <Plus className="h-3.5 w-3.5" />
                           </button>
@@ -603,17 +800,73 @@ export function CartDrawer(): ReactElement | null {
 
                         <button
                           type="button"
-                          className="inline-flex min-h-11 items-center px-2 text-[11px] font-semibold tracking-[0.12em] text-smoke uppercase transition-colors hover:text-ink disabled:cursor-not-allowed"
-                          disabled={controlsDisabled}
+                          className="inline-flex min-h-11 items-center rounded-sm px-2 text-[11px] font-semibold tracking-[0.12em] text-smoke uppercase transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed"
+                          disabled={controlsDisabled || !canRemove}
                           onClick={() => void updateQuantity(line.id, 0)}
                         >
-                          Remove
+                          {hasGiftWrap ? "Remove item & gift wrap" : "Remove"}
                         </button>
                       </div>
+                      {!canUpdateQuantity ? (
+                        <p className="mt-1 text-xs leading-5 text-smoke">
+                          Quantity can&apos;t be changed for this item.
+                        </p>
+                      ) : stockLimitReached || giftWrapLimitReached ? (
+                        <p className="mt-1 text-xs leading-5 text-smoke">
+                          {stockLimitReached
+                            ? line.selectedOptions.some((option) => /size/i.test(option.name))
+                              ? "No more available in this size."
+                              : "No more available for this option."
+                            : "No additional gift wrap available."}
+                        </p>
+                      ) : null}
+                      {!canRemove ? (
+                        <p className="mt-1 text-xs leading-5 text-smoke">
+                          This item can&apos;t be removed right now.
+                        </p>
+                      ) : null}
+                      {!hasGiftWrap ? (
+                        <CartGiftWrapOption
+                          line={line}
+                          offer={giftWrapOffer}
+                          className="mt-3"
+                          disabled={controlsDisabled || Boolean(giftWrapIssue)}
+                          pending={addingGiftWrapLineId === line.id}
+                          onAdd={() => void addGiftWrap(line)}
+                        />
+                      ) : null}
+                      {giftWrapLines.map((giftWrapLine) => (
+                        <GiftWrapCartDetails
+                          key={giftWrapLine.id}
+                          cart={cart}
+                          line={giftWrapLine}
+                          parentLine={line}
+                          parentMeta={lineMeta}
+                          className="mt-3"
+                          focusTargetId={`cart-drawer-item-title-${line.id}`}
+                          disabled={controlsDisabled}
+                          pending={mutatingLineId === giftWrapLine.id}
+                          updatePending={mutatingLineId === line.id}
+                          onRemove={() => void updateQuantity(giftWrapLine.id, 0)}
+                          onUpdate={() => void updateQuantity(line.id, line.quantity)}
+                        />
+                      ))}
                     </div>
                   </li>
                 );
               })}
+              {unattachedGiftWrapLines.map((line) => (
+                <li key={line.id} className="py-4">
+                  <GiftWrapCartDetails
+                    cart={cart}
+                    line={line}
+                    focusTargetId="cart-drawer-close"
+                    disabled={controlsDisabled}
+                    pending={mutatingLineId === line.id}
+                    onRemove={() => void updateQuantity(line.id, 0)}
+                  />
+                </li>
+              ))}
             </ul>
           ) : (
             <div className="flex h-full flex-col items-center justify-center gap-4 py-10 text-center">
@@ -651,7 +904,7 @@ export function CartDrawer(): ReactElement | null {
 
             <button
               type="button"
-              disabled={controlsDisabled}
+              disabled={controlsDisabled || Boolean(giftWrapIssue)}
               onClick={() => void goToCheckout()}
               className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-md border border-ink bg-ink px-5 py-3 text-sm font-semibold tracking-[0.08em] text-white uppercase transition-colors hover:border-deep-teal hover:bg-deep-teal disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -675,9 +928,8 @@ export function CartDrawer(): ReactElement | null {
         ) : null}
 
         <p className="sr-only" role="status" aria-live="polite">
-          {cart
-            ? `${cart.totalQuantity} ${cart.totalQuantity === 1 ? "item" : "items"} in your bag`
-            : ""}
+          {giftWrapAnnouncement ||
+            (cart ? `${itemQuantity} ${itemQuantity === 1 ? "item" : "items"} in your bag` : "")}
         </p>
       </div>
     </>

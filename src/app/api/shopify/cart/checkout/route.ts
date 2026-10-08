@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getCart } from "@/lib/shopify/cart";
 import { getShopifyConfigStatus } from "@/lib/shopify/config";
+import { getCartGiftWrapIssue } from "@/lib/shopify/gift-wrap";
 import { clearShopifyCartSessionId, getShopifyCartSessionId } from "@/lib/shopify/session";
 import type { ShopifyCartResponse } from "@/lib/shopify/types";
 
@@ -77,6 +78,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         },
         400,
       );
+    }
+
+    const giftWrapIssue = getCartGiftWrapIssue(cart);
+
+    if (giftWrapIssue) {
+      return checkoutResponse({ configured: true, cart, message: giftWrapIssue }, 409);
     }
 
     return checkoutResponse({

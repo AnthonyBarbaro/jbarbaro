@@ -4,6 +4,7 @@ import test, { type TestContext } from "node:test";
 
 import { NextRequest } from "next/server";
 
+import { GIFT_WRAP_GROUP_ATTRIBUTE } from "@/lib/shopify/gift-wrap";
 import type { ShopifyCartResponse } from "@/lib/shopify/types";
 
 const CART_ID = "gid://shopify/Cart/test-cart?key=test-private-cart-key";
@@ -129,10 +130,15 @@ function mockStorefront(
     "fetch",
     async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
       assert.equal(String(input), "https://unit-test.myshopify.com/api/2026-01/graphql.json");
+      const request = JSON.parse(String(init?.body)) as StorefrontRequestFixture;
+      // These fixtures track cart operations; gift pricing is covered by the wrapping tests.
+      if (request.query.includes("query ShopProduct(")) {
+        return Response.json({ data: { product: null } });
+      }
       assert.equal(init?.cache, "no-store");
       const responseData = responses[requests.length];
       assert.ok(responseData, "Unexpected additional Shopify request");
-      requests.push(JSON.parse(String(init?.body)) as StorefrontRequestFixture);
+      requests.push(request);
       return Response.json({ data: responseData });
     },
   );
@@ -231,7 +237,7 @@ test("Shopify cart requests preserve actual outcomes without leaking provider me
         assert.equal(result.cart?.subtotal.amount, "100");
         assert.equal(result.warnings[0].code, "MERCHANDISE_NOT_ENOUGH_STOCK");
         assert.equal(result.warnings[0].target, null);
-        assert.ok(result.warnings[0].message.length > 0);
+        assert.equal(result.warnings[0].message, "The requested quantity is unavailable.");
         assert.doesNotMatch(result.warnings[0].message, /Internal provider|test-private-cart-key/);
         assert.deepEqual(result.userErrors, []);
         assert.equal(Object.hasOwn(result.cart ?? {}, "id"), false);
@@ -330,6 +336,212 @@ test("Shopify cart requests preserve actual outcomes without leaking provider me
       assert.equal(Object.hasOwn(cart ?? {}, "id"), false);
     },
   );
+
+  await context.test(
+    "native gift-wrap associations and instructions survive normalization without unrelated attributes",
+    async (subtest) => {
+      const raw = rawCart(1);
+      const nodes = (raw.lines as { nodes: Array<Record<string, unknown>> }).nodes;
+      const parent = nodes[0];
+      const group = { key: GIFT_WRAP_GROUP_ATTRIBUTE, value: "public-correlation-group" };
+      parent.attributes = [group, { key: "private-provider-note", value: CART_ID }];
+      const merchandise = parent.merchandise as Record<string, unknown>;
+      const product = merchandise.product as Record<string, unknown>;
+      nodes.push({
+        ...parent,
+        id: "gid://shopify/CartLine/gift-wrap",
+        attributes: [group],
+        parentRelationship: { parent: { id: LINE_ID } },
+        instructions: { canRemove: true, canUpdateQuantity: false },
+        merchandise: {
+          ...merchandise,
+          id: "gid://shopify/ProductVariant/gift-wrap",
+          product: { ...product, handle: "gift-wrap", title: "Gift Wrap" },
+        },
+      });
+      raw.totalQuantity = 2;
+      const requests = mockStorefront(subtest, {
+        cartLinesAdd: { cart: raw, warnings: [], userErrors: [] },
+      });
+      const lines = [
+        {
+          merchandiseId: "gid://shopify/ProductVariant/gift-wrap",
+          quantity: 1,
+          attributes: [group],
+          parent: { lineId: LINE_ID },
+        },
+      ];
+      const result = await cartModule.addCartLines(CART_ID, lines);
+
+      assert.deepEqual(requests[0].variables?.lines, lines);
+      assert.match(requests[0].query, /lines\(first: 250\)/);
+      assert.match(requests[0].query, /\.\.\. on CartLine\s*\{\s*parentRelationship/);
+      assert.equal(result.cart?.totalQuantity, 2);
+      assert.deepEqual(result.cart?.lines[0].attributes, [group]);
+      assert.equal(result.cart?.lines[0].parentLineId, null);
+      assert.equal(result.cart?.lines[1].parentLineId, LINE_ID);
+      assert.equal(result.cart?.lines[1].productHandle, "gift-wrap");
+      assert.deepEqual(result.cart?.lines[1].instructions, {
+        canRemove: true,
+        canUpdateQuantity: false,
+      });
+      assert.doesNotMatch(
+        JSON.stringify(result.cart),
+        /private-provider-note|test-private-cart-key/,
+      );
+    },
+  );
+
+  await context.test(
+    "out-of-stock warnings identify the zero placeholder while preserving accepted units of the same variant",
+    async (subtest) => {
+      const raw = rawCart(1);
+      const nodes = (raw.lines as { nodes: Array<Record<string, unknown>> }).nodes;
+      const placeholderId = "gid://shopify/CartLine/out-of-stock-placeholder";
+      nodes.push({
+        ...nodes[0],
+        id: placeholderId,
+        quantity: 0,
+        cost: {
+          totalAmount: { amount: "0.00", currencyCode: "USD" },
+          amountPerQuantity: { amount: "50", currencyCode: "USD" },
+        },
+      });
+      mockStorefront(subtest, {
+        cartLinesAdd: {
+          cart: raw,
+          userErrors: [],
+          warnings: [
+            {
+              code: "MERCHANDISE_OUT_OF_STOCK",
+              target: placeholderId,
+              message: `Raw provider message including ${CART_ID}`,
+            },
+          ],
+        },
+      });
+      const result = await cartModule.addCartLines(CART_ID, [
+        { merchandiseId: VARIANT_ID, quantity: 1 },
+      ]);
+
+      assert.equal(result.cart?.lines.length, 2);
+      assert.equal(result.cart?.lines[1].quantity, 0);
+      assert.equal(result.cart?.totalQuantity, 1);
+      assert.equal(result.warnings[0].target, placeholderId);
+      assert.equal(
+        result.warnings[0].message,
+        "No more Test Shirt (Size: Small, Color: Navy) are available.",
+      );
+      assert.doesNotMatch(
+        result.warnings[0].message,
+        /Raw provider|test-private-cart-key|out of stock/,
+      );
+    },
+  );
+
+  await context.test(
+    "stock warning quantity is specific to its variant rather than all same-title sizes",
+    async (subtest) => {
+      const raw = rawCart(0);
+      const nodes = (raw.lines as { nodes: Array<Record<string, unknown>> }).nodes;
+      const merchandise = nodes[0].merchandise as Record<string, unknown>;
+      nodes.push({
+        ...nodes[0],
+        id: "gid://shopify/CartLine/different-size",
+        quantity: 2,
+        merchandise: { ...merchandise, id: "gid://shopify/ProductVariant/different-size" },
+      });
+      raw.totalQuantity = 2;
+      mockStorefront(subtest, {
+        cartLinesAdd: {
+          cart: raw,
+          userErrors: [],
+          warnings: [{ code: "MERCHANDISE_OUT_OF_STOCK", target: LINE_ID, message: CART_ID }],
+        },
+      });
+      const result = await cartModule.addCartLines(CART_ID, [
+        { merchandiseId: VARIANT_ID, quantity: 1 },
+      ]);
+
+      assert.equal(
+        result.warnings[0].message,
+        "Test Shirt (Size: Small, Color: Navy) is out of stock.",
+      );
+      assert.doesNotMatch(result.warnings[0].message, /No more/);
+    },
+  );
+
+  await context.test(
+    "a stock warning on an accepted nonzero line says no more units are available",
+    async (subtest) => {
+      mockStorefront(subtest, {
+        cartLinesUpdate: {
+          cart: rawCart(1),
+          userErrors: [],
+          warnings: [{ code: "MERCHANDISE_OUT_OF_STOCK", target: LINE_ID, message: CART_ID }],
+        },
+      });
+      const result = await cartModule.updateCartLines(CART_ID, [{ id: LINE_ID, quantity: 2 }]);
+
+      assert.equal(result.cart?.lines[0].quantity, 1);
+      assert.equal(
+        result.warnings[0].message,
+        "No more Test Shirt (Size: Small, Color: Navy) are available.",
+      );
+      assert.doesNotMatch(result.warnings[0].message, /out of stock|test-private-cart-key/);
+    },
+  );
+
+  await context.test("stock shortages keep a concise product and size message", async (subtest) => {
+    mockStorefront(subtest, {
+      cartLinesAdd: {
+        cart: rawCart(1),
+        userErrors: [],
+        warnings: [{ code: "MERCHANDISE_NOT_ENOUGH_STOCK", target: LINE_ID, message: CART_ID }],
+      },
+    });
+    const result = await cartModule.addCartLines(CART_ID, [
+      { merchandiseId: VARIANT_ID, quantity: 2 },
+    ]);
+
+    assert.equal(
+      result.warnings[0].message,
+      "Only the available quantity of Test Shirt (Size: Small, Color: Navy) was added.",
+    );
+  });
+
+  await context.test("cart warnings deduplicate by code and safe target", async (subtest) => {
+    const otherTarget = "gid://shopify/CartLine/other-item";
+    mockStorefront(subtest, {
+      cartLinesAdd: {
+        cart: rawCart(1),
+        userErrors: [],
+        warnings: [
+          { code: "MERCHANDISE_OUT_OF_STOCK", target: LINE_ID, message: CART_ID },
+          { code: "MERCHANDISE_OUT_OF_STOCK", target: LINE_ID, message: "Duplicate details" },
+          { code: "MERCHANDISE_OUT_OF_STOCK", target: otherTarget, message: CART_ID },
+          { code: "MERCHANDISE_NOT_ENOUGH_STOCK", target: LINE_ID, message: CART_ID },
+          { code: "MERCHANDISE_OUT_OF_STOCK", target: CART_ID, message: CART_ID },
+          { code: "MERCHANDISE_OUT_OF_STOCK", target: `${CART_ID}&other=1`, message: CART_ID },
+        ],
+      },
+    });
+    const result = await cartModule.addCartLines(CART_ID, [
+      { merchandiseId: VARIANT_ID, quantity: 2 },
+    ]);
+
+    assert.deepEqual(
+      result.warnings.map(({ code, target }) => ({ code, target })),
+      [
+        { code: "MERCHANDISE_OUT_OF_STOCK", target: LINE_ID },
+        { code: "MERCHANDISE_OUT_OF_STOCK", target: otherTarget },
+        { code: "MERCHANDISE_NOT_ENOUGH_STOCK", target: LINE_ID },
+        { code: "MERCHANDISE_OUT_OF_STOCK", target: null },
+      ],
+    );
+    assert.equal(result.warnings[3].message, "An item in your bag is out of stock.");
+    assert.doesNotMatch(JSON.stringify(result.warnings), /Duplicate details|test-private-cart-key/);
+  });
 
   const cartRoute = await loadServerModule(() => import("@/app/api/shopify/cart/route"));
 

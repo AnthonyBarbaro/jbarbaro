@@ -17,6 +17,13 @@ export type ShopifyProductVariant = {
   selectedOptions: { name: string; value: string }[];
 };
 
+export type ShopifyGiftWrapOffer = {
+  merchandiseId: string;
+  title: string;
+  price: ShopifyMoney;
+  availableForSale: boolean;
+};
+
 export type ShopifyProduct = {
   id: string;
   handle: string;
@@ -89,6 +96,9 @@ export type ShopifyCartSnapshot = {
     productTitle: string | null;
     productHandle: string | null;
     productType: string | null;
+    attributes?: { key: string; value: string }[];
+    parentLineId?: string | null;
+    instructions?: { canRemove: boolean; canUpdateQuantity: boolean };
     selectedOptions: { name: string; value: string }[];
     image: {
       url: string;
@@ -102,15 +112,20 @@ export type ShopifyCartSnapshot = {
   }>;
 };
 
+export type ShopifyCartLine = ShopifyCartSnapshot["lines"][number];
+
 export type ShopifyCartLineInput = {
   merchandiseId: string;
   quantity: number;
+  attributes?: { key: string; value: string }[];
+  parent?: { lineId: string; merchandiseId?: never } | { merchandiseId: string; lineId?: never };
 };
 
 export type ShopifyCartLineUpdate = {
   id: string;
   quantity?: number;
   merchandiseId?: string;
+  attributes?: { key: string; value: string }[];
 };
 
 export type ShopifyCartWarning = {
@@ -137,5 +152,8 @@ export type ShopifyCartResponse = {
   warnings: ShopifyCartWarning[];
   userErrors: ShopifyCartUserError[];
   confirmed?: boolean;
+  giftWrapOffer?: ShopifyGiftWrapOffer | null;
+  giftWrapGroupId?: string;
+  giftWrapIncomplete?: boolean;
   message?: string;
 };

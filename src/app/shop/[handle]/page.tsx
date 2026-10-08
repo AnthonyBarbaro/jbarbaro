@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import type { ReactElement } from "react";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { ProductDetailClient } from "@/components/shop/ProductDetailClient";
@@ -9,6 +10,8 @@ import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
+import { GIFT_WRAP_PRODUCT_HANDLE } from "@/lib/shopify/gift-wrap";
+import { getGiftWrapOffer } from "@/lib/shopify/gift-wrap-product.server";
 import {
   getAllShopProductPreviews,
   getProductsByVendor,
@@ -128,7 +131,9 @@ export async function generateMetadata({ params }: ShopProductPageProps): Promis
   };
 }
 
-export default async function ShopProductPage({ params }: ShopProductPageProps) {
+export default async function ShopProductPage({
+  params,
+}: ShopProductPageProps): Promise<ReactElement> {
   const { handle } = await params;
   const { product, unavailable } = await loadShopProduct(handle);
 
@@ -163,13 +168,50 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
     notFound();
   }
 
+  if (product.handle === GIFT_WRAP_PRODUCT_HANDLE) {
+    return (
+      <>
+        <Breadcrumbs
+          items={[
+            { name: "Home", href: "/" },
+            { name: "Shop", href: "/shop" },
+            { name: product.title, href: `/shop/${product.handle}` },
+          ]}
+        />
+        <WaveSection topWave="A" background="ivory" contentClassName="py-8 sm:py-12 lg:py-16">
+          <Container>
+            <div className="max-w-2xl">
+              <h1 className="font-heading text-4xl text-ink sm:text-5xl">
+                Gift wrap, just for them.
+              </h1>
+              <p className="mt-4 text-base leading-8 text-smoke">
+                Choose the gift-wrap checkbox on each item&apos;s product page before selecting Add
+                to Bag. Your bag will show exactly which item the gift wrap belongs to.
+              </p>
+              <div className="mt-6">
+                <ButtonLink href="/shop">Shop Gifts</ButtonLink>
+              </div>
+            </div>
+          </Container>
+        </WaveSection>
+      </>
+    );
+  }
+
   const featuredStrategy = getFeaturedRecommendationStrategy(product.vendor);
-  const [sameBrandResult, featuredResult] = await Promise.allSettled([
+  const [sameBrandResult, featuredResult, giftWrapResult] = await Promise.allSettled([
     product.vendor.trim()
       ? getProductsByVendor(product.vendor.trim(), 24, true)
       : Promise.resolve<ShopifyProduct[]>([]),
     getProductsByVendor(featuredStrategy.vendor, 24, true),
+    getGiftWrapOffer(),
   ]);
+
+  if (giftWrapResult.status === "rejected") {
+    console.error("Unable to load the Shopify gift-wrap offer.");
+  }
+
+  const giftWrapOffer = giftWrapResult.status === "fulfilled" ? giftWrapResult.value : null;
 
   if (sameBrandResult.status === "rejected") {
     console.error(
@@ -276,7 +318,7 @@ export default async function ShopProductPage({ params }: ShopProductPageProps) 
         contentClassName="py-4 sm:py-7 lg:py-10"
       >
         <Container>
-          <ProductDetailClient key={product.id} product={product} />
+          <ProductDetailClient key={product.id} product={product} giftWrapOffer={giftWrapOffer} />
         </Container>
       </WaveSection>
 

@@ -17,20 +17,36 @@ import {
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
+import { GiftWrapCartDetails } from "@/components/shop/GiftWrapCartDetails";
+import {
+  CartGiftWrapOption,
+  getConfirmedGiftWrapParent,
+} from "@/components/shop/CartGiftWrapOption";
+import { useCartQuantityStatus } from "@/components/shop/CartQuantityContext";
+import { ClearBagButton } from "@/components/shop/ClearBagButton";
 import { SHOPIFY_CART_CHANGED_EVENT, notifyShopifyCartChanged } from "@/lib/shopify/cart-events";
 import {
   isShopifyCartMutationPending,
   requestShopifyCartMutation,
 } from "@/lib/shopify/cart-request";
+import { getCartDisplayWarnings } from "@/lib/shopify/cart-quantity-state";
 import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
+import {
+  getCartGiftWrapIssue,
+  getCartItemQuantity,
+  getGiftWrapLinesForParent,
+  isCartLinePlaceholder,
+  isGiftWrapLine,
+} from "@/lib/shopify/gift-wrap";
 import type {
   ShopifyCartResponse,
   ShopifyCartSnapshot,
   ShopifyCartWarning,
+  ShopifyGiftWrapOffer,
 } from "@/lib/shopify/types";
 import { formatMoney } from "@/lib/utils";
 
-function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]) {
+function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]): string | null {
   if (cartLine.selectedOptions.length > 0) {
     const optionPresentation = getProductOptionPresentation(cartLine);
 
@@ -119,27 +135,37 @@ function getSizeChoices(cartLine: ShopifyCartSnapshot["lines"][number]) {
 }
 
 export function ShopifyCartClient(): ReactElement {
+  const { canAddVariant } = useCartQuantityStatus();
   const [cart, setCart] = useState<ShopifyCartSnapshot | null>(null);
+  const [giftWrapOffer, setGiftWrapOffer] = useState<ShopifyGiftWrapOffer | null>(null);
+  const [addingGiftWrapLineId, setAddingGiftWrapLineId] = useState<string | null>(null);
+  const [giftWrapAnnouncement, setGiftWrapAnnouncement] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isMutating, setIsMutating] = useState(false);
   const [mutatingLineId, setMutatingLineId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isConfigured, setIsConfigured] = useState(true);
   const [warnings, setWarnings] = useState<ShopifyCartWarning[]>([]);
+  const [isKnownStockAdjustment, setIsKnownStockAdjustment] = useState(false);
   const [needsRefresh, setNeedsRefresh] = useState(false);
   const requestGenerationRef = useRef(0);
   const isRefreshingRef = useRef(false);
   const isWorkingRef = useRef(false);
   const isMountedRef = useRef(true);
   const needsRefreshRef = useRef(false);
+  const giftWrapFocusTargetRef = useRef<string | null>(null);
 
   const applyPayload = useCallback((payload: ShopifyCartResponse): void => {
     requestGenerationRef.current += 1;
     isRefreshingRef.current = false;
     setIsLoading(false);
+    setGiftWrapAnnouncement("");
 
     if ("cart" in payload) {
       setCart(payload.cart ?? null);
+    }
+    if ("giftWrapOffer" in payload) {
+      setGiftWrapOffer(payload.giftWrapOffer ?? null);
     }
 
     if (payload.confirmed !== false || "cart" in payload) {
@@ -147,6 +173,14 @@ export function ShopifyCartClient(): ReactElement {
     }
 
     setWarnings(payload.warnings ?? []);
+    setIsKnownStockAdjustment(
+      payload.confirmed === false &&
+        !payload.giftWrapIncomplete &&
+        Boolean(payload.cart) &&
+        (payload.userErrors?.length ?? 0) === 0 &&
+        (payload.warnings?.length ?? 0) > 0 &&
+        getCartDisplayWarnings(payload.cart ?? null, payload.warnings ?? []).length === 0,
+    );
     setError(payload.message || payload.userErrors?.[0]?.message || null);
     needsRefreshRef.current = payload.confirmed === false;
     setNeedsRefresh(needsRefreshRef.current);
@@ -174,6 +208,7 @@ export function ShopifyCartClient(): ReactElement {
     }
     setIsLoading(true);
     setError(null);
+    setIsKnownStockAdjustment(false);
     let failureMessage = "We couldn't load your bag. Please try again.";
 
     try {
@@ -249,8 +284,26 @@ export function ShopifyCartClient(): ReactElement {
     };
   }, [applyPayload, loadCart]);
 
-  function beginAction(lineId: string | null): boolean {
-    if (isWorkingRef.current || isRefreshingRef.current || needsRefreshRef.current) {
+  useEffect(() => {
+    const targetId = giftWrapFocusTargetRef.current;
+    if (targetId) {
+      giftWrapFocusTargetRef.current = null;
+      const target =
+        document.getElementById(targetId) ??
+        document.querySelector<HTMLElement>("#main-content h1");
+      if (target) {
+        target.tabIndex = -1;
+        target.focus({ preventScroll: true });
+      }
+    }
+  }, [cart]);
+
+  function beginAction(lineId: string | null, allowDuringReview = false): boolean {
+    if (
+      isWorkingRef.current ||
+      isRefreshingRef.current ||
+      (needsRefreshRef.current && !allowDuringReview)
+    ) {
       return false;
     }
 
@@ -271,12 +324,21 @@ export function ShopifyCartClient(): ReactElement {
     lineId: string,
     options: RequestInit,
     fallbackMessage: string,
+    isClearingBag = false,
+    giftWrapParent?: ShopifyCartSnapshot["lines"][number],
   ): Promise<void> {
-    if (!beginAction(lineId)) {
+    if (!beginAction(lineId, isClearingBag)) {
       return;
     }
 
     setWarnings([]);
+    setAddingGiftWrapLineId(giftWrapParent?.id ?? null);
+    setGiftWrapAnnouncement(giftWrapParent ? "Adding gift wrap..." : "");
+    const unconfirmedMessage = isClearingBag
+      ? "We couldn’t confirm your bag was cleared. Refresh your bag to review what remains."
+      : giftWrapParent
+        ? "We couldn’t confirm gift wrap. Refresh your bag to review it before trying again."
+        : "We couldn't confirm your bag update. Refresh your bag to review it before trying again.";
     let requestStarted = false;
 
     try {
@@ -292,24 +354,41 @@ export function ShopifyCartClient(): ReactElement {
       }
 
       const feedback: ShopifyCartResponse =
-        response.ok && payload.confirmed === true && "cart" in payload
+        response.ok &&
+        payload.confirmed === true &&
+        "cart" in payload &&
+        (!giftWrapParent || getConfirmedGiftWrapParent(payload, giftWrapParent, giftWrapOffer)) &&
+        (!isClearingBag ||
+          !payload.cart ||
+          (payload.cart.totalQuantity === 0 && payload.cart.lines.length === 0))
           ? payload
           : {
               ...payload,
               confirmed: false,
-              message:
-                payload.message ||
-                "We couldn't confirm your bag update. Refresh your bag to review it before trying again.",
+              message: payload.message || unconfirmedMessage,
             };
+      const attachedParent = giftWrapParent
+        ? getConfirmedGiftWrapParent(feedback, giftWrapParent, giftWrapOffer)
+        : null;
+      if (giftWrapParent) {
+        giftWrapFocusTargetRef.current = `cart-item-title-${attachedParent?.id ?? giftWrapParent.id}`;
+      }
       applyPayload(feedback);
       notifyShopifyCartChanged(feedback);
+      if (giftWrapParent) {
+        if (attachedParent) {
+          setGiftWrapAnnouncement(
+            `Gift wrap added for ${attachedParent.productTitle || "this item"}${formatLineMeta(attachedParent) ? ` · ${formatLineMeta(attachedParent)}` : ""}.`,
+          );
+        }
+      }
     } catch (caughtError) {
       if (!isMountedRef.current) {
         return;
       }
 
       const message = requestStarted
-        ? "We couldn't confirm your bag update. Refresh your bag to review it before trying again."
+        ? unconfirmedMessage
         : caughtError instanceof Error
           ? caughtError.message
           : fallbackMessage;
@@ -331,6 +410,7 @@ export function ShopifyCartClient(): ReactElement {
       if (isMountedRef.current) {
         setIsMutating(false);
         setMutatingLineId(null);
+        setAddingGiftWrapLineId(null);
       }
     }
   }
@@ -344,6 +424,24 @@ export function ShopifyCartClient(): ReactElement {
         body: JSON.stringify({ lines: [{ id: lineId, quantity }] }),
       },
       "Unable to update your bag.",
+    );
+  }
+
+  async function addGiftWrap(line: ShopifyCartSnapshot["lines"][number]): Promise<void> {
+    if (!giftWrapOffer?.availableForSale || !cart || getGiftWrapLinesForParent(cart, line).length) {
+      return;
+    }
+    document.getElementById(`cart-item-title-${line.id}`)?.focus({ preventScroll: true });
+    await mutateCart(
+      line.id,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ giftWrap: { lineId: line.id } }),
+      },
+      "Unable to add gift wrap.",
+      false,
+      line,
     );
   }
 
@@ -361,7 +459,7 @@ export function ShopifyCartClient(): ReactElement {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          lines: [{ id: cartLine.id, merchandiseId, quantity: cartLine.quantity }],
+          lines: [{ id: cartLine.id, merchandiseId }],
         }),
       },
       "Unable to update size.",
@@ -377,6 +475,19 @@ export function ShopifyCartClient(): ReactElement {
         body: JSON.stringify({ lineIds: [lineId] }),
       },
       "Unable to remove item.",
+    );
+  }
+
+  async function clearBag(): Promise<void> {
+    await mutateCart(
+      "clear-bag",
+      {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clear: true }),
+      },
+      "Unable to clear your bag.",
+      true,
     );
   }
 
@@ -456,14 +567,28 @@ export function ShopifyCartClient(): ReactElement {
   }
 
   const controlsDisabled = isMutating || isLoading || needsRefresh;
+  const itemLines =
+    cart?.lines.filter((line) => !isGiftWrapLine(line) && !isCartLinePlaceholder(line)) ?? [];
+  const unattachedGiftWrapLines =
+    cart?.lines.filter(
+      (line) =>
+        isGiftWrapLine(line) &&
+        !isCartLinePlaceholder(line) &&
+        !itemLines.some((parent) => parent.id === line.parentLineId),
+    ) ?? [];
+  const itemQuantity = cart ? getCartItemQuantity(cart) : 0;
+  const giftWrapIssue = cart ? getCartGiftWrapIssue(cart) : null;
+  const displayWarnings = getCartDisplayWarnings(cart, warnings);
+  const handledStockWarnings = warnings.length > 0 && displayWarnings.length === 0;
+  const compactStockFeedback = handledStockWarnings && isKnownStockAdjustment && !giftWrapIssue;
   const warningFeedback =
-    warnings.length > 0 ? (
+    displayWarnings.length > 0 ? (
       <div
         className="rounded-lg border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-ink"
         role="status"
         aria-live="polite"
       >
-        {warnings.map((warning, index) => (
+        {displayWarnings.map((warning, index) => (
           <p key={`${warning.code}-${index}`} className={index > 0 ? "mt-2" : undefined}>
             {warning.message}
           </p>
@@ -472,10 +597,15 @@ export function ShopifyCartClient(): ReactElement {
     ) : null;
   const errorFeedback = error ? (
     <div
-      className="rounded-lg border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-ink"
-      role="alert"
+      className={
+        compactStockFeedback
+          ? "flex flex-wrap items-center gap-x-3 text-xs text-smoke"
+          : "rounded-lg border border-gold/30 bg-gold/10 px-4 py-3 text-sm text-ink"
+      }
+      role={compactStockFeedback ? "status" : "alert"}
+      aria-live={compactStockFeedback ? "polite" : undefined}
     >
-      <p>{error}</p>
+      <p>{compactStockFeedback ? "Quantity adjusted to availability." : error}</p>
       <button
         type="button"
         disabled={isMutating || isLoading}
@@ -553,7 +683,7 @@ export function ShopifyCartClient(): ReactElement {
     );
   }
 
-  if (!cart || cart.lines.length === 0) {
+  if (!cart || (itemLines.length === 0 && unattachedGiftWrapLines.length === 0)) {
     return (
       <Container className="pb-12">
         <Card>
@@ -605,13 +735,39 @@ export function ShopifyCartClient(): ReactElement {
     <Container className="pb-12">
       <div className="grid gap-8 xl:grid-cols-[minmax(0,1.55fr)_360px]">
         <div className="space-y-4">
-          <div className="rounded-lg border border-ink/10 bg-white px-4 py-3 text-sm text-smoke shadow-sm sm:px-5">
-            <span className="font-semibold text-ink">{cart.totalQuantity}</span> item
-            {cart.totalQuantity === 1 ? "" : "s"} in your bag
+          <div className="flex flex-wrap items-center justify-between gap-x-3 rounded-lg border border-ink/10 bg-white px-4 py-3 text-sm text-smoke shadow-sm sm:px-5">
+            <p>
+              <span className="font-semibold text-ink">{itemQuantity}</span> item
+              {itemQuantity === 1 ? "" : "s"} in your bag
+            </p>
+            <ClearBagButton
+              disabled={isMutating || isLoading}
+              pending={mutatingLineId === "clear-bag"}
+              onConfirm={clearBag}
+            />
           </div>
 
           {warningFeedback}
           {errorFeedback}
+          {giftWrapIssue && giftWrapIssue !== error ? (
+            <div
+              role="alert"
+              className="rounded-lg border border-sale/25 bg-sale/8 px-4 py-3 text-sm leading-6 text-ink"
+            >
+              <p>{giftWrapIssue}</p>
+              {!error ? (
+                <button
+                  type="button"
+                  disabled={isMutating || isLoading}
+                  onClick={() => void loadCart()}
+                  className="mt-2 inline-flex min-h-11 items-center text-xs font-semibold tracking-[0.12em] text-deep-teal uppercase underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCcw className="mr-2 h-4 w-4" aria-hidden />
+                  {isLoading ? "Refreshing Bag..." : "Refresh Bag"}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="hidden rounded-lg border border-ink/10 bg-stone/60 px-6 py-4 lg:grid lg:grid-cols-[minmax(0,2.05fr)_100px_148px_108px] lg:items-center lg:gap-4">
             <p className="text-xs font-semibold tracking-[0.14em] text-smoke uppercase">Product</p>
@@ -622,8 +778,20 @@ export function ShopifyCartClient(): ReactElement {
             </p>
           </div>
 
-          {cart.lines.map((line) => {
+          {itemLines.map((line) => {
             const lineMeta = formatLineMeta(line);
+            const giftWrapLines = getGiftWrapLinesForParent(cart, line);
+            const hasGiftWrap = giftWrapLines.length > 0;
+            const canRemove = line.instructions?.canRemove !== false;
+            const canUpdateQuantity =
+              line.instructions?.canUpdateQuantity !== false &&
+              giftWrapLines.every(
+                (giftWrapLine) => giftWrapLine.instructions?.canUpdateQuantity !== false,
+              );
+            const stockLimitReached = Boolean(line.variantId && !canAddVariant(line.variantId));
+            const giftWrapLimitReached = giftWrapLines.some(
+              (giftWrapLine) => giftWrapLine.variantId && !canAddVariant(giftWrapLine.variantId),
+            );
             const optionPresentation = getProductOptionPresentation(line);
             const productHref = line.productHandle ? `/shop/${line.productHandle}` : null;
             const currentSize = getSelectedOptionValue(line.selectedOptions, "size");
@@ -657,7 +825,9 @@ export function ShopifyCartClient(): ReactElement {
                         </p>
                       ) : null}
                       <h3
-                        className="mt-2 font-heading text-[1.5rem] leading-[1.18] text-ink sm:text-[1.7rem]"
+                        id={`cart-item-title-${line.id}`}
+                        tabIndex={-1}
+                        className="mt-2 rounded-sm font-heading text-[1.5rem] leading-[1.18] text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-teal sm:text-[1.7rem]"
                         title={line.productTitle || "Selected Item"}
                       >
                         {productHref ? (
@@ -671,6 +841,9 @@ export function ShopifyCartClient(): ReactElement {
                           line.productTitle || "Selected Item"
                         )}
                       </h3>
+                      {hasGiftWrap ? (
+                        <p className="mt-2 text-xs font-semibold text-deep-teal">Gift-wrapped</p>
+                      ) : null}
 
                       {sizeChoices.length > 1 ? (
                         <div className="mt-4 max-w-[15rem]">
@@ -701,7 +874,9 @@ export function ShopifyCartClient(): ReactElement {
                           <p className="mt-2 text-xs leading-5 text-smoke">
                             {isLineMutating
                               ? "Updating size..."
-                              : "Switch sizes here without rebuilding your bag."}
+                              : hasGiftWrap
+                                ? "Gift wrap stays with this item when you change its size."
+                                : "Switch sizes here without rebuilding your bag."}
                           </p>
                         </div>
                       ) : currentSize ? (
@@ -712,12 +887,21 @@ export function ShopifyCartClient(): ReactElement {
 
                       <button
                         type="button"
-                        className="mt-5 text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase transition-colors hover:text-ink disabled:cursor-not-allowed disabled:text-smoke/50"
-                        disabled={controlsDisabled}
+                        className="mt-3 inline-flex min-h-11 items-center rounded-sm text-[11px] font-semibold tracking-[0.16em] text-smoke uppercase transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-deep-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-smoke/50"
+                        disabled={controlsDisabled || !canRemove}
                         onClick={() => void removeLine(line.id)}
                       >
-                        {isLineMutating ? "Updating..." : "Remove"}
+                        {isLineMutating
+                          ? "Updating..."
+                          : hasGiftWrap
+                            ? "Remove item & gift wrap"
+                            : "Remove"}
                       </button>
+                      {!canRemove ? (
+                        <p className="text-xs leading-5 text-smoke">
+                          This item can&apos;t be removed right now.
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 
@@ -734,28 +918,48 @@ export function ShopifyCartClient(): ReactElement {
                     <p className="text-[11px] font-semibold tracking-[0.14em] text-smoke uppercase lg:hidden">
                       Quantity
                     </p>
-                    <div className="inline-flex items-center rounded-md border border-ink/15 bg-stone/50">
-                      <button
-                        type="button"
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-l-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
-                        disabled={controlsDisabled || line.quantity <= 1}
-                        onClick={() => void updateQuantity(line.id, line.quantity - 1)}
-                        aria-label={`Decrease quantity for ${line.productTitle || "item"}`}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </button>
-                      <span className="min-w-10 text-center text-sm font-semibold text-ink">
-                        {line.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        className="inline-flex h-11 w-11 items-center justify-center rounded-r-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
-                        disabled={controlsDisabled}
-                        onClick={() => void updateQuantity(line.id, line.quantity + 1)}
-                        aria-label={`Increase quantity for ${line.productTitle || "item"}`}
-                      >
-                        <Plus className="h-4 w-4" />
-                      </button>
+                    <div className="flex min-w-0 flex-col items-end lg:items-start">
+                      <div className="inline-flex items-center rounded-md border border-ink/15 bg-stone/50">
+                        <button
+                          type="button"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-l-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
+                          disabled={controlsDisabled || !canUpdateQuantity || line.quantity <= 1}
+                          onClick={() => void updateQuantity(line.id, line.quantity - 1)}
+                          aria-label={`Decrease quantity for ${line.productTitle || "item"}${hasGiftWrap ? " with gift wrap" : ""}`}
+                        >
+                          <Minus className="h-4 w-4" />
+                        </button>
+                        <span className="min-w-10 text-center text-sm font-semibold text-ink">
+                          {line.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          className="inline-flex h-11 w-11 items-center justify-center rounded-r-md text-ink transition-colors hover:text-deep-teal disabled:cursor-not-allowed disabled:text-ink/30"
+                          disabled={
+                            controlsDisabled ||
+                            !canUpdateQuantity ||
+                            stockLimitReached ||
+                            giftWrapLimitReached
+                          }
+                          onClick={() => void updateQuantity(line.id, line.quantity + 1)}
+                          aria-label={`Increase quantity for ${line.productTitle || "item"}${hasGiftWrap ? " with gift wrap" : ""}`}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </button>
+                      </div>
+                      {!canUpdateQuantity ? (
+                        <p className="mt-2 max-w-[9.25rem] text-right text-xs leading-5 text-smoke lg:text-left">
+                          Quantity can&apos;t be changed for this item.
+                        </p>
+                      ) : stockLimitReached || giftWrapLimitReached ? (
+                        <p className="mt-2 max-w-[9.25rem] text-right text-xs leading-5 text-smoke lg:text-left">
+                          {stockLimitReached
+                            ? line.selectedOptions.some((option) => /size/i.test(option.name))
+                              ? "No more available in this size."
+                              : "No more available for this option."
+                            : "No additional gift wrap available."}
+                        </p>
+                      ) : null}
                     </div>
                   </div>
 
@@ -768,9 +972,46 @@ export function ShopifyCartClient(): ReactElement {
                     </p>
                   </div>
                 </div>
+                {!hasGiftWrap ? (
+                  <CartGiftWrapOption
+                    line={line}
+                    offer={giftWrapOffer}
+                    className="bg-stone/40 px-5 py-4 sm:px-6"
+                    disabled={controlsDisabled || Boolean(giftWrapIssue)}
+                    pending={addingGiftWrapLineId === line.id}
+                    onAdd={() => void addGiftWrap(line)}
+                  />
+                ) : null}
+                {giftWrapLines.map((giftWrapLine) => (
+                  <GiftWrapCartDetails
+                    key={giftWrapLine.id}
+                    cart={cart}
+                    line={giftWrapLine}
+                    parentLine={line}
+                    parentMeta={lineMeta}
+                    className="bg-stone/40 px-5 py-4 sm:px-6"
+                    focusTargetId={`cart-item-title-${line.id}`}
+                    disabled={controlsDisabled}
+                    pending={mutatingLineId === giftWrapLine.id}
+                    updatePending={mutatingLineId === line.id}
+                    onRemove={() => void removeLine(giftWrapLine.id)}
+                    onUpdate={() => void updateQuantity(line.id, line.quantity)}
+                  />
+                ))}
               </article>
             );
           })}
+          {unattachedGiftWrapLines.map((line) => (
+            <GiftWrapCartDetails
+              key={line.id}
+              cart={cart}
+              line={line}
+              className="rounded-lg border border-ink/10 bg-stone/40 px-5 py-4 sm:px-6"
+              disabled={controlsDisabled}
+              pending={mutatingLineId === line.id}
+              onRemove={() => void removeLine(line.id)}
+            />
+          ))}
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-28 xl:h-fit">
@@ -815,7 +1056,7 @@ export function ShopifyCartClient(): ReactElement {
               <div className="mt-6 space-y-3">
                 <Button
                   className="w-full"
-                  disabled={controlsDisabled}
+                  disabled={controlsDisabled || Boolean(giftWrapIssue)}
                   onClick={() => void goToCheckout()}
                 >
                   <span>{isMutating ? "Working..." : "Proceed to Checkout"}</span>
@@ -863,6 +1104,9 @@ export function ShopifyCartClient(): ReactElement {
           </Card>
         </div>
       </div>
+      <p className="sr-only" role="status" aria-live="polite">
+        {giftWrapAnnouncement}
+      </p>
     </Container>
   );
 }

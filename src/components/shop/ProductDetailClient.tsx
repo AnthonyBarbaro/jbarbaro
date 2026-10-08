@@ -24,6 +24,7 @@ import {
 } from "react";
 
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
+import { useCartQuantityStatus } from "@/components/shop/CartQuantityContext";
 import { ProductSmartFitDrawer } from "@/components/shop/ProductSmartFitDrawer";
 import { brandSlug } from "@/lib/shopify/brand-slug";
 import { publishProductSelection, type ProductSelectionDetail } from "@/lib/shop-product-selection";
@@ -41,6 +42,7 @@ import {
 } from "@/lib/fit-profile";
 import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
 import { getRichTextFallback } from "@/lib/shopify/product-description";
+import { GIFT_WRAP_PRODUCT_HANDLE } from "@/lib/shopify/gift-wrap";
 import {
   applyProductFitRecommendation,
   changeProductOptionSelection,
@@ -48,11 +50,12 @@ import {
   getInitialProductOptions,
   getProductOptionGroups,
 } from "@/lib/shopify/product-option-selection";
-import type { ShopifyProduct } from "@/lib/shopify/types";
+import type { ShopifyGiftWrapOffer, ShopifyProduct } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
 type ProductDetailClientProps = {
   product: ShopifyProduct;
+  giftWrapOffer?: ShopifyGiftWrapOffer | null;
 };
 
 const MIN_IMAGE_ZOOM = 1;
@@ -107,7 +110,11 @@ function getPrimaryCollection(
 const shopifyRichTextClassName =
   "[&_a]:font-semibold [&_a]:text-deep-teal [&_a]:underline [&_a]:underline-offset-4 [&_a:hover]:text-ink [&_b]:font-semibold [&_b]:text-ink [&_blockquote]:border-l-2 [&_blockquote]:border-gold/60 [&_blockquote]:pl-4 [&_blockquote]:italic [&_em]:italic [&_h2]:mt-8 [&_h2]:font-heading [&_h2]:text-xl [&_h2]:text-ink [&_h3]:mt-7 [&_h3]:font-heading [&_h3]:text-lg [&_h3]:text-ink [&_li]:leading-8 [&_li]:marker:text-gold [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:text-base [&_p]:leading-8 [&_strong]:font-semibold [&_strong]:text-ink [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 max-w-none space-y-4 text-smoke";
 
-export function ProductDetailClient({ product }: ProductDetailClientProps): ReactElement {
+export function ProductDetailClient({
+  product,
+  giftWrapOffer = null,
+}: ProductDetailClientProps): ReactElement {
+  const quantityStatus = useCartQuantityStatus();
   const initialVariant =
     product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
   const images = getProductImages(product);
@@ -118,6 +125,9 @@ export function ProductDetailClient({ product }: ProductDetailClientProps): Reac
     getInitialProductOptions(product),
   );
   const [selectionNotice, setSelectionNotice] = useState("");
+  const [giftWrapSelected, setGiftWrapSelected] = useState(false);
+  const [isAddingToBag, setIsAddingToBag] = useState(false);
+  const [needsBagReview, setNeedsBagReview] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -191,6 +201,40 @@ export function ProductDetailClient({ product }: ProductDetailClientProps): Reac
         )
       : null;
   const selectedVariantIsAvailable = Boolean(selectedVariant?.availableForSale);
+  const selectedVariantStockLimitReached = Boolean(
+    selectedVariant && !quantityStatus.canAddVariant(selectedVariant.id),
+  );
+  const stockLimitMessage = optionGroups.some((group) => /size/i.test(group.name))
+    ? "No more available in this size."
+    : "No more available for this option.";
+  const showGiftWrapOption = product.handle !== GIFT_WRAP_PRODUCT_HANDLE;
+  const giftWrapPriceLabel = giftWrapOffer
+    ? formatMoney(giftWrapOffer.price.amount, giftWrapOffer.price.currencyCode)
+    : null;
+  const addGiftWrap = giftWrapSelected;
+  const giftWrapUnavailable = giftWrapSelected && !giftWrapOffer?.availableForSale;
+  const giftWrapLimitReached = Boolean(
+    giftWrapOffer && !quantityStatus.canAddVariant(giftWrapOffer.merchandiseId),
+  );
+  const giftWrapBlocked = giftWrapSelected && (giftWrapUnavailable || giftWrapLimitReached);
+  const giftWrapCheckboxDisabled =
+    isAddingToBag ||
+    needsBagReview ||
+    ((!giftWrapOffer?.availableForSale || giftWrapLimitReached) && !giftWrapSelected);
+  const purchaseLabel = giftWrapUnavailable
+    ? "Gift Wrap Unavailable"
+    : giftWrapSelected && giftWrapLimitReached
+      ? "No More Gift Wrap"
+      : "Add to Bag";
+  const giftWrapSupportingCopy = !giftWrapOffer?.availableForSale
+    ? giftWrapSelected
+      ? "Gift wrap is temporarily unavailable. Uncheck it to add this item without gift wrap."
+      : "Gift wrap is temporarily unavailable. You can still add this item to your bag."
+    : giftWrapLimitReached
+      ? giftWrapSelected
+        ? "No additional gift wrap available. Uncheck it to add this item without gift wrap."
+        : "No additional gift wrap available. You can still add this item without gift wrap."
+      : "Added with this item when you select Add to Bag. Choose gift wrap separately for each item.";
   const hasAvailableVariant = product.variants.some((variant) => variant.availableForSale);
   const missingOptionGroups = optionGroups.filter((group) => !selectedOptions[group.name]);
   const selectionPrompt = missingOptionGroups.some((group) => /size/i.test(group.name))
@@ -787,17 +831,19 @@ export function ProductDetailClient({ product }: ProductDetailClientProps): Reac
                 {product.title}
               </h1>
 
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-smoke">
-                <span className="inline-flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "h-2.5 w-2.5 rounded-full",
-                      selectedVariantIsAvailable ? "bg-deep-teal" : "bg-[#b45309]",
-                    )}
-                  />
-                  {availabilityMessage}
-                </span>
-              </div>
+              {!selectedVariantStockLimitReached ? (
+                <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-smoke">
+                  <span className="inline-flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "h-2.5 w-2.5 rounded-full",
+                        selectedVariantIsAvailable ? "bg-deep-teal" : "bg-[#b45309]",
+                      )}
+                    />
+                    {availabilityMessage}
+                  </span>
+                </div>
+              ) : null}
             </header>
 
             <div className="border-t border-ink/10 pt-5">
@@ -968,16 +1014,65 @@ export function ProductDetailClient({ product }: ProductDetailClientProps): Reac
                 {selectionNotice}
               </p>
 
+              {showGiftWrapOption ? (
+                <div className="mt-5 border-t border-ink/10 pt-4">
+                  <label
+                    htmlFor="product-gift-wrap"
+                    className={cn(
+                      "flex min-h-11 items-center gap-3 text-sm font-semibold text-ink",
+                      giftWrapCheckboxDisabled ? "cursor-not-allowed" : "cursor-pointer",
+                    )}
+                  >
+                    <input
+                      id="product-gift-wrap"
+                      type="checkbox"
+                      checked={giftWrapSelected}
+                      onChange={(event) => setGiftWrapSelected(event.target.checked)}
+                      disabled={giftWrapCheckboxDisabled}
+                      aria-describedby="product-gift-wrap-details"
+                      className="h-5 w-5 shrink-0 accent-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 disabled:cursor-not-allowed"
+                    />
+                    <span className="flex flex-1 flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span>Gift wrap this item</span>
+                      {giftWrapPriceLabel ? (
+                        <span className="font-medium text-deep-teal">
+                          +{giftWrapPriceLabel} per item
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                  <p
+                    id="product-gift-wrap-details"
+                    className="mt-1 pl-8 text-xs leading-6 text-smoke"
+                  >
+                    {giftWrapSupportingCopy}
+                  </p>
+                </div>
+              ) : null}
+
               <div className="mt-6">
                 {selectedVariant ? (
                   <AddToCartButton
                     merchandiseId={selectedVariant.id}
                     availableForSale={selectedVariant.availableForSale}
                     itemName={product.title}
+                    giftWrap={addGiftWrap}
+                    giftWrapVariantId={giftWrapOffer?.merchandiseId}
+                    stockLimitMessage={stockLimitMessage}
+                    disabled={isAddingToBag || needsBagReview || giftWrapBlocked}
+                    onPendingChange={setIsAddingToBag}
+                    onReviewRequiredChange={setNeedsBagReview}
+                    onAdded={() => setGiftWrapSelected(false)}
                     className="min-h-14 w-full rounded-lg border-ink bg-ink text-sm tracking-[0.08em] !text-white hover:border-deep-teal hover:bg-deep-teal"
-                    label="Add to Bag"
+                    label={purchaseLabel}
                     disabledLabel={disabledPurchaseLabel}
-                    ariaLabel={selectedVariantIsAvailable ? "Add to Bag" : disabledPurchaseLabel}
+                    ariaLabel={
+                      giftWrapBlocked
+                        ? "Uncheck gift wrap to continue"
+                        : selectedVariantIsAvailable
+                          ? "Add to Bag"
+                          : disabledPurchaseLabel
+                    }
                   />
                 ) : initialVariant ? (
                   <AddToCartButton
@@ -1063,6 +1158,15 @@ export function ProductDetailClient({ product }: ProductDetailClientProps): Reac
                   {selectedOptionSummary}
                 </p>
               ) : null}
+              {addGiftWrap ? (
+                <p className="text-xs font-semibold text-deep-teal">
+                  {giftWrapUnavailable
+                    ? "Gift wrap unavailable"
+                    : giftWrapLimitReached
+                      ? "No additional gift wrap available"
+                      : `Gift wrap +${giftWrapPriceLabel}`}
+                </p>
+              ) : null}
               <div className="flex items-baseline gap-2">
                 <p className={cn("text-base font-bold", compareAtPrice ? "text-sale" : "text-ink")}>
                   {priceLabel}
@@ -1077,10 +1181,22 @@ export function ProductDetailClient({ product }: ProductDetailClientProps): Reac
               availableForSale={Boolean(selectedVariant?.availableForSale)}
               disabledLabel={disabledPurchaseLabel}
               itemName={product.title}
+              giftWrap={addGiftWrap}
+              giftWrapVariantId={giftWrapOffer?.merchandiseId}
+              stockLimitMessage={stockLimitMessage}
+              showStockLimitMessage={false}
+              disabled={isAddingToBag || needsBagReview || giftWrapBlocked}
+              onPendingChange={setIsAddingToBag}
+              onReviewRequiredChange={setNeedsBagReview}
+              onAdded={() => setGiftWrapSelected(false)}
               className="min-h-11 shrink-0 rounded-md border-ink bg-ink px-5 text-xs !text-white hover:border-deep-teal hover:bg-deep-teal"
-              label="Add to Bag"
+              label={purchaseLabel}
               ariaLabel={
-                selectedVariantIsAvailable ? `Add ${product.title} to bag` : disabledPurchaseLabel
+                giftWrapBlocked
+                  ? "Uncheck gift wrap to continue"
+                  : selectedVariantIsAvailable
+                    ? `Add ${product.title} to bag`
+                    : disabledPurchaseLabel
               }
             />
           </div>

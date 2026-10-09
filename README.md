@@ -69,11 +69,12 @@ See `.env.example`:
   - Checkout handoff route at `/api/shopify/cart/checkout`
 - Legacy URL redirect compatibility in `next.config.ts`
 - Dynamic brand/category/location routes with static generation
-- Appointment booking flow with holiday-aware 30-minute slot logic
-- Appointment confirmation email with Google/Outlook calendar links + `.ics` invite
+- Appointment requests with holiday-aware preferred 30-minute times
+- Staff confirms appointments by replying directly to the customer's request email
+- Customer acknowledgment explains that the requested time still needs confirmation
 - Internal email notifications for appointment/contact/wedding submissions
 - Contact and wedding submissions send customer confirmation emails
-- Form submissions are email-only and are not stored in a database
+- Appointment, contact and wedding requests are delivered by email; no appointment database is required
 - Tuxedo rentals marketing funnel:
   - `/suit-tuxedo-rentals` catalog page
   - `/register-your-wedding` intake form
@@ -112,7 +113,7 @@ See `.env.example`:
 - Home: `/`
 - Shopify cart API: `/api/shopify/cart`
 - Shopify checkout handoff: `/api/shopify/cart/checkout`
-- Appointment booking: `/schedule-appointment`
+- Appointment requests: `/schedule-appointment`
 - Tuxedo rentals: `/suit-tuxedo-rentals`
 - Wedding registration: `/register-your-wedding`
 - Contact: `/contact-us`
@@ -128,6 +129,13 @@ See `.env.example`:
 - `pnpm build` - generate the TinaCloud admin bundle, then run the Next.js production build
 - `pnpm lint` - lint check
 - `pnpm format` - format code
+
+## Appointment Email Setup
+
+See [appointment email setup](docs/appointments-email-setup.md) for AWS SES SMTP
+settings, staff reply handling, and a manual release test.
+Appointment requests fail visibly if staff email receipt cannot be confirmed.
+SMTP acceptance means the mail server accepted the message; it does not prove inbox delivery.
 
 ## Shopify Rollout Notes
 

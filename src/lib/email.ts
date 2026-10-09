@@ -4,7 +4,6 @@ import { format } from "date-fns";
 import nodemailer from "nodemailer";
 
 import { locationMap } from "@/data/locations";
-import { buildAppointmentCalendarArtifacts } from "@/lib/calendar";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
 import type {
   AppointmentSubmissionPayload,
@@ -14,6 +13,7 @@ import type {
 } from "@/types/submissions";
 
 export type DeliveryResult = "LOGGED" | "SENT" | "FAILED";
+export type AppointmentDeliveryResult = "SENT" | "FAILED" | "UNKNOWN";
 
 export type SubmissionEmailResult = {
   customer: DeliveryResult;
@@ -49,9 +49,14 @@ type BrandedEmailOptions = {
   messageTitle?: string;
   message?: string;
   footerNote?: string;
+  action?: {
+    label: string;
+    url: string;
+  };
 };
 
 let transporterCache: nodemailer.Transporter | null | undefined;
+let appointmentTransporterCache: nodemailer.Transporter | undefined;
 
 function hasSmtpConfig() {
   return Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS);
@@ -146,7 +151,12 @@ export function buildBrandedEmail({
   messageTitle,
   message,
   footerNote,
+  action,
 }: BrandedEmailOptions) {
+  if (action && !["http:", "https:"].includes(new URL(action.url).protocol)) {
+    throw new Error("Email actions require an HTTP URL.");
+  }
+
   const safePreheader = escapeHtml(preheader);
   const safeBadge = escapeHtml(badge);
   const safeTitle = escapeHtml(title);
@@ -154,6 +164,9 @@ export function buildBrandedEmail({
   const safeFooter = escapeHtml(footerNote || `${SITE_NAME} site form notification`);
   const safeMessageTitle = escapeHtml(messageTitle || "Details");
   const safeMessage = message ? escapeHtml(message).replace(/\n/g, "<br />") : "";
+  const actionBlock = action
+    ? `<p style="margin:20px 0 4px;"><a href="${escapeHtml(action.url)}" style="display:inline-block;padding:12px 18px;background:#0f172a;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;border-radius:4px;">${escapeHtml(action.label)}</a></p>`
+    : "";
   const receivedAt = new Date().toLocaleString("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -228,6 +241,7 @@ export function buildBrandedEmail({
                 <td style="padding:20px 22px 16px 22px;">
                   ${renderedSections}
                   ${messageBlock}
+                  ${actionBlock}
                 </td>
               </tr>
               <tr>
@@ -271,101 +285,244 @@ async function deliverEmail({ to, subject, text, html, replyTo, headers, attachm
   }
 }
 
-function buildAppointmentCustomerEmail(appointment: AppointmentSubmissionPayload) {
+function appointmentEmailSections(appointment: AppointmentSubmissionPayload): EmailSection[] {
   const location = locationMap[appointment.locationSlug];
   const dateLabel = format(appointment.preferredDate, "EEEE, MMMM d, yyyy");
-  const calendar = buildAppointmentCalendarArtifacts(appointment);
   const locationName = location?.name || appointment.locationSlug;
-  const mapsLink = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(calendar.address)}`;
+
+  return [
+    {
+      title: "Appointment Details",
+      fields: [
+        { label: "Reference", value: appointment.reference },
+        { label: "Location", value: locationName },
+        { label: "Address", value: location?.address || "J. Barbaro Clothiers" },
+        { label: "Service", value: appointment.serviceType },
+        { label: "Date", value: dateLabel },
+        {
+          label: "Time",
+          value: `${appointment.preferredTimeWindow} (Eastern Time — America/Detroit)`,
+        },
+        { label: "Store phone", value: location?.phone || "586-286-7400" },
+      ],
+    },
+  ];
+}
+
+function appointmentEmailDetails(appointment: AppointmentSubmissionPayload): string[] {
+  return appointmentEmailSections(appointment)[0].fields.map(
+    (field) => `${field.label}: ${field.value}`,
+  );
+}
+
+function getAppointmentTransporter(): nodemailer.Transporter | null {
+  const port = Number(process.env.SMTP_PORT);
+
+  if (
+    !hasSmtpConfig() ||
+    !recipientAddress(process.env.SMTP_FROM) ||
+    !Number.isInteger(port) ||
+    port < 1 ||
+    port > 65535
+  ) {
+    return null;
+  }
+
+  if (!appointmentTransporterCache) {
+    const secure = process.env.SMTP_SECURE === "true" || port === 465;
+    appointmentTransporterCache = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port,
+      secure,
+      requireTLS: !secure,
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
+    });
+  }
+
+  return appointmentTransporterCache;
+}
+
+function recipientAddress(value: unknown): string | null {
+  if (typeof value === "object" && value !== null && "address" in value) {
+    return recipientAddress(value.address);
+  }
+
+  if (typeof value !== "string" || /[\r\n]/.test(value)) {
+    return null;
+  }
+
+  const address = (value.match(/<([^<>]+)>/)?.[1] || value).trim().toLowerCase();
+  return /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/.test(address) ? address : null;
+}
+
+function smtpRecipientDelivery(receipt: unknown, recipients: string[]): AppointmentDeliveryResult {
+  if (typeof receipt !== "object" || receipt === null || !("accepted" in receipt)) {
+    return "UNKNOWN";
+  }
+
+  if (!Array.isArray(receipt.accepted)) {
+    return "UNKNOWN";
+  }
+
+  if ("pending" in receipt && (!Array.isArray(receipt.pending) || receipt.pending.length > 0)) {
+    return "UNKNOWN";
+  }
+
+  if (receipt.accepted.length === 0) {
+    return "FAILED";
+  }
+
+  if ("rejected" in receipt && (!Array.isArray(receipt.rejected) || receipt.rejected.length > 0)) {
+    return "UNKNOWN";
+  }
+
+  const accepted = new Set(receipt.accepted.map(recipientAddress).filter(Boolean));
+  const allAccepted =
+    recipients.length > 0 &&
+    recipients.every((recipient) => {
+      const address = recipientAddress(recipient);
+      return address !== null && accepted.has(address);
+    });
+
+  return allAccepted ? "SENT" : "UNKNOWN";
+}
+
+async function deliverAppointmentEmail(
+  options: SendEmailOptions,
+): Promise<AppointmentDeliveryResult> {
+  const recipients = parseRecipients(options.to);
+
+  if (
+    recipients.length === 0 ||
+    recipients.some((recipient) => !recipientAddress(recipient)) ||
+    (options.replyTo !== undefined && !recipientAddress(options.replyTo)) ||
+    /[\r\n]/.test(options.subject) ||
+    Object.values(options.headers || {}).some((value) => /[\r\n]/.test(value))
+  ) {
+    return "FAILED";
+  }
+
+  try {
+    const transporter = getAppointmentTransporter();
+
+    if (!transporter) {
+      return "FAILED";
+    }
+
+    const receipt: unknown = await transporter.sendMail({
+      from: process.env.SMTP_FROM,
+      ...options,
+    });
+
+    return smtpRecipientDelivery(receipt, recipients);
+  } catch (error) {
+    console.error("[Email] Appointment notification delivery could not be confirmed.");
+
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error.code === "EAUTH" || error.code === "EENVELOPE" ||
+        (error.code === "EMESSAGE" && "responseCode" in error &&
+          typeof error.responseCode === "number" &&
+          error.responseCode >= 400 && error.responseCode < 600))
+    ) {
+      return "FAILED";
+    }
+
+    return "UNKNOWN";
+  }
+}
+
+function getAppointmentNotificationRecipients(): string[] {
+  return getNotificationRecipients([
+    "APPOINTMENT_NOTIFICATION_TO",
+    "CONTACT_NOTIFICATION_TO",
+    "SMTP_REPLY_TO",
+  ]);
+}
+
+export async function sendAppointmentPendingEmail(
+  appointment: AppointmentSubmissionPayload,
+): Promise<AppointmentDeliveryResult> {
+  const replyTo = process.env.SMTP_REPLY_TO || getAppointmentNotificationRecipients()[0];
+
+  if (!replyTo || !recipientAddress(replyTo)) {
+    return "FAILED";
+  }
 
   const text = [
     `Hi ${appointment.name},`,
     "",
-    "Your appointment request has been received.",
+    "We received your appointment request. It is not confirmed yet.",
+    "Our team will reply by email to confirm your appointment or suggest another time.",
+    "Please wait for a separate confirmation before visiting for this appointment.",
     "",
-    `Reference: ${appointment.reference}`,
-    `Location: ${locationName}`,
-    `Address: ${calendar.address}`,
-    `Service: ${appointment.serviceType}`,
-    `Date: ${dateLabel}`,
-    `Time: ${appointment.preferredTimeWindow}`,
+    ...appointmentEmailDetails(appointment),
     "",
-    "Add this appointment to your calendar:",
-    `Google Calendar: ${calendar.googleCalendarUrl}`,
-    `Outlook Calendar: ${calendar.outlookCalendarUrl}`,
-    "",
-    `Directions: ${mapsLink}`,
-    `Appointment page: ${SITE_URL}/schedule-appointment`,
-    "",
-    `${SITE_NAME}`,
+    SITE_NAME,
   ].join("\n");
 
-  const html = buildBrandedEmail({
-    preheader: `Appointment confirmation for ${dateLabel}`,
-    badge: "Appointment Request",
-    title: "Your Appointment Request Is In",
-    subtitle: `${SITE_NAME} will follow up if any additional details are needed.`,
-    sections: [
-      {
-        title: "Appointment Details",
-        fields: [
-          { label: "Reference", value: appointment.reference },
-          { label: "Location", value: locationName },
-          { label: "Service", value: appointment.serviceType },
-          { label: "Date", value: dateLabel },
-          { label: "Time", value: appointment.preferredTimeWindow },
-        ],
-      },
-      {
-        title: "Quick Links",
-        fields: [
-          { label: "Google Calendar", value: calendar.googleCalendarUrl },
-          { label: "Outlook Calendar", value: calendar.outlookCalendarUrl },
-          { label: "Directions", value: mapsLink },
-        ],
-      },
-    ],
-    footerNote: SITE_NAME,
-  });
-
-  return {
-    subject: `Appointment Confirmation - ${SITE_NAME}`,
+  return deliverAppointmentEmail({
+    to: appointment.email,
+    subject: `We received your appointment request - ${SITE_NAME}`,
     text,
-    html,
-    attachments: [
-      {
-        filename: `jbarbaro-appointment-${appointment.reference}.ics`,
-        content: calendar.icsContent,
-        contentType: "text/calendar; charset=utf-8; method=PUBLISH",
-      },
-    ] satisfies nodemailer.SendMailOptions["attachments"],
-  };
+    html: buildBrandedEmail({
+      preheader: "Our team will reply to confirm your appointment or suggest another time.",
+      badge: "Awaiting Confirmation",
+      title: "Request Received — Not Confirmed Yet",
+      subtitle:
+        "Our team will reply by email to confirm your appointment or suggest another time. Please wait for a separate confirmation before visiting for this appointment.",
+      sections: appointmentEmailSections(appointment),
+      footerNote: SITE_NAME,
+    }),
+    replyTo,
+    headers: {
+      "X-Form-Type": "appointment-pending",
+      "X-Form-Reference": appointment.reference,
+    },
+  });
 }
 
-function buildAppointmentInternalEmail(appointment: AppointmentSubmissionPayload) {
+export async function sendAppointmentRequestEmail(
+  appointment: AppointmentSubmissionPayload,
+): Promise<AppointmentDeliveryResult> {
+  const internalRecipients = getAppointmentNotificationRecipients();
+
+  if (internalRecipients.length === 0) {
+    return "FAILED";
+  }
+
   const location = locationMap[appointment.locationSlug];
   const dateLabel = format(appointment.preferredDate, "EEEE, MMMM d, yyyy");
   const locationName = location?.name || appointment.locationSlug;
 
   const text = [
-    `New appointment request ${appointment.reference}`,
+    `Action needed: appointment request ${appointment.reference}`,
+    "This is a request only. No appointment has been confirmed.",
+    "Check the shared appointment calendar before confirming availability.",
+    "Reply to this email to confirm the date, time, and showroom with the customer, or offer another time.",
+    "Add the confirmed appointment to the shared calendar before sending your reply.",
+    "",
     `Name: ${appointment.name}`,
     `Email: ${appointment.email}`,
     `Phone: ${appointment.phone}`,
     `Location: ${locationName}`,
     `Service: ${appointment.serviceType}`,
     `Date: ${dateLabel}`,
-    `Time: ${appointment.preferredTimeWindow}`,
+    `Time: ${appointment.preferredTimeWindow} (Eastern Time — America/Detroit)`,
     `Notes: ${appointment.notes || "-"}`,
-    "",
-    `Schedule page: ${SITE_URL}/schedule-appointment`,
   ].join("\n");
 
   const html = buildBrandedEmail({
     preheader: `New appointment request from ${appointment.name}`,
-    badge: "Appointment Intake",
+    badge: "Action Needed",
     title: `New Appointment Request ${appointment.reference}`,
-    subtitle: "A customer submitted a new booking request.",
+    subtitle:
+      "Check the shared appointment calendar, then reply to this email to confirm the date, time, and showroom or offer another time. Add confirmed appointments to the calendar before replying.",
     sections: [
       {
         title: "Customer",
@@ -382,7 +539,10 @@ function buildAppointmentInternalEmail(appointment: AppointmentSubmissionPayload
           { label: "Location", value: locationName },
           { label: "Service", value: appointment.serviceType },
           { label: "Date", value: dateLabel },
-          { label: "Time", value: appointment.preferredTimeWindow },
+          {
+            label: "Time",
+            value: `${appointment.preferredTimeWindow} (Eastern Time — America/Detroit)`,
+          },
         ],
       },
     ],
@@ -391,56 +551,17 @@ function buildAppointmentInternalEmail(appointment: AppointmentSubmissionPayload
     footerNote: `${SITE_NAME} appointment alert`,
   });
 
-  return {
-    subject: `New Appointment Request ${appointment.reference} - ${SITE_NAME}`,
+  return deliverAppointmentEmail({
+    to: internalRecipients.join(", "),
+    subject: `Action needed: appointment request ${appointment.reference} - ${SITE_NAME}`,
     text,
     html,
-  };
-}
-
-export async function sendAppointmentEmails(
-  appointment: AppointmentSubmissionPayload,
-): Promise<SubmissionEmailResult> {
-  const internalRecipients = getNotificationRecipients([
-    "APPOINTMENT_NOTIFICATION_TO",
-    "CONTACT_NOTIFICATION_TO",
-    "SMTP_REPLY_TO",
-  ]);
-
-  const internalEmail = buildAppointmentInternalEmail(appointment);
-  const internalStatus =
-    internalRecipients.length > 0
-      ? await deliverEmail({
-          to: internalRecipients.join(", "),
-          subject: internalEmail.subject,
-          text: internalEmail.text,
-          html: internalEmail.html,
-          replyTo: appointment.email,
-          headers: {
-            "X-Form-Type": "appointment-internal",
-            "X-Form-Reference": appointment.reference,
-          },
-        })
-      : "LOGGED";
-
-  const customerEmail = buildAppointmentCustomerEmail(appointment);
-  const customerStatus = await deliverEmail({
-    to: appointment.email,
-    subject: customerEmail.subject,
-    text: customerEmail.text,
-    html: customerEmail.html,
-    replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
+    replyTo: appointment.email,
     headers: {
-      "X-Form-Type": "appointment-customer",
+      "X-Form-Type": "appointment-request",
       "X-Form-Reference": appointment.reference,
     },
-    attachments: customerEmail.attachments,
   });
-
-  return {
-    customer: customerStatus,
-    internal: internalStatus,
-  };
 }
 
 function buildContactCustomerEmail(submission: ContactSubmissionPayload) {

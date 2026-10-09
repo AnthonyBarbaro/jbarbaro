@@ -46,6 +46,11 @@ export default function PrivacyPolicyPage() {
                 Submitted information is used only to respond to inquiries, confirm appointments,
                 and improve service. We do not sell your personal data.
               </p>
+              <p className="mt-3 text-sm leading-7 text-smoke">
+                Appointment requests are delivered by our email service provider to our team.
+                Staff reviews your preferred time and replies to confirm your appointment or
+                arrange another time.
+              </p>
             </section>
             <section>
               <h2 className="font-heading text-2xl text-ink sm:text-3xl">

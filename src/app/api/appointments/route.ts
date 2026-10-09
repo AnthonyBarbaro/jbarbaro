@@ -1,182 +1,155 @@
+import { createHash } from "node:crypto";
+
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { appointmentLocationMap } from "@/data/locations";
-import { sendAppointmentEmails } from "@/lib/email";
-import { getHolidayName, isClosedHoliday } from "@/lib/holidays";
-import { getAvailableTimeSlots } from "@/lib/hours";
-import { createSubmissionReference } from "@/lib/submission-reference";
-import type { Location } from "@/types/site";
-import type { AppointmentSubmissionPayload } from "@/types/submissions";
+import {
+  getRequestableAppointmentSlots,
+  parseAppointmentDate,
+} from "@/lib/appointments/time";
+import { sendAppointmentPendingEmail, sendAppointmentRequestEmail } from "@/lib/email";
+import { appointmentRateLimiter } from "@/lib/rate-limit";
+import { pageContent } from "@/lib/site-content";
 
-const appointmentSchema = z.object({
-  locationSlug: z.string().min(1),
-  serviceType: z.string().min(2),
-  preferredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  preferredTimeWindow: z.string().min(5),
-  name: z.string().min(2),
-  email: z.email(),
-  phone: z.string().min(7),
-  notes: z.string().max(1000).optional().or(z.literal("")),
-});
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-const availabilitySchema = z.object({
-  locationSlug: z.string().min(1),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-});
+const PRIVATE_HEADERS = { "Cache-Control": "private, no-store" };
+const appointmentSchema = z
+  .object({
+    requestId: z.uuid(),
+    locationSlug: z.string().trim().min(1).max(100),
+    serviceType: z.string().trim().min(2).max(100),
+    preferredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    preferredTimeWindow: z.string().trim().min(5).max(50),
+    name: z.string().trim().min(2).max(120),
+    email: z.email().max(254),
+    phone: z.string().trim().min(7).max(40),
+    notes: z.string().trim().max(1000).optional(),
+    website: z.string().max(200).optional(),
+  })
+  .strict();
 
-type LiveAvailabilityError = {
-  error: string;
-};
-
-type LiveAvailabilitySuccess = {
-  location: Location;
-  selectedDate: Date;
-  availableSlots: string[];
-  message?: string;
-};
-
-const INVALID_APPOINTMENT_LOCATION_MESSAGE =
-  "Appointments are currently available at The Mall at Partridge Creek only.";
-
-async function getLiveAvailability(
-  locationSlug: string,
-  isoDate: string,
-): Promise<LiveAvailabilityError | LiveAvailabilitySuccess> {
-  const location = appointmentLocationMap[locationSlug];
-
-  if (!location) {
-    return { error: INVALID_APPOINTMENT_LOCATION_MESSAGE } as LiveAvailabilityError;
-  }
-
-  const selectedDate = new Date(`${isoDate}T00:00:00`);
-
-  if (Number.isNaN(selectedDate.getTime())) {
-    return { error: "Invalid preferred date." } as LiveAvailabilityError;
-  }
-
-  const allSlots = getAvailableTimeSlots(location, selectedDate);
-
-  if (allSlots.length === 0) {
-    const holidayName = getHolidayName(selectedDate);
-    return {
-      location,
-      selectedDate,
-      availableSlots: [],
-      message: holidayName
-        ? `This location is closed for ${holidayName}.`
-        : "This location is closed on the selected date.",
-    } as LiveAvailabilitySuccess;
-  }
-
-  return {
-    location,
-    selectedDate,
-    availableSlots: allSlots,
-    message:
-      allSlots.length === 0
-        ? "No appointment times are available for this date. Please choose another day."
-        : undefined,
-  } as LiveAvailabilitySuccess;
+function json(body: object, status = 200): NextResponse {
+  return NextResponse.json(body, { status, headers: PRIVATE_HEADERS });
 }
 
-export async function GET(request: NextRequest) {
-  const queryPayload = {
-    locationSlug: request.nextUrl.searchParams.get("locationSlug") || "",
-    date: request.nextUrl.searchParams.get("date") || "",
-  };
-  const parsed = availabilitySchema.safeParse(queryPayload);
-
-  if (!parsed.success) {
-    return NextResponse.json({ message: "Invalid availability query." }, { status: 400 });
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const locationSlug = request.nextUrl.searchParams.get("locationSlug") || "";
+  const date = request.nextUrl.searchParams.get("date") || "";
+  const location = appointmentLocationMap[locationSlug];
+  if (!location || !parseAppointmentDate(date)) {
+    return json({ message: "Choose a valid date at The Mall at Partridge Creek." }, 400);
   }
-
-  const availability = await getLiveAvailability(parsed.data.locationSlug, parsed.data.date);
-
-  if ("error" in availability) {
-    return NextResponse.json({ message: availability.error }, { status: 400 });
-  }
-
-  return NextResponse.json({
-    availableSlots: availability.availableSlots,
-    message: availability.message,
+  const availableSlots = getRequestableAppointmentSlots(location, date);
+  return json({
+    availableSlots,
+    message: availableSlots.length
+      ? undefined
+      : "No preferred times are offered on this date. Please choose another date.",
   });
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  let raw: unknown;
   try {
-    const raw = await request.json();
-    const parsed = appointmentSchema.safeParse(raw);
-
-    if (!parsed.success) {
-      return NextResponse.json({ message: "Invalid appointment form data." }, { status: 400 });
-    }
-
-    const payload = parsed.data;
-    const location = appointmentLocationMap[payload.locationSlug];
-
-    if (!location) {
-      return NextResponse.json({ message: INVALID_APPOINTMENT_LOCATION_MESSAGE }, { status: 400 });
-    }
-
-    const preferredDate = new Date(`${payload.preferredDate}T00:00:00`);
-
-    if (Number.isNaN(preferredDate.getTime())) {
-      return NextResponse.json({ message: "Invalid preferred date." }, { status: 400 });
-    }
-
-    if (isClosedHoliday(preferredDate)) {
-      const holidayName = getHolidayName(preferredDate);
-      return NextResponse.json(
+    const body = await request.text();
+    if (Buffer.byteLength(body, "utf8") > 12_000)
+      return json({ message: "Appointment request is too large." }, 413);
+    raw = JSON.parse(body);
+  } catch {
+    return json({ message: "Invalid appointment form data." }, 400);
+  }
+  const parsed = appointmentSchema.safeParse(raw);
+  if (!parsed.success || parsed.data.website?.trim()) {
+    return json({ message: "Invalid appointment form data." }, 400);
+  }
+  const input = { ...parsed.data };
+  delete input.website;
+  const location = appointmentLocationMap[input.locationSlug];
+  const preferredDate = parseAppointmentDate(input.preferredDate);
+  if (
+    !location ||
+    !preferredDate ||
+    !pageContent.servicesPage.appointmentServices.includes(input.serviceType)
+  ) {
+    return json({ message: "Choose a valid showroom, service, and date." }, 400);
+  }
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!appointmentRateLimiter.check(ip).allowed) {
+    return json(
+      { message: "Too many appointment requests. Please try later or call the showroom." },
+      429,
+    );
+  }
+  const availableSlots = getRequestableAppointmentSlots(location, input.preferredDate);
+  if (!availableSlots.includes(input.preferredTimeWindow)) {
+    return json(
+      {
+        message: "Choose a future preferred time during showroom hours.",
+        availableSlots,
+      },
+      409,
+    );
+  }
+  // A repeated request keeps the same reference so staff can recognize duplicate emails.
+  const reference = `APT-${createHash("sha256")
+    .update(input.requestId.toLowerCase())
+    .digest("hex")
+    .slice(0, 16)
+    .toUpperCase()}`;
+  const appointment = {
+    reference,
+    submittedAt: new Date(),
+    locationSlug: input.locationSlug,
+    serviceType: input.serviceType,
+    preferredDate,
+    preferredTimeWindow: input.preferredTimeWindow,
+    name: input.name,
+    email: input.email,
+    phone: input.phone,
+    notes: input.notes || null,
+  };
+  try {
+    const delivery = await sendAppointmentRequestEmail(appointment);
+    if (delivery !== "SENT") {
+      return json(
         {
-          message: `The selected location is closed for ${holidayName || "this holiday"}.`,
-        },
-        { status: 400 },
-      );
-    }
-
-    const liveAvailability = await getLiveAvailability(payload.locationSlug, payload.preferredDate);
-
-    if ("error" in liveAvailability) {
-      return NextResponse.json({ message: liveAvailability.error }, { status: 400 });
-    }
-
-    if (!liveAvailability.availableSlots.includes(payload.preferredTimeWindow)) {
-      return NextResponse.json(
-        {
+          received: false,
+          reference,
+          retryAllowed: delivery === "FAILED",
           message:
-            "That appointment time is not available for the selected date. Please choose another available slot.",
-          availableSlots: liveAvailability.availableSlots,
+            delivery === "FAILED"
+              ? `Your request was not sent. Please try again or call the showroom. Your appointment is not confirmed. Reference ${reference}.`
+              : `We could not confirm that your request was sent. Call the showroom and quote ${reference} before submitting another request. Your appointment is not confirmed.`,
         },
-        { status: 400 },
+        503,
       );
     }
-
-    const appointment: AppointmentSubmissionPayload = {
-      reference: createSubmissionReference("APT"),
-      submittedAt: new Date(),
-      locationSlug: payload.locationSlug,
-      serviceType: payload.serviceType,
-      preferredDate,
-      preferredTimeWindow: payload.preferredTimeWindow,
-      name: payload.name,
-      email: payload.email,
-      phone: payload.phone,
-      notes: payload.notes || null,
-    };
-
-    const delivery = await sendAppointmentEmails(appointment);
-    const emailMessage =
-      delivery.customer === "SENT"
-        ? "A confirmation email with calendar options has been sent."
-        : "We received your request and will follow up by email shortly.";
-
-    return NextResponse.json({
-      reference: appointment.reference,
-      message: `${emailMessage} Reference ${appointment.reference}.`,
+    try {
+      await sendAppointmentPendingEmail(appointment);
+    } catch {
+      // Staff receipt is authoritative even if the optional customer receipt cannot be sent.
+      console.error("[Appointments] Customer receipt could not be sent.");
+    }
+    return json({
+      received: true,
+      status: "pending",
+      reference,
+      message: `Request received. Your appointment is not confirmed yet. Staff will reply to your email to confirm the time or arrange an alternative. Reference ${reference}.`,
     });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Unexpected server error." }, { status: 500 });
+  } catch {
+    // Keep contact details and SMTP credentials out of server logs.
+    console.error("[Appointments] Request receipt could not be confirmed.");
+    return json(
+      {
+        received: false,
+        reference,
+        retryAllowed: false,
+        message: `We could not confirm that your request was sent. Call the showroom and quote ${reference} before submitting another request. Your appointment is not confirmed.`,
+      },
+      503,
+    );
   }
 }

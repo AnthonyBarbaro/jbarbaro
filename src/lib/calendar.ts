@@ -20,6 +20,11 @@ function parseTimeLabel(label: string) {
 
   const hoursRaw = Number(match[1]);
   const minutes = Number(match[2]);
+
+  if (hoursRaw < 1 || hoursRaw > 12 || minutes > 59) {
+    return null;
+  }
+
   const meridiem = match[3].toUpperCase();
   let hours = hoursRaw;
 
@@ -47,14 +52,47 @@ function toCompactDateTime(dateKey: string, hours: number, minutes: number) {
   return `${year}${month}${day}T${pad(hours)}${pad(minutes)}00`;
 }
 
-function toIsoLocalDateTime(dateKey: string, hours: number, minutes: number) {
-  return `${dateKey}T${pad(hours)}:${pad(minutes)}:00`;
+function toIsoUtcDateTime(dateKey: string, hours: number, minutes: number): string {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const requested = Date.UTC(year, month - 1, day, hours, minutes);
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: STORE_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const representedTime = (timestamp: number): number => {
+    const values = Object.fromEntries(
+      formatter.formatToParts(new Date(timestamp)).map((part) => [part.type, part.value]),
+    );
+
+    return Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+    );
+  };
+  let timestamp = requested;
+
+  // Resolve the store's local clock time using the offset at the actual appointment date.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const adjustment = requested - representedTime(timestamp);
+    if (adjustment === 0) return new Date(timestamp).toISOString();
+    timestamp += adjustment;
+  }
+
+  throw new Error("The appointment time does not exist in the store time zone.");
 }
 
 function escapeIcsText(value: string) {
   return value
     .replace(/\\/g, "\\\\")
-    .replace(/\r?\n/g, "\\n")
+    .replace(/\r\n|\r|\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
 }
@@ -78,13 +116,13 @@ export function buildAppointmentCalendarArtifacts(appointment: AppointmentSubmis
 
   const startCompact = toCompactDateTime(dateKey, parsedStart.hours, parsedStart.minutes);
   const endCompact = toCompactDateTime(dateKey, computedEnd.hours, computedEnd.minutes);
-  const startIso = toIsoLocalDateTime(dateKey, parsedStart.hours, parsedStart.minutes);
-  const endIso = toIsoLocalDateTime(dateKey, computedEnd.hours, computedEnd.minutes);
+  const startIso = toIsoUtcDateTime(dateKey, parsedStart.hours, parsedStart.minutes);
+  const endIso = toIsoUtcDateTime(dateKey, computedEnd.hours, computedEnd.minutes);
   const address = location?.address || "J. Barbaro Clothiers";
   const title = `${SITE_NAME} Appointment`;
   const notes = appointment.notes?.trim() ? `\n\nNotes: ${appointment.notes.trim()}` : "";
 
-  const description = `Service: ${appointment.serviceType}\nLocation: ${location?.name || appointment.locationSlug}\nTime: ${appointment.preferredTimeWindow}${notes}`;
+  const description = `Service: ${appointment.serviceType}\nLocation: ${location?.name || appointment.locationSlug}\nTime: ${appointment.preferredTimeWindow} (${STORE_TIME_ZONE})${notes}`;
 
   const googleCalendarUrl =
     "https://calendar.google.com/calendar/render?action=TEMPLATE" +

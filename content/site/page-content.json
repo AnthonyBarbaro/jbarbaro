@@ -367,10 +367,10 @@
   },
   "schedulePage": {
     "metaTitle": "Schedule Appointment",
-    "metaDescription": "Schedule a menswear appointment at The Mall at Partridge Creek. Choose a service type and preferred date/time.",
+    "metaDescription": "Request a menswear appointment at The Mall at Partridge Creek. Choose a service and preferred time; our team will reply by email to confirm your visit.",
     "hero": {
-      "title": "Schedule an Appointment",
-      "description": "Reserve one-on-one time for styling, tailoring, event wear, or a complete wardrobe refresh."
+      "title": "Request an Appointment",
+      "description": "Request one-on-one time for styling, tailoring, event wear, or a wardrobe refresh. Our team will reply by email to confirm your preferred time or offer another time."
     }
   },
   "rentalsPage": {

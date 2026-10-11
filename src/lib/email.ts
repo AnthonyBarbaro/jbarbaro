@@ -130,10 +130,10 @@ function renderSectionRows(fields: EmailField[]) {
 
       return `
         <tr>
-          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;width:180px;color:#334155;font-size:13px;font-weight:600;vertical-align:top;">
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;width:32%;color:#334155;font-size:13px;font-weight:600;vertical-align:top;">
             ${safeLabel}
           </td>
-          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;font-size:13px;vertical-align:top;">
+          <td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;color:#0f172a;font-size:13px;line-height:1.6;overflow-wrap:anywhere;word-break:break-word;vertical-align:top;">
             ${safeValue}
           </td>
         </tr>
@@ -219,20 +219,20 @@ export function buildBrandedEmail({
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">
       ${safePreheader}
     </div>
-    <div style="margin:0;padding:24px;background:#f1f5f9;">
+    <div style="margin:0;padding:12px;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
         <tr>
           <td align="center">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;border-collapse:collapse;background:#ffffff;border:1px solid #dbeafe;border-radius:20px;overflow:hidden;">
               <tr>
-                <td style="padding:24px 28px;background:linear-gradient(135deg,#0f172a 0%,#0369a1 100%);">
+                <td bgcolor="#0f5b5b" style="padding:24px;background-color:#0f5b5b;">
                   <div style="display:inline-block;padding:4px 10px;border:1px solid rgba(255,255,255,0.35);border-radius:999px;color:#dbeafe;font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
                     ${safeBadge}
                   </div>
                   <h1 style="margin:14px 0 6px 0;color:#ffffff;font-size:24px;line-height:1.2;font-weight:700;">
                     ${safeTitle}
                   </h1>
-                  <p style="margin:0;color:#cbd5e1;font-size:14px;line-height:1.5;">
+                  <p style="margin:0;color:#ffffff;font-size:14px;line-height:1.6;">
                     ${safeSubtitle}
                   </p>
                 </td>
@@ -420,6 +420,23 @@ async function deliverAppointmentEmail(
     return smtpRecipientDelivery(receipt, recipients);
   } catch (error) {
     console.error("[Email] Appointment notification delivery could not be confirmed.");
+    // Log only recognized diagnostics; provider messages can contain private addresses.
+    if (typeof error === "object" && error !== null) {
+      const code = "code" in error ? error.code : undefined;
+      const responseCode = "responseCode" in error ? error.responseCode : undefined;
+      const response = "response" in error ? error.response : undefined;
+      if (typeof code === "string" &&
+        ["EAUTH", "EENVELOPE", "EMESSAGE", "ETIMEDOUT", "ECONNECTION", "EDNS", "ESOCKET"].includes(code)) {
+        console.error("[Email] SMTP diagnostic:", {
+          code,
+          responseCode: typeof responseCode === "number" && Number.isInteger(responseCode) &&
+            responseCode >= 400 && responseCode < 600 ? responseCode : undefined,
+          reason: typeof response === "string" && response.includes("Email address is not verified")
+            ? "SES identity is not verified in the sending region"
+            : "Check SMTP configuration and provider logs",
+        });
+      }
+    }
 
     if (
       typeof error === "object" &&
@@ -473,7 +490,7 @@ export async function sendAppointmentPendingEmail(
     html: buildBrandedEmail({
       preheader: "Our team will reply to confirm your appointment or suggest another time.",
       badge: "Awaiting Confirmation",
-      title: "Request Received — Not Confirmed Yet",
+      title: "We’ll be in touch to confirm your appointment",
       subtitle:
         "Our team will reply by email to confirm your appointment or suggest another time. Please wait for a separate confirmation before visiting for this appointment.",
       sections: appointmentEmailSections(appointment),

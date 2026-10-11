@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
+import { editAppointmentPhone, getEmailSuggestions } from "@/lib/appointments/contact-input";
 import type { Location } from "@/types/site";
 
 type AppointmentFormProps = {
@@ -15,7 +16,13 @@ type AppointmentFormProps = {
 type SubmissionState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "success"; message: string }
+  | {
+      status: "success";
+      message: string;
+      dateLabel: string;
+      timeWindow: string;
+      email: string;
+    }
   | { status: "error"; message: string; retryAllowed: boolean };
 
 type QuickDate = {
@@ -25,8 +32,8 @@ type QuickDate = {
 };
 
 const INPUT_CLASS =
-  "w-full rounded-2xl border border-ink/12 bg-white/90 px-3.5 py-2.5 text-sm text-ink " +
-  "placeholder:text-smoke/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] focus:outline-none focus:ring-4 focus:ring-deep-teal/20";
+  "w-full min-w-0 rounded-md border border-ink/20 bg-white px-3.5 py-3 text-base text-ink " +
+  "placeholder:text-smoke focus:border-deep-teal focus:outline-none focus:ring-2 focus:ring-deep-teal/20";
 
 function toIsoDate(date: Date): string {
   const year = date.getFullYear();
@@ -70,6 +77,12 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
   const quickDates = useMemo(() => getUpcomingDates(8), []);
   const selectedLocation = locations[0];
   const locationSlug = selectedLocation?.slug ?? "";
+  const [quickDateAvailability, setQuickDateAvailability] = useState<
+    Record<string, boolean | null>
+  >({});
+  const availableQuickDates = quickDates.filter(
+    (date) => quickDateAvailability[date.value] === true,
+  );
 
   const [serviceType, setServiceType] = useState(services[0] || "");
   const [preferredDate, setPreferredDate] = useState("");
@@ -86,6 +99,9 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
   const submissionInFlight = useRef(false);
   const requestAttempt = useRef<{ id: string; fields: string } | null>(null);
   const feedbackRef = useRef<HTMLParagraphElement>(null);
+  const confirmationRef = useRef<HTMLDialogElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const emailSuggestions = getEmailSuggestions(email);
 
   const selectedDateLabel = formatSelectedDate(preferredDate);
   const submissionFeedback =
@@ -107,7 +123,54 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
     !submissionBlocked;
 
   useEffect(() => {
-    if (submission.status === "success" || submission.status === "error") {
+    if (!locationSlug) return;
+    const controller = new AbortController();
+    let refreshing = false;
+
+    async function refreshQuickDates(): Promise<void> {
+      if (refreshing) return;
+      refreshing = true;
+      const results = await Promise.allSettled(
+        quickDates.map(async (date) => {
+          const query = new URLSearchParams({ locationSlug, date: date.value });
+          const response = await fetch(`/api/appointments?${query}`, {
+            cache: "no-store",
+            signal: controller.signal,
+          });
+          const payload = (await response.json()) as { availableSlots?: string[] };
+          if (!response.ok || !Array.isArray(payload.availableSlots)) {
+            throw new Error("Unable to check date availability.");
+          }
+          return payload.availableSlots.length > 0;
+        }),
+      );
+      if (!controller.signal.aborted) {
+        setQuickDateAvailability(
+          Object.fromEntries(
+            results.map((result, index) => [
+              quickDates[index].value,
+              result.status === "fulfilled" ? result.value : null,
+            ]),
+          ),
+        );
+      }
+      refreshing = false;
+    }
+
+    void refreshQuickDates();
+    const interval = window.setInterval(refreshQuickDates, 60_000);
+    window.addEventListener("focus", refreshQuickDates);
+    return () => {
+      controller.abort();
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshQuickDates);
+    };
+  }, [locationSlug, quickDates]);
+
+  useEffect(() => {
+    if (submission.status === "success") {
+      confirmationRef.current?.showModal();
+    } else if (submission.status === "error") {
       feedbackRef.current?.focus();
     }
   }, [submission.status]);
@@ -141,7 +204,9 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
         };
 
         if (!response.ok) {
-          throw new Error(payload.message || "Unable to load preferred times. Choose another date.");
+          throw new Error(
+            payload.message || "Unable to load preferred times. Choose another date.",
+          );
         }
 
         if (cancelled) {
@@ -149,12 +214,14 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
         }
 
         const slots = Array.isArray(payload.availableSlots) ? payload.availableSlots : [];
+        setQuickDateAvailability((current) => ({ ...current, [preferredDate]: slots.length > 0 }));
         setTimeSlots(slots);
         setPreferredTimeWindow((current) => (slots.includes(current) ? current : ""));
         setSlotStatus("ready");
         setSlotMessage(
           slots.length === 0
-            ? payload.message || "No preferred times can be requested on this date. Choose another date."
+            ? payload.message ||
+                "No preferred times can be requested on this date. Choose another date."
             : "",
         );
       } catch (error) {
@@ -267,10 +334,25 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
 
       setSubmission({
         status: "success",
+        dateLabel: formatSelectedDate(fields.preferredDate),
+        timeWindow: fields.preferredTimeWindow,
+        email: fields.email,
         message:
           payload.message ||
           `Request received. Our team will reply to confirm your preferred time or offer another time. Please wait for confirmation before visiting. Reference ${payload.reference}.`,
       });
+      setName("");
+      setEmail("");
+      setPhone("");
+      setNotes("");
+      setWebsite("");
+      setServiceType(services[0] || "");
+      setPreferredDate("");
+      setPreferredTimeWindow("");
+      setTimeSlots([]);
+      setSlotStatus("idle");
+      setSlotMessage("");
+      requestAttempt.current = null;
     } catch {
       setSubmission({
         status: "error",
@@ -284,19 +366,56 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1.45fr_1fr]">
-      <Card>
-        <CardContent>
+    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+      <dialog
+        ref={confirmationRef}
+        aria-labelledby="appointment-received-title"
+        aria-describedby="appointment-received-description"
+        onClose={() => {
+          setSubmission({ status: "idle" });
+          feedbackRef.current?.focus();
+        }}
+        className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-lg overflow-y-auto rounded-xl bg-ivory p-6 text-ink shadow-xl backdrop:bg-ink/60 sm:p-8"
+      >
+        <p className="text-sm font-semibold text-deep-teal">Request received</p>
+        <h2 id="appointment-received-title" className="mt-3 font-heading text-3xl sm:text-4xl">
+          We’ll be in touch to confirm.
+        </h2>
+        <p id="appointment-received-description" className="mt-4 text-sm leading-7">
+          Our team will contact you by email to confirm your preferred appointment time or arrange
+          another time. Your appointment is not confirmed yet. Please wait for confirmation before
+          visiting.
+        </p>
+        {submission.status === "success" ? (
+          <div className="my-6 border-y border-ink/15 py-4 text-sm leading-6">
+            <p className="font-semibold">{submission.dateLabel}</p>
+            <p>{submission.timeWindow} (showroom time)</p>
+            <p>{selectedLocation?.name}</p>
+            <p className="mt-2 break-words">We’ll contact you at {submission.email}.</p>
+          </div>
+        ) : null}
+        <Button variant="teal" className="w-full" onClick={() => confirmationRef.current?.close()}>
+          Got it
+        </Button>
+      </dialog>
+      <Card className="min-w-0">
+        <CardContent className="p-5 sm:p-8 lg:p-10">
           <form
             onSubmit={onSubmit}
-            className="space-y-4"
+            className="space-y-8"
             aria-busy={submission.status === "loading"}
           >
-            <p id="appointment-confirmation-note" className="text-sm leading-6 text-ink">
-              Choose your preferred time. Our team will reply by email to confirm it or offer another
-              time. Please wait for confirmation before visiting.
-            </p>
-            <fieldset disabled={submissionBlocked} className="min-w-0 space-y-4">
+            <div>
+              <h2 className="font-heading text-3xl text-ink sm:text-4xl">Plan your visit</h2>
+              <p
+                id="appointment-confirmation-note"
+                className="mt-3 max-w-xl text-sm leading-6 text-smoke"
+              >
+                Tell us what you have in mind and choose a preferred time. We’ll contact you by
+                email to confirm your appointment before you visit.
+              </p>
+            </div>
+            <fieldset disabled={submissionBlocked} className="min-w-0 space-y-8">
               <legend className="sr-only">Appointment request</legend>
               <div className="hidden" aria-hidden="true">
                 <label htmlFor="appointment-website">Website</label>
@@ -309,7 +428,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                   onChange={(event) => setWebsite(event.target.value)}
                 />
               </div>
-              <div className="rounded-2xl border border-ink/10 bg-[linear-gradient(155deg,rgba(255,255,255,0.97),rgba(231,222,211,0.52))] p-3 sm:p-4">
+              <div className="rounded-lg bg-stone p-4 sm:p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
@@ -320,7 +439,12 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                         <p className="mt-1 text-sm font-semibold text-ink">
                           {selectedLocation.name}
                         </p>
-                        <p className="mt-1 text-xs text-smoke/85">{selectedLocation.phone}</p>
+                        <a
+                          href={`tel:${selectedLocation.phone.replace(/[^+\d]/g, "")}`}
+                          className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-deep-teal underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
+                        >
+                          {selectedLocation.phone}
+                        </a>
                       </>
                     ) : (
                       <p className="mt-1 text-sm text-ink">
@@ -334,19 +458,14 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                 </div>
               </div>
 
-              <div className="space-y-2 rounded-2xl border border-ink/10 bg-white/90 p-3 sm:p-4">
+              <div className="space-y-4 border-t border-ink/10 pt-7">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
-                      Service Type
-                    </label>
-                    <p className="text-xs text-smoke/85">
-                      Select what you need during your in-person appointment.
+                    <h3 className="text-lg font-semibold text-ink">How can we help?</h3>
+                    <p className="text-sm text-smoke">
+                      Select the service that best suits your visit.
                     </p>
                   </div>
-                  <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                    Step 1
-                  </span>
                 </div>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {services.map((service) => {
@@ -359,28 +478,26 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                         onClick={() => setServiceType(service)}
                         className={
                           selected
-                            ? "rounded-2xl border border-gold/45 bg-gold/18 px-3 py-2.5 text-left text-ink transition"
-                            : "rounded-2xl border border-ink/10 bg-white px-3 py-2.5 text-left text-smoke transition hover:border-ink/20 hover:text-ink"
+                            ? "flex min-h-14 items-center justify-between gap-3 rounded-lg border border-deep-teal bg-deep-teal/5 px-4 py-3 text-left text-deep-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
+                            : "flex min-h-14 items-center justify-between gap-3 rounded-lg border border-ink/15 bg-white px-4 py-3 text-left text-ink transition-colors hover:border-deep-teal/60 hover:bg-stone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
                         }
                       >
-                        <span className="text-sm font-semibold">{service}</span>
+                        <span className="text-sm font-medium leading-5">{service}</span>
+                        {selected ? (
+                          <CheckCircle2 aria-hidden="true" className="h-4 w-4 shrink-0" />
+                        ) : null}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="space-y-2 rounded-2xl border border-ink/10 bg-white/90 p-3 sm:p-4">
+              <div className="space-y-4 border-t border-ink/10 pt-7">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
-                    Pick a Date *
-                  </label>
-                  <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                    Step 2
-                  </span>
+                  <h3 className="text-lg font-semibold text-ink">Choose your date</h3>
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {quickDates.map((date) => {
+                <div className="grid grid-cols-4 gap-2">
+                  {availableQuickDates.map((date) => {
                     const selected = preferredDate === date.value;
                     return (
                       <button
@@ -393,8 +510,8 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                         }}
                         className={
                           selected
-                            ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-white transition"
-                            : "rounded-2xl border border-ink/10 bg-white px-3 py-2 text-left text-smoke transition hover:border-ink/20 hover:text-ink"
+                            ? "min-h-14 rounded-lg border border-deep-teal bg-deep-teal px-2 py-3 text-center text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
+                            : "min-h-14 rounded-lg border border-ink/15 bg-white px-2 py-3 text-center text-ink transition-colors hover:border-deep-teal/60 hover:bg-stone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
                         }
                       >
                         <div className="text-[11px] font-semibold tracking-[0.08em] uppercase">
@@ -405,8 +522,20 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                     );
                   })}
                 </div>
+                {availableQuickDates.length === 0 ? (
+                  <p role="status" className="text-sm text-smoke">
+                    {Object.keys(quickDateAvailability).length === 0
+                      ? "Checking available dates…"
+                      : Object.values(quickDateAvailability).some((available) => available === null)
+                        ? "Unable to check suggested dates. Choose a date below to try again."
+                        : "No times are available in the next eight days. Choose a later date below."}
+                  </p>
+                ) : null}
                 <div className="pt-1">
-                  <label htmlFor="preferred-date-input" className="mb-1 block text-xs text-smoke">
+                  <label
+                    htmlFor="preferred-date-input"
+                    className="mb-2 block text-sm font-medium text-ink"
+                  >
                     Or choose another date
                   </label>
                   <input
@@ -424,23 +553,21 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                 </div>
               </div>
 
-              <div className="space-y-2 rounded-2xl border border-ink/10 bg-white/90 p-3 sm:p-4">
+              <div className="space-y-4 border-t border-ink/10 pt-7">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
-                      Preferred Time *
-                    </label>
-                    <p className="text-xs text-smoke/85">
-                      Our team will confirm your time by email.
+                    <h3 className="text-lg font-semibold text-ink">Choose a preferred time</h3>
+                    <p className="text-sm text-smoke">
+                      Please request at least one hour ahead. Our team will confirm your time by
+                      email.
                     </p>
                   </div>
-                  <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                    Step 3
-                  </span>
                 </div>
 
                 {!preferredDate ? (
-                  <p className="text-xs text-smoke">Choose a date first to see preferred times.</p>
+                  <p className="rounded-lg bg-stone px-4 py-5 text-sm text-smoke">
+                    Choose a date above to see the showroom’s preferred times.
+                  </p>
                 ) : null}
 
                 {slotStatus === "loading" ? (
@@ -459,13 +586,13 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                           onClick={() => setPreferredTimeWindow(slot)}
                           className={
                             selected
-                              ? "rounded-2xl border border-deep-teal/45 bg-deep-teal px-3 py-2 text-left text-white transition"
-                              : "rounded-2xl border border-ink/10 bg-white px-3 py-2 text-left text-smoke transition hover:border-ink/20 hover:text-ink"
+                              ? "min-h-14 rounded-lg border border-deep-teal bg-deep-teal px-2 py-3 text-center text-white transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
+                              : "min-h-14 rounded-lg border border-ink/15 bg-white px-2 py-3 text-center text-ink transition-colors hover:border-deep-teal/60 hover:bg-stone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
                           }
                         >
                           <div className="text-sm font-semibold">{slot}</div>
                           <div
-                            className={selected ? "text-xs text-white/85" : "text-xs text-smoke/85"}
+                            className={selected ? "text-xs text-white/85" : "text-sm text-smoke"}
                           >
                             Local store time
                           </div>
@@ -479,7 +606,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
               </div>
 
               {selectedDateLabel && preferredTimeWindow ? (
-                <div className="rounded-2xl border border-deep-teal/25 bg-deep-teal/8 px-3 py-2.5">
+                <div className="rounded-lg bg-deep-teal/5 p-4 leading-6">
                   <p className="text-[11px] font-semibold tracking-[0.08em] text-deep-teal uppercase">
                     Preferred Appointment · Awaiting Confirmation
                   </p>
@@ -492,52 +619,102 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                 </div>
               ) : null}
 
-              <div className="rounded-2xl border border-ink/10 bg-white/90 p-3 sm:p-4">
+              <div className="border-t border-ink/10 pt-7">
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                  <label className="text-xs font-semibold tracking-[0.08em] text-smoke uppercase">
-                    Contact Details *
-                  </label>
-                  <span className="rounded-full border border-ink/15 bg-white px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-smoke uppercase">
-                    Step 4
-                  </span>
+                  <h3 className="text-lg font-semibold text-ink">Your details</h3>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <input
-                    className={INPUT_CLASS}
-                    placeholder="Full Name *"
-                    aria-label="Full name"
-                    autoComplete="name"
-                    value={name}
-                    onChange={(event) => setName(event.target.value)}
-                    required
-                  />
-                  <input
-                    className={INPUT_CLASS}
-                    placeholder="Email *"
-                    aria-label="Email"
-                    autoComplete="email"
-                    type="email"
-                    value={email}
-                    onChange={(event) => setEmail(event.target.value)}
-                    required
-                  />
+                  <label className="block min-w-0 space-y-2 text-sm font-medium text-ink">
+                    <span>Full name *</span>
+                    <input
+                      className={INPUT_CLASS}
+                      aria-label="Full name"
+                      autoComplete="name"
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      required
+                    />
+                  </label>
+                  <div className="min-w-0">
+                    <label className="block min-w-0 space-y-2 text-sm font-medium text-ink">
+                      <span>Email address *</span>
+                      <input
+                        ref={emailRef}
+                        className={INPUT_CLASS}
+                        aria-label="Email"
+                        autoComplete="email"
+                        type="email"
+                        value={email}
+                        onChange={(event) => setEmail(event.target.value)}
+                        required
+                      />
+                    </label>
+                    {emailSuggestions.length > 0 && !submissionBlocked ? (
+                      <div
+                        role="group"
+                        aria-label="Email domain shortcuts"
+                        className="mt-2 flex flex-wrap gap-1.5"
+                      >
+                        {emailSuggestions.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            className="min-h-10 rounded-md border border-ink/15 px-2.5 text-xs font-medium text-deep-teal hover:border-deep-teal hover:bg-deep-teal/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
+                            aria-label={`Use ${suggestion}`}
+                            onClick={() => {
+                              setEmail(suggestion);
+                              emailRef.current?.focus();
+                            }}
+                          >
+                            @{suggestion.split("@")[1]}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="mt-3">
+                  <label
+                    className="mb-2 block text-sm font-medium text-ink"
+                    htmlFor="appointment-phone"
+                  >
+                    Phone number *
+                  </label>
                   <input
+                    id="appointment-phone"
                     className={INPUT_CLASS}
-                    placeholder="Phone *"
                     aria-label="Phone"
                     autoComplete="tel"
                     type="tel"
+                    placeholder="(555) 123-4567"
                     value={phone}
-                    onChange={(event) => setPhone(event.target.value)}
+                    onChange={(event) => {
+                      const input = event.currentTarget;
+                      const result = editAppointmentPhone(
+                        phone,
+                        input.value,
+                        input.selectionStart ?? input.value.length,
+                        (event.nativeEvent as InputEvent).inputType ?? "",
+                      );
+                      input.value = result.value;
+                      input.setSelectionRange(result.caret, result.caret);
+                      setPhone(result.value);
+                    }}
                     required
                   />
                 </div>
                 <div className="mt-3">
+                  <label
+                    className="mb-2 block text-sm font-medium text-ink"
+                    htmlFor="appointment-notes"
+                  >
+                    Anything we should know?{" "}
+                    <span className="font-normal text-smoke">(optional)</span>
+                  </label>
                   <textarea
+                    id="appointment-notes"
                     className={`${INPUT_CLASS} min-h-[100px]`}
-                    placeholder="Notes (optional): event details, fit goals, or style preferences"
+                    placeholder="An upcoming event, fit goals, or style preferences…"
                     aria-label="Notes (optional)"
                     maxLength={1000}
                     value={notes}
@@ -547,7 +724,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 border-t border-ink/10 pt-6">
                 <div className="min-w-0 space-y-2">
                   <p
                     ref={feedbackRef}
@@ -576,6 +753,8 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                 </div>
                 <Button
                   type="submit"
+                  variant="teal"
+                  className="w-full min-h-12"
                   disabled={!canSubmit}
                   aria-describedby="appointment-confirmation-note"
                 >
@@ -583,7 +762,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                     ? "Submitting..."
                     : submission.status === "success"
                       ? "Request Sent"
-                      : "Request In-Store Appointment"}
+                      : "Request Appointment"}
                 </Button>
               </div>
             </fieldset>

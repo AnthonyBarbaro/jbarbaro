@@ -31,6 +31,7 @@ import {
 import Link from "next/link";
 
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
+import { FilterScrollRow } from "@/components/shop/FilterScrollRow";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { FieldLabel, Input, Select } from "@/components/ui/Field";
@@ -3070,7 +3071,7 @@ export function ShopCatalogClient({
           </div>
         </div>
 
-        <div className="flex items-start gap-2 overflow-x-auto pb-1 lg:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <FilterScrollRow>
           <div className="shrink-0">
             <button
               ref={mobileFilterTriggerRef}
@@ -3159,7 +3160,7 @@ export function ShopCatalogClient({
               />
             </button>
           ))}
-        </div>
+        </FilterScrollRow>
 
         {isSearchOpen ? (
           <div id="mobile-shop-search-field" className="relative mt-3 lg:hidden">

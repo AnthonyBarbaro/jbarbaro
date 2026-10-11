@@ -108,6 +108,8 @@ test("appointment API sends requests for manual staff confirmation and verifies 
     ["impossible calendar date", requestBody({ preferredDate: "2026-02-30" }), 400],
     ["empty customer name", requestBody({ name: " " }), 400],
     ["invalid email", requestBody({ email: "not-an-email" }), 400],
+    ["eleven phone digits", requestBody({ phone: "55501012345" }), 400],
+    ["formatted phone with extra digit", requestBody({ phone: "(555) 010-12345" }), 400],
     ["email header injection", requestBody({ email: "customer@example.test\r\nBcc: attacker@example.test" }), 400],
     ["oversized notes", requestBody({ notes: "x".repeat(1001) }), 400],
     ["oversized body", "x".repeat(12_001), 413],
@@ -277,16 +279,20 @@ test("appointment API sends requests for manual staff confirmation and verifies 
     });
   }
 
-  await context.test("started same-day preferred times are excluded from GET and POST", async () => {
+  await context.test("GET and POST require at least one full hour of notice", async () => {
     reset();
     context.mock.timers.setTime(Date.parse("2026-10-08T16:00:00Z"));
     try {
       const response = await routes.GET(get("locationSlug=partridge-creek&date=2026-10-08"));
       const payload = await response.json();
       assert.ok(!payload.availableSlots.includes("12:00 PM - 12:30 PM"));
-      assert.ok(payload.availableSlots.includes("12:30 PM - 1:00 PM"));
+      assert.ok(!payload.availableSlots.includes("12:30 PM - 1:00 PM"));
+      assert.ok(payload.availableSlots.includes("1:00 PM - 1:30 PM"));
       assert.equal((await routes.POST(post(requestBody({ preferredDate: "2026-10-08", preferredTimeWindow: "12:00 PM - 12:30 PM" })))).status, 409);
+      assert.equal((await routes.POST(post(requestBody({ preferredDate: "2026-10-08", preferredTimeWindow: "12:30 PM - 1:00 PM" })))).status, 409);
       assert.equal(messages.length, 0);
+      assert.equal((await routes.POST(post(requestBody({ preferredDate: "2026-10-08", preferredTimeWindow: "1:00 PM - 1:30 PM" })))).status, 200);
+      assert.equal(messages.length, 2);
     } finally {
       context.mock.timers.setTime(NOW);
     }

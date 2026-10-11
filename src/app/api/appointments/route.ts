@@ -25,7 +25,8 @@ const appointmentSchema = z
     preferredTimeWindow: z.string().trim().min(5).max(50),
     name: z.string().trim().min(2).max(120),
     email: z.email().max(254),
-    phone: z.string().trim().min(7).max(40),
+    phone: z.string().trim().min(7).max(40)
+      .refine((value) => value.replace(/\D/g, "").length <= 10, "Use at most 10 phone digits."),
     notes: z.string().trim().max(1000).optional(),
     website: z.string().max(200).optional(),
   })
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!availableSlots.includes(input.preferredTimeWindow)) {
     return json(
       {
-        message: "Choose a future preferred time during showroom hours.",
+        message: "Choose a future preferred time at least one hour from now during showroom hours.",
         availableSlots,
       },
       409,

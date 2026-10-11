@@ -2,6 +2,7 @@ import { getAvailableTimeSlots } from "@/lib/hours";
 import type { Location } from "@/types/site";
 
 export const APPOINTMENT_TIME_ZONE = "America/Detroit";
+export const APPOINTMENT_LEAD_TIME_MINUTES = 60;
 
 export function parseAppointmentDate(value: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -40,13 +41,17 @@ export function getRequestableAppointmentSlots(
   now = new Date(),
 ): string[] {
   const date = parseAppointmentDate(dateKey);
-  const current = getStoreDateAndMinutes(now);
-  if (!date || dateKey < current.date) return [];
+  // Round up so a slot must be a full hour away, including seconds and milliseconds.
+  const earliestStart = new Date(
+    Math.ceil((now.getTime() + APPOINTMENT_LEAD_TIME_MINUTES * 60_000) / 60_000) * 60_000,
+  );
+  const cutoff = getStoreDateAndMinutes(earliestStart);
+  if (!date || dateKey < cutoff.date) return [];
   return getAvailableTimeSlots(location, date).filter((slot) => {
-    if (dateKey !== current.date) return true;
+    if (dateKey !== cutoff.date) return true;
     const match = slot.match(/^(\d{1,2}):(\d{2}) (AM|PM)/);
     if (!match) return false;
     const hours = (Number(match[1]) % 12) + (match[3] === "PM" ? 12 : 0);
-    return hours * 60 + Number(match[2]) > current.minutes;
+    return hours * 60 + Number(match[2]) >= cutoff.minutes;
   });
 }

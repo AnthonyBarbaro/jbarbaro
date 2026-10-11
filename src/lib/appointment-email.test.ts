@@ -117,6 +117,9 @@ test("appointment requests use staff replies for confirmation and verify SMTP ac
       assert.match(String(message.text), /Add the confirmed appointment to the shared calendar/);
       assert.match(String(message.text), /Monday, October 12, 2026/);
       assert.match(String(message.html), /America\/Detroit/);
+      assert.match(String(message.html), /bgcolor="#0f5b5b"/);
+      assert.match(String(message.html), /background-color:#0f5b5b/);
+      assert.doesNotMatch(String(message.html), /linear-gradient/);
       assert.match(String(message.html), /&lt;script&gt;alert\(&#39;notes&#39;\)&lt;\/script&gt;/);
       assert.doesNotMatch(String(message.html), /<script>/);
       assert.doesNotMatch(String(message.html), /appointments\/review|Review Request|<a\s/);
@@ -253,6 +256,23 @@ test("appointment requests use staff replies for confirmation and verify SMTP ac
 
     deliveryError = Object.assign(new Error("provider timeout"), { code: "ETIMEDOUT" });
     assert.equal(await email.sendAppointmentPendingEmail(appointment), "UNKNOWN");
+    deliveryError = null;
+    errors.length = 0;
+  });
+
+  await context.test("SES rejection logs safe diagnostic details without provider addresses", async () => {
+    deliveryError = Object.assign(new Error("smtp-fixture-password"), {
+      code: "EMESSAGE",
+      responseCode: 554,
+      response: "554 Email address is not verified: client@example.test smtp-fixture-password",
+    });
+    assert.equal(await email.sendAppointmentPendingEmail(appointment), "FAILED");
+    assert.deepEqual(errors[1], ["[Email] SMTP diagnostic:", {
+      code: "EMESSAGE",
+      responseCode: 554,
+      reason: "SES identity is not verified in the sending region",
+    }]);
+    assert.doesNotMatch(JSON.stringify(errors), /smtp-fixture-password|client@example\.test/);
     deliveryError = null;
     errors.length = 0;
   });

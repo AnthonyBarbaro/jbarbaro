@@ -43,7 +43,7 @@ test("store clock observes Detroit date, midnight and daylight saving time", () 
   });
 });
 
-test("requests exclude past days, started slots and holiday closures", () => {
+test("requests exclude past days, slots less than an hour away and holiday closures", () => {
   const location = appointmentLocations[0];
   const now = new Date("2026-10-08T16:00:00Z"); // Noon in Detroit.
   assert.deepEqual(getRequestableAppointmentSlots(location, "2026-10-07", now), []);
@@ -51,6 +51,22 @@ test("requests exclude past days, started slots and holiday closures", () => {
   const slots = getRequestableAppointmentSlots(location, "2026-10-08", now);
   assert.ok(slots.length > 0);
   assert.ok(!slots.some((slot) => slot.startsWith("12:00 PM")));
-  assert.ok(slots.some((slot) => slot.startsWith("12:30 PM")));
+  assert.ok(!slots.some((slot) => slot.startsWith("12:30 PM")));
+  assert.ok(slots.some((slot) => slot.startsWith("1:00 PM")));
   assert.ok(getRequestableAppointmentSlots(location, "2026-10-09", now).length > slots.length);
+});
+
+test("the one-hour cutoff includes seconds and milliseconds", () => {
+  const location = appointmentLocations[0];
+  for (const now of ["2026-10-08T16:00:00.001Z", "2026-10-08T16:00:30Z"]) {
+    const slots = getRequestableAppointmentSlots(location, "2026-10-08", new Date(now));
+    assert.ok(!slots.some((slot) => slot.startsWith("1:00 PM")));
+    assert.ok(slots.some((slot) => slot.startsWith("1:30 PM")));
+  }
+});
+
+test("the lead-time cutoff handles the next Detroit calendar day", () => {
+  const now = new Date("2026-10-09T03:30:00Z"); // 11:30 PM on October 8 in Detroit.
+  assert.deepEqual(getRequestableAppointmentSlots(appointmentLocations[0], "2026-10-08", now), []);
+  assert.ok(getRequestableAppointmentSlots(appointmentLocations[0], "2026-10-09", now).length > 0);
 });

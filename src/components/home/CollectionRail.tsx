@@ -136,7 +136,7 @@ export function CollectionRail({ collections }: CollectionRailProps) {
         </ul>
 
         <div
-          className="pointer-events-none absolute inset-x-0 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-between px-4 md:flex lg:px-6"
+          className="pointer-events-none absolute inset-x-0 top-1/2 z-20 flex -translate-y-1/2 items-center justify-between px-4 lg:px-6"
           role="group"
           aria-label="Browse categories"
         >

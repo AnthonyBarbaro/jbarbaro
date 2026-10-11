@@ -262,6 +262,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
         return (
           <details
             key={item.href || item.label}
+            open={item.label === "Visit"}
             className={cn(
               "group overflow-hidden rounded-lg border border-ink/10 bg-white shadow-sm shadow-ink/[0.03]",
               item.label === "Shop" && "border-gold/40 bg-gold/10",

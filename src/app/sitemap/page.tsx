@@ -53,6 +53,9 @@ export default async function HtmlSitemapPage() {
         { label: "Locations", href: "/locations" },
         { label: "Schedule Appointment", href: "/schedule-appointment" },
         { label: "Contact Us", href: "/contact-us" },
+        { label: "Shipping & Returns", href: "/shipping-returns" },
+        { label: "Terms of Use", href: "/terms-of-use" },
+        { label: "Privacy Policy", href: "/privacy-policy" },
         { label: "Blog", href: "/blog" },
         { label: "Style Guide", href: "/style-guide" },
       ],
@@ -99,7 +102,7 @@ export default async function HtmlSitemapPage() {
     <>
       <PageHero
         title="HTML Sitemap"
-        description="A complete index of routes and resources available on jasonbarbaro.com."
+        description="Browse pages, products, and resources from J. Barbaro Clothiers."
       />
       <WaveSection topWave="C" background="stone">
         <Container>

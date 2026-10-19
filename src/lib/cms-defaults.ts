@@ -40,6 +40,23 @@ export type NavigationContent = {
   footerNewsletterCopy: string;
 };
 
+export type SocialReelsContent = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  instagramHref: string;
+  tiktokHref?: string;
+  fallbackImage: string;
+  fallbackImageAlt: string;
+  clips: Array<{
+    id: string;
+    title: string;
+    href: string;
+    poster: string;
+    posterAlt: string;
+  }>;
+};
+
 export type HomePageContent = {
   metaTitle: string;
   metaDescription: string;
@@ -93,6 +110,7 @@ export type HomePageContent = {
     title: string;
     description: string;
   };
+  socialReels: SocialReelsContent;
 };
 
 export type AboutPageContent = {
@@ -470,6 +488,48 @@ export const defaultHomePage: HomePageContent = {
     eyebrow: "Journal",
     title: "Advice for Buying and Wearing Well",
     description: "Editorial guidance on fit, tailoring, occasion dressing, and wardrobe planning.",
+  },
+  socialReels: {
+    eyebrow: "Inside J. Barbaro",
+    title: "Style in motion.",
+    description: "A closer look at the clothes, the details, and life in the showroom.",
+    instagramHref: "https://www.instagram.com/j.barbaroclothiers/",
+    tiktokHref: "https://www.tiktok.com/@jasonbarbaro1",
+    fallbackImage: "/images/campaign/ss26/canali-coastal-tailoring-portrait-hero.webp",
+    fallbackImageAlt:
+      "Two models in navy menswear beside a brown convertible, with one holding a map",
+    clips: [
+      {
+        id: "tiktok-7629192451126873357",
+        title: "Wedding outfit",
+        href: "https://www.tiktok.com/@jasonbarbaro1/video/7629192451126873357",
+        poster: "/images/social/tiktok/7629192451126873357.jpg",
+        posterAlt: "A man in a blue blazer with a green pocket square inside the boutique.",
+      },
+      {
+        id: "tiktok-7635880121559207199",
+        title: "Great Oaks",
+        href: "https://www.tiktok.com/@jasonbarbaro1/video/7635880121559207199",
+        poster: "/images/social/tiktok/7635880121559207199.jpg",
+        posterAlt: "A smiling man in a white polo with a yellow measuring tape around his neck.",
+      },
+      {
+        id: "tiktok-7628826774352432398",
+        title: "Kentucky Derby outfit",
+        href: "https://www.tiktok.com/@jasonbarbaro1/video/7628826774352432398",
+        poster: "/images/social/tiktok/7628826774352432398.jpg",
+        posterAlt:
+          "A man in a blue checked blazer with a red pocket square at the boutique counter.",
+      },
+      {
+        id: "tiktok-7697859148012145934",
+        title: "Engagement photo outfit",
+        href: "https://www.tiktok.com/@jasonbarbaro1/video/7697859148012145934",
+        poster: "/images/social/tiktok/7697859148012145934.jpg",
+        posterAlt:
+          "Two men shaking hands in the boutique with shirts and suits displayed behind them.",
+      },
+    ],
   },
 };
 

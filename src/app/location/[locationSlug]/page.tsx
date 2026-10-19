@@ -11,7 +11,6 @@ import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { appointmentLocationMap, locationMap, locations } from "@/data/locations";
 import { partridgeCreekShowroomPhotos } from "@/data/showroom-gallery";
-import { aggregateRating } from "@/data/testimonials";
 import { buildMetadata } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 import { formatPhone } from "@/lib/utils";
@@ -71,11 +70,6 @@ export default async function LocationDetailPage({
       "@type": "GeoCoordinates",
       latitude: location.latitude,
       longitude: location.longitude,
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: aggregateRating.ratingValue,
-      reviewCount: aggregateRating.reviewCount,
     },
   };
 

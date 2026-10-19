@@ -321,7 +321,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
           <span className="hidden sm:inline">
             Free shipping on $400+ orders. Eligible shipping rates up to $25.
           </span>
-          <span className="sm:hidden">Free shipping on $400+.</span>
+          <span className="sm:hidden">Free shipping on $400+. Rates up to $25.</span>
           <Link
             href="/shop"
             className="shrink-0 font-semibold text-gold underline-offset-4 transition-colors hover:text-white hover:underline"

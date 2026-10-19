@@ -24,7 +24,13 @@ import {
 } from "@/components/shop/CartGiftWrapOption";
 import { useCartQuantityStatus } from "@/components/shop/CartQuantityContext";
 import { ClearBagButton } from "@/components/shop/ClearBagButton";
-import { SHOPIFY_CART_CHANGED_EVENT, notifyShopifyCartChanged } from "@/lib/shopify/cart-events";
+import {
+  SHOPIFY_CART_CHANGED_EVENT,
+  SHOPIFY_CART_INVALIDATED_EVENT,
+  SHOPIFY_CART_REVALIDATION_FAILED_EVENT,
+  notifyShopifyCartChanged,
+  type ShopifyCartChangePayload,
+} from "@/lib/shopify/cart-events";
 import {
   isShopifyCartMutationPending,
   requestShopifyCartMutation,
@@ -135,7 +141,7 @@ function getSizeChoices(cartLine: ShopifyCartSnapshot["lines"][number]) {
 }
 
 export function ShopifyCartClient(): ReactElement {
-  const { canAddVariant } = useCartQuantityStatus();
+  const { canAddVariant, isReady } = useCartQuantityStatus();
   const [cart, setCart] = useState<ShopifyCartSnapshot | null>(null);
   const [giftWrapOffer, setGiftWrapOffer] = useState<ShopifyGiftWrapOffer | null>(null);
   const [addingGiftWrapLineId, setAddingGiftWrapLineId] = useState<string | null>(null);
@@ -150,12 +156,15 @@ export function ShopifyCartClient(): ReactElement {
   const [needsRefresh, setNeedsRefresh] = useState(false);
   const requestGenerationRef = useRef(0);
   const isRefreshingRef = useRef(false);
+  const interruptedRefreshRef = useRef(false);
   const isWorkingRef = useRef(false);
   const isMountedRef = useRef(true);
   const needsRefreshRef = useRef(false);
   const giftWrapFocusTargetRef = useRef<string | null>(null);
 
-  const applyPayload = useCallback((payload: ShopifyCartResponse): void => {
+  const applyPayload = useCallback((payload: ShopifyCartChangePayload): void => {
+    if (payload.backgroundRefresh && isWorkingRef.current) return;
+    if (!payload.backgroundRefresh) interruptedRefreshRef.current = false;
     requestGenerationRef.current += 1;
     isRefreshingRef.current = false;
     setIsLoading(false);
@@ -171,6 +180,8 @@ export function ShopifyCartClient(): ReactElement {
     if (payload.confirmed !== false || "cart" in payload) {
       setIsConfigured(payload.configured);
     }
+
+    if (payload.backgroundRefresh) return;
 
     setWarnings(payload.warnings ?? []);
     setIsKnownStockAdjustment(
@@ -263,17 +274,49 @@ export function ShopifyCartClient(): ReactElement {
     function handleCartChanged(event: Event): void {
       const payload =
         event instanceof CustomEvent
-          ? (event.detail as ShopifyCartResponse | undefined)
+          ? (event.detail as ShopifyCartChangePayload | undefined)
           : undefined;
 
       if (payload) {
+        const reconcileManualRefresh =
+          payload.backgroundRefresh &&
+          (isRefreshingRef.current || interruptedRefreshRef.current) &&
+          !isWorkingRef.current;
         applyPayload(payload);
+        // Reconcile explicit retry intent without letting its obsolete response win later.
+        if (reconcileManualRefresh) {
+          interruptedRefreshRef.current = false;
+          void loadCart();
+        }
       } else {
         void loadCart();
       }
     }
 
+    function handleInvalidation(): void {
+      if (isWorkingRef.current) return;
+      if (isRefreshingRef.current) {
+        requestGenerationRef.current += 1;
+        isRefreshingRef.current = false;
+        interruptedRefreshRef.current = true;
+      }
+      setIsLoading(true);
+    }
+
+    function handleRevalidationFailure(): void {
+      if (isWorkingRef.current || isRefreshingRef.current) return;
+      interruptedRefreshRef.current = false;
+      setIsLoading(false);
+      setError(
+        (previous) => previous || "We couldn't refresh your bag. Refresh it before continuing.",
+      );
+      needsRefreshRef.current = true;
+      setNeedsRefresh(true);
+    }
+
     window.addEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
+    window.addEventListener(SHOPIFY_CART_INVALIDATED_EVENT, handleInvalidation);
+    window.addEventListener(SHOPIFY_CART_REVALIDATION_FAILED_EVENT, handleRevalidationFailure);
     void loadCart();
 
     return () => {
@@ -281,6 +324,8 @@ export function ShopifyCartClient(): ReactElement {
       requestGenerationRef.current += 1;
       isRefreshingRef.current = false;
       window.removeEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
+      window.removeEventListener(SHOPIFY_CART_INVALIDATED_EVENT, handleInvalidation);
+      window.removeEventListener(SHOPIFY_CART_REVALIDATION_FAILED_EVENT, handleRevalidationFailure);
     };
   }, [applyPayload, loadCart]);
 
@@ -566,7 +611,7 @@ export function ShopifyCartClient(): ReactElement {
     }
   }
 
-  const controlsDisabled = isMutating || isLoading || needsRefresh;
+  const controlsDisabled = !isReady || isMutating || isLoading || needsRefresh;
   const itemLines =
     cart?.lines.filter((line) => !isGiftWrapLine(line) && !isCartLinePlaceholder(line)) ?? [];
   const unattachedGiftWrapLines =
@@ -1049,7 +1094,13 @@ export function ShopifyCartClient(): ReactElement {
                   Checkout
                 </p>
                 <p className="mt-2 text-sm leading-6 text-smoke">
-                  Final shipping methods and any required taxes are confirmed at secure checkout.
+                  Final shipping methods and any required taxes are confirmed at secure checkout.{" "}
+                  <Link
+                    href="/shipping-returns"
+                    className="text-deep-teal underline underline-offset-4"
+                  >
+                    Shipping &amp; returns
+                  </Link>
                 </p>
               </div>
 

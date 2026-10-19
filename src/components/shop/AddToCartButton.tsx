@@ -9,17 +9,19 @@ import {
   SHOPIFY_CART_CHANGED_EVENT,
   notifyShopifyCartChanged,
   openShopifyCartDrawer,
+  type ShopifyCartChangePayload,
 } from "@/lib/shopify/cart-events";
 import { getCartAdditionFeedback } from "@/lib/shopify/cart-feedback";
 import { getCartDisplayWarnings, getVariantCartQuantity } from "@/lib/shopify/cart-quantity-state";
 import { requestShopifyCartMutation } from "@/lib/shopify/cart-request";
 import { getCartGiftWrapIssue } from "@/lib/shopify/gift-wrap";
-import type { ShopifyCartResponse } from "@/lib/shopify/types";
+import type { ShopifyCartResponse, ShopifyVariantInventory } from "@/lib/shopify/types";
 import { cn } from "@/lib/utils";
 
 type AddToCartButtonProps = {
   merchandiseId: string;
   availableForSale: boolean;
+  inventory?: ShopifyVariantInventory;
   className?: string;
   containerClassName?: string;
   label?: string;
@@ -29,6 +31,7 @@ type AddToCartButtonProps = {
   disabled?: boolean;
   giftWrap?: boolean;
   giftWrapVariantId?: string;
+  giftWrapInventory?: ShopifyVariantInventory;
   stockLimitMessage?: string;
   showStockLimitMessage?: boolean;
   itemName?: string;
@@ -42,6 +45,7 @@ type AddToCartButtonProps = {
 export function AddToCartButton({
   merchandiseId,
   availableForSale,
+  inventory,
   className,
   containerClassName,
   label = "Add to Bag",
@@ -51,6 +55,7 @@ export function AddToCartButton({
   disabled = false,
   giftWrap = false,
   giftWrapVariantId,
+  giftWrapInventory,
   stockLimitMessage: providedStockLimitMessage,
   showStockLimitMessage = true,
   itemName = "Item",
@@ -61,9 +66,11 @@ export function AddToCartButton({
   openCartOnSuccess = true,
 }: AddToCartButtonProps): ReactElement {
   const quantityStatus = useCartQuantityStatus();
-  const stockLimitReached = !quantityStatus.canAddVariant(merchandiseId);
+  const stockLimitReached = !quantityStatus.canAddVariant(merchandiseId, 1, inventory);
   const giftWrapStockLimitReached = Boolean(
-    giftWrap && giftWrapVariantId && !quantityStatus.canAddVariant(giftWrapVariantId),
+    giftWrap &&
+    giftWrapVariantId &&
+    !quantityStatus.canAddVariant(giftWrapVariantId, 1, giftWrapInventory),
   );
   const stockLimitMessage = stockLimitReached
     ? providedStockLimitMessage || "No more available for this option."
@@ -98,9 +105,14 @@ export function AddToCartButton({
     }
 
     function handleCartChanged(event: Event): void {
-      const payload = (event as CustomEvent<ShopifyCartResponse | undefined>).detail;
+      const payload = (event as CustomEvent<ShopifyCartChangePayload | undefined>).detail;
 
-      if (payload && "cart" in payload && payload.confirmed !== false) {
+      if (
+        payload &&
+        !payload.backgroundRefresh &&
+        "cart" in payload &&
+        payload.confirmed !== false
+      ) {
         setNeedsReview(false);
         onReviewRequiredChange?.(false);
         setError(null);
@@ -116,6 +128,7 @@ export function AddToCartButton({
     if (
       isSubmittingRef.current ||
       needsReview ||
+      !quantityStatus.isReady ||
       !availableForSale ||
       disabled ||
       stockLimitReached ||
@@ -237,6 +250,7 @@ export function AddToCartButton({
           !availableForSale ||
           isPending ||
           needsReview ||
+          !quantityStatus.isReady ||
           disabled ||
           stockLimitReached ||
           giftWrapStockLimitReached
@@ -274,12 +288,18 @@ export function AddToCartButton({
           )
         ) : !availableForSale ? (
           disabledLabel
+        ) : isPending ? (
+          "Adding..."
+        ) : !quantityStatus.isReady ? (
+          quantityStatus.isLoading ? (
+            "Checking Bag..."
+          ) : (
+            "Review Bag"
+          )
         ) : stockLimitReached ? (
           "No More Available"
         ) : giftWrapStockLimitReached ? (
           "No More Gift Wrap"
-        ) : isPending ? (
-          "Adding..."
         ) : hasAdded ? (
           "Added to Cart"
         ) : (
@@ -311,7 +331,7 @@ export function AddToCartButton({
           {error}
         </p>
       ) : null}
-      {needsReview ? (
+      {needsReview || (!quantityStatus.isReady && !quantityStatus.isLoading) ? (
         <button
           type="button"
           onClick={() => {

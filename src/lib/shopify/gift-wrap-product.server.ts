@@ -28,5 +28,11 @@ export async function getGiftWrapOffer(): Promise<ShopifyGiftWrapOffer | null> {
     title: product.title,
     price: variant.price,
     availableForSale: variant.availableForSale,
+    ...(variant.quantityAvailable !== undefined
+      ? { quantityAvailable: variant.quantityAvailable }
+      : {}),
+    ...(variant.currentlyNotInStock !== undefined
+      ? { currentlyNotInStock: variant.currentlyNotInStock }
+      : {}),
   };
 }

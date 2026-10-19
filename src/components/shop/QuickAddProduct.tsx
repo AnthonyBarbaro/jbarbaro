@@ -349,6 +349,7 @@ export function QuickAddProduct({
       <AddToCartButton
         merchandiseId={initialVariant.id}
         availableForSale
+        inventory={initialVariant}
         ariaLabel={`Add ${product.title} to bag`}
         itemName={product.title}
         iconOnly
@@ -558,6 +559,7 @@ export function QuickAddProduct({
                   <AddToCartButton
                     merchandiseId={selectedVariant?.id ?? initialVariant.id}
                     availableForSale={Boolean(selectedVariant?.availableForSale)}
+                    inventory={selectedVariant ?? undefined}
                     label="Add Selected Item"
                     disabledLabel={selectionPrompt}
                     ariaLabel={

@@ -1,8 +1,14 @@
 # Appointment Confirmation Workflow Plan
 
 Date: 2026-08-17
-Status: Planned — not implemented
+Status: Historical proposal — superseded for the current launch
 Owner: J. Barbaro Clothiers
+
+The current launch uses manual staff confirmation by email reply, as documented in
+[appointment email setup](appointments-email-setup.md). Requests do not reserve a slot, create a
+database record, or send a calendar invitation. The database, approval dashboard, and automated
+confirmation design below is retained as a future proposal, not a launch requirement or current
+implementation. See the [launch checklist](launch-checklist.md) for current verification status.
 
 ## Purpose
 

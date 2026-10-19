@@ -1,7 +1,7 @@
 import "server-only";
 
 import { format } from "date-fns";
-import nodemailer from "nodemailer";
+import nodemailer, { type SendMailOptions, type Transporter } from "nodemailer";
 
 import { locationMap } from "@/data/locations";
 import { SITE_NAME, SITE_URL } from "@/lib/constants";
@@ -12,11 +12,11 @@ import type {
   WeddingRegistrationPayload,
 } from "@/types/submissions";
 
-export type DeliveryResult = "LOGGED" | "SENT" | "FAILED";
-export type AppointmentDeliveryResult = "SENT" | "FAILED" | "UNKNOWN";
+export type DeliveryResult = "SENT" | "FAILED" | "UNKNOWN";
+export type AppointmentDeliveryResult = DeliveryResult;
 
 export type SubmissionEmailResult = {
-  customer: DeliveryResult;
+  customer: DeliveryResult | "SKIPPED";
   internal: DeliveryResult;
 };
 
@@ -27,7 +27,7 @@ type SendEmailOptions = {
   html: string;
   replyTo?: string;
   headers?: Record<string, string>;
-  attachments?: nodemailer.SendMailOptions["attachments"];
+  attachments?: SendMailOptions["attachments"];
 };
 
 type EmailField = {
@@ -55,11 +55,15 @@ type BrandedEmailOptions = {
   };
 };
 
-let transporterCache: nodemailer.Transporter | null | undefined;
-let appointmentTransporterCache: nodemailer.Transporter | undefined;
+let transporterCache: Transporter | undefined;
 
 function hasSmtpConfig() {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS);
+  return Boolean(
+    process.env.SMTP_HOST &&
+    process.env.SMTP_PORT &&
+    process.env.SMTP_USER &&
+    process.env.SMTP_PASS,
+  );
 }
 
 function parseRecipients(value?: string | null) {
@@ -82,35 +86,6 @@ function getNotificationRecipients(keys: string[]) {
   }
 
   return [];
-}
-
-function getTransporter() {
-  if (transporterCache !== undefined) {
-    return transporterCache;
-  }
-
-  if (!hasSmtpConfig()) {
-    transporterCache = null;
-    return transporterCache;
-  }
-
-  const port = Number(process.env.SMTP_PORT || "587");
-
-  transporterCache = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port,
-    secure: process.env.SMTP_SECURE === "true" || port === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  return transporterCache;
-}
-
-function getFromAddress() {
-  return process.env.SMTP_FROM || `"${SITE_NAME}" <no-reply@jbarbaro.local>`;
 }
 
 export function escapeHtml(value: string | number | null | undefined) {
@@ -258,33 +233,6 @@ export function buildBrandedEmail({
   `;
 }
 
-async function deliverEmail({ to, subject, text, html, replyTo, headers, attachments }: SendEmailOptions): Promise<DeliveryResult> {
-  const transporter = getTransporter();
-
-  if (!transporter) {
-    console.log(`[Email] SMTP not configured. Logged-only mode for: ${to} / ${subject}`);
-    return "LOGGED";
-  }
-
-  try {
-    await transporter.sendMail({
-      from: getFromAddress(),
-      to,
-      subject,
-      text,
-      html,
-      replyTo,
-      headers,
-      attachments,
-    });
-
-    return "SENT";
-  } catch (error) {
-    console.error(`[Email] Failed sending to ${to} for subject "${subject}"`, error);
-    return "FAILED";
-  }
-}
-
 function appointmentEmailSections(appointment: AppointmentSubmissionPayload): EmailSection[] {
   const location = locationMap[appointment.locationSlug];
   const dateLabel = format(appointment.preferredDate, "EEEE, MMMM d, yyyy");
@@ -315,7 +263,7 @@ function appointmentEmailDetails(appointment: AppointmentSubmissionPayload): str
   );
 }
 
-function getAppointmentTransporter(): nodemailer.Transporter | null {
+function getTransporter(): Transporter | null {
   const port = Number(process.env.SMTP_PORT);
 
   if (
@@ -328,9 +276,9 @@ function getAppointmentTransporter(): nodemailer.Transporter | null {
     return null;
   }
 
-  if (!appointmentTransporterCache) {
+  if (!transporterCache) {
     const secure = process.env.SMTP_SECURE === "true" || port === 465;
-    appointmentTransporterCache = nodemailer.createTransport({
+    transporterCache = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port,
       secure,
@@ -342,7 +290,7 @@ function getAppointmentTransporter(): nodemailer.Transporter | null {
     });
   }
 
-  return appointmentTransporterCache;
+  return transporterCache;
 }
 
 function recipientAddress(value: unknown): string | null {
@@ -390,8 +338,9 @@ function smtpRecipientDelivery(receipt: unknown, recipients: string[]): Appointm
   return allAccepted ? "SENT" : "UNKNOWN";
 }
 
-async function deliverAppointmentEmail(
+async function deliverEmail(
   options: SendEmailOptions,
+  formType: "Appointment" | "Contact" | "Wedding" | "Newsletter" = "Appointment",
 ): Promise<AppointmentDeliveryResult> {
   const recipients = parseRecipients(options.to);
 
@@ -406,7 +355,7 @@ async function deliverAppointmentEmail(
   }
 
   try {
-    const transporter = getAppointmentTransporter();
+    const transporter = getTransporter();
 
     if (!transporter) {
       return "FAILED";
@@ -419,21 +368,31 @@ async function deliverAppointmentEmail(
 
     return smtpRecipientDelivery(receipt, recipients);
   } catch (error) {
-    console.error("[Email] Appointment notification delivery could not be confirmed.");
+    console.error(`[Email] ${formType} notification delivery could not be confirmed.`);
     // Log only recognized diagnostics; provider messages can contain private addresses.
     if (typeof error === "object" && error !== null) {
       const code = "code" in error ? error.code : undefined;
       const responseCode = "responseCode" in error ? error.responseCode : undefined;
       const response = "response" in error ? error.response : undefined;
-      if (typeof code === "string" &&
-        ["EAUTH", "EENVELOPE", "EMESSAGE", "ETIMEDOUT", "ECONNECTION", "EDNS", "ESOCKET"].includes(code)) {
+      if (
+        typeof code === "string" &&
+        ["EAUTH", "EENVELOPE", "EMESSAGE", "ETIMEDOUT", "ECONNECTION", "EDNS", "ESOCKET"].includes(
+          code,
+        )
+      ) {
         console.error("[Email] SMTP diagnostic:", {
           code,
-          responseCode: typeof responseCode === "number" && Number.isInteger(responseCode) &&
-            responseCode >= 400 && responseCode < 600 ? responseCode : undefined,
-          reason: typeof response === "string" && response.includes("Email address is not verified")
-            ? "SES identity is not verified in the sending region"
-            : "Check SMTP configuration and provider logs",
+          responseCode:
+            typeof responseCode === "number" &&
+            Number.isInteger(responseCode) &&
+            responseCode >= 400 &&
+            responseCode < 600
+              ? responseCode
+              : undefined,
+          reason:
+            typeof response === "string" && response.includes("Email address is not verified")
+              ? "SES identity is not verified in the sending region"
+              : "Check SMTP configuration and provider logs",
         });
       }
     }
@@ -442,10 +401,13 @@ async function deliverAppointmentEmail(
       typeof error === "object" &&
       error !== null &&
       "code" in error &&
-      (error.code === "EAUTH" || error.code === "EENVELOPE" ||
-        (error.code === "EMESSAGE" && "responseCode" in error &&
+      (error.code === "EAUTH" ||
+        error.code === "EENVELOPE" ||
+        (error.code === "EMESSAGE" &&
+          "responseCode" in error &&
           typeof error.responseCode === "number" &&
-          error.responseCode >= 400 && error.responseCode < 600))
+          error.responseCode >= 400 &&
+          error.responseCode < 600))
     ) {
       return "FAILED";
     }
@@ -483,7 +445,7 @@ export async function sendAppointmentPendingEmail(
     SITE_NAME,
   ].join("\n");
 
-  return deliverAppointmentEmail({
+  return deliverEmail({
     to: appointment.email,
     subject: `We received your appointment request - ${SITE_NAME}`,
     text,
@@ -568,7 +530,7 @@ export async function sendAppointmentRequestEmail(
     footerNote: `${SITE_NAME} appointment alert`,
   });
 
-  return deliverAppointmentEmail({
+  return deliverEmail({
     to: internalRecipients.join(", "),
     subject: `Action needed: appointment request ${appointment.reference} - ${SITE_NAME}`,
     text,
@@ -669,7 +631,9 @@ function buildContactInternalEmail(submission: ContactSubmissionPayload) {
 
 function buildWeddingCustomerEmail(registration: WeddingRegistrationPayload) {
   const dateLabel = format(registration.weddingDate, "EEEE, MMMM d, yyyy");
-  const locationName = registration.locationSlug ? locationMap[registration.locationSlug]?.name || registration.locationSlug : "No location selected";
+  const locationName = registration.locationSlug
+    ? locationMap[registration.locationSlug]?.name || registration.locationSlug
+    : "No location selected";
 
   const subject = `Wedding Registration Received - ${SITE_NAME}`;
   const text = [
@@ -713,7 +677,9 @@ function buildWeddingCustomerEmail(registration: WeddingRegistrationPayload) {
 
 function buildWeddingInternalEmail(registration: WeddingRegistrationPayload) {
   const dateLabel = format(registration.weddingDate, "EEEE, MMMM d, yyyy");
-  const locationName = registration.locationSlug ? locationMap[registration.locationSlug]?.name || registration.locationSlug : "No location selected";
+  const locationName = registration.locationSlug
+    ? locationMap[registration.locationSlug]?.name || registration.locationSlug
+    : "No location selected";
 
   const subject = `New Wedding Registration ${registration.reference} - ${SITE_NAME}`;
   const text = [
@@ -776,31 +742,46 @@ export async function sendContactSubmissionEmails(
   const internalEmail = buildContactInternalEmail(submission);
   const internalStatus =
     internalRecipients.length > 0
-      ? await deliverEmail({
-          to: internalRecipients.join(", "),
-          subject: internalEmail.subject,
-          text: internalEmail.text,
-          html: internalEmail.html,
-          replyTo: submission.email,
-          headers: {
-            "X-Form-Type": "contact-internal",
-            "X-Form-Reference": submission.reference,
+      ? await deliverEmail(
+          {
+            to: internalRecipients.join(", "),
+            subject: internalEmail.subject,
+            text: internalEmail.text,
+            html: internalEmail.html,
+            replyTo: submission.email,
+            headers: {
+              "X-Form-Type": "contact-internal",
+              "X-Form-Reference": submission.reference,
+            },
           },
-        })
-      : "LOGGED";
+          "Contact",
+        )
+      : "FAILED";
 
-  const customerEmail = buildContactCustomerEmail(submission);
-  const customerStatus = await deliverEmail({
-    to: submission.email,
-    subject: customerEmail.subject,
-    text: customerEmail.text,
-    html: customerEmail.html,
-    replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
-    headers: {
-      "X-Form-Type": "contact-customer",
-      "X-Form-Reference": submission.reference,
-    },
-  });
+  if (internalStatus !== "SENT") {
+    return { internal: internalStatus, customer: "SKIPPED" };
+  }
+
+  let customerStatus: DeliveryResult = "UNKNOWN";
+  try {
+    const customerEmail = buildContactCustomerEmail(submission);
+    customerStatus = await deliverEmail(
+      {
+        to: submission.email,
+        subject: customerEmail.subject,
+        text: customerEmail.text,
+        html: customerEmail.html,
+        replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
+        headers: {
+          "X-Form-Type": "contact-customer",
+          "X-Form-Reference": submission.reference,
+        },
+      },
+      "Contact",
+    );
+  } catch {
+    console.error("[Email] Contact customer receipt could not be sent.");
+  }
 
   return {
     customer: customerStatus,
@@ -821,31 +802,46 @@ export async function sendWeddingRegistrationEmails(
   const internalEmail = buildWeddingInternalEmail(registration);
   const internalStatus =
     internalRecipients.length > 0
-      ? await deliverEmail({
-          to: internalRecipients.join(", "),
-          subject: internalEmail.subject,
-          text: internalEmail.text,
-          html: internalEmail.html,
-          replyTo: registration.email,
-          headers: {
-            "X-Form-Type": "wedding-internal",
-            "X-Form-Reference": registration.reference,
+      ? await deliverEmail(
+          {
+            to: internalRecipients.join(", "),
+            subject: internalEmail.subject,
+            text: internalEmail.text,
+            html: internalEmail.html,
+            replyTo: registration.email,
+            headers: {
+              "X-Form-Type": "wedding-internal",
+              "X-Form-Reference": registration.reference,
+            },
           },
-        })
-      : "LOGGED";
+          "Wedding",
+        )
+      : "FAILED";
 
-  const customerEmail = buildWeddingCustomerEmail(registration);
-  const customerStatus = await deliverEmail({
-    to: registration.email,
-    subject: customerEmail.subject,
-    text: customerEmail.text,
-    html: customerEmail.html,
-    replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
-    headers: {
-      "X-Form-Type": "wedding-customer",
-      "X-Form-Reference": registration.reference,
-    },
-  });
+  if (internalStatus !== "SENT") {
+    return { internal: internalStatus, customer: "SKIPPED" };
+  }
+
+  let customerStatus: DeliveryResult = "UNKNOWN";
+  try {
+    const customerEmail = buildWeddingCustomerEmail(registration);
+    customerStatus = await deliverEmail(
+      {
+        to: registration.email,
+        subject: customerEmail.subject,
+        text: customerEmail.text,
+        html: customerEmail.html,
+        replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
+        headers: {
+          "X-Form-Type": "wedding-customer",
+          "X-Form-Reference": registration.reference,
+        },
+      },
+      "Wedding",
+    );
+  } catch {
+    console.error("[Email] Wedding customer receipt could not be sent.");
+  }
 
   return {
     customer: customerStatus,
@@ -891,7 +887,9 @@ function buildNewsletterInternalEmail(signup: NewsletterSignupPayload) {
   return { subject, text, html };
 }
 
-export async function sendNewsletterSignupEmail(signup: NewsletterSignupPayload): Promise<DeliveryResult> {
+export async function sendNewsletterSignupEmail(
+  signup: NewsletterSignupPayload,
+): Promise<DeliveryResult> {
   const internalRecipients = getNotificationRecipients([
     "CONTACT_NOTIFICATION_TO",
     "APPOINTMENT_NOTIFICATION_TO",
@@ -899,21 +897,23 @@ export async function sendNewsletterSignupEmail(signup: NewsletterSignupPayload)
   ]);
 
   if (internalRecipients.length === 0) {
-    console.log(`[Newsletter] Logged-only signup ${signup.reference}: ${signup.email}`);
-    return "LOGGED";
+    return "FAILED";
   }
 
   const internalEmail = buildNewsletterInternalEmail(signup);
 
-  return deliverEmail({
-    to: internalRecipients.join(", "),
-    subject: internalEmail.subject,
-    text: internalEmail.text,
-    html: internalEmail.html,
-    replyTo: signup.email,
-    headers: {
-      "X-Form-Type": "newsletter-internal",
-      "X-Form-Reference": signup.reference,
+  return deliverEmail(
+    {
+      to: internalRecipients.join(", "),
+      subject: internalEmail.subject,
+      text: internalEmail.text,
+      html: internalEmail.html,
+      replyTo: signup.email,
+      headers: {
+        "X-Form-Type": "newsletter-internal",
+        "X-Form-Reference": signup.reference,
+      },
     },
-  });
+    "Newsletter",
+  );
 }

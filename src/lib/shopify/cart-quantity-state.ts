@@ -3,12 +3,29 @@ import type {
   ShopifyCartResponse,
   ShopifyCartSnapshot,
   ShopifyCartWarning,
+  ShopifyVariantInventory,
 } from "@/lib/shopify/types";
 
 export type CartQuantityState = {
   cart: ShopifyCartSnapshot | null;
   limits: ReadonlyMap<string, number>;
+  inventory?: ReadonlyMap<string, ShopifyVariantInventory>;
 };
+
+export function getInventoryQuantityLimit(
+  inventory: ShopifyVariantInventory | undefined,
+): number | null {
+  if (!inventory || inventory.currentlyNotInStock) {
+    return null;
+  }
+  if (inventory.availableForSale === false) {
+    return 0;
+  }
+  const quantity = inventory.quantityAvailable;
+  return typeof quantity === "number" && Number.isSafeInteger(quantity) && quantity >= 0
+    ? quantity
+    : null;
+}
 
 export function getCartDisplayWarnings(
   cart: ShopifyCartSnapshot | null,
@@ -57,11 +74,12 @@ export function applyCartQuantityPayload(
 
   const cart = payload.cart ?? null;
   if (!cart) {
-    return { cart: null, limits: new Map() };
+    return { cart: null, limits: new Map(), inventory: new Map() };
   }
 
   const sameSession = state.cart?.checkoutUrl === cart.checkoutUrl;
   const limits = new Map(sameSession ? state.limits : []);
+  const inventory = new Map(sameSession ? state.inventory : []);
   const hasCompleteCart =
     cart.lines.reduce((quantity, line) => quantity + line.quantity, 0) === cart.totalQuantity;
 
@@ -74,30 +92,71 @@ export function applyCartQuantityPayload(
         limits.delete(merchandiseId);
       }
     }
+    if (cart.lines.length === 0) {
+      inventory.clear();
+    }
+  }
+
+  for (const line of cart.lines) {
+    for (const variant of line.variants) {
+      if (variant.quantityAvailable !== undefined || variant.currentlyNotInStock) {
+        inventory.set(variant.id, variant);
+        if (getInventoryQuantityLimit(variant) !== null || variant.currentlyNotInStock) {
+          limits.delete(variant.id);
+        }
+      }
+    }
+  }
+  // The exact cart variant can sit outside the product's first page of variants.
+  for (const line of cart.lines) {
+    if (line.variantId && line.inventory) {
+      inventory.set(line.variantId, line.inventory);
+      if (
+        getInventoryQuantityLimit(line.inventory) !== null ||
+        line.inventory.currentlyNotInStock
+      ) {
+        limits.delete(line.variantId);
+      }
+    }
   }
 
   for (const [merchandiseId, limit] of getCartVariantQuantityLimits(cart, payload.warnings ?? [])) {
     limits.set(merchandiseId, limit);
   }
 
-  return { cart, limits };
+  return { cart, limits, inventory };
+}
+
+export function getCartVariantQuantityLimit(
+  state: CartQuantityState,
+  merchandiseId: string,
+  fallbackInventory?: ShopifyVariantInventory,
+): number | null {
+  const inventory = state.inventory?.get(merchandiseId) ?? fallbackInventory;
+  const inventoryLimit = getInventoryQuantityLimit(inventory);
+  const observedLimit = state.limits.get(merchandiseId);
+  if (observedLimit === undefined) {
+    return inventoryLimit;
+  }
+  return inventoryLimit === null ? observedLimit : Math.min(inventoryLimit, observedLimit);
 }
 
 export function getRemainingCartVariantQuantity(
   state: CartQuantityState,
   merchandiseId: string,
+  fallbackInventory?: ShopifyVariantInventory,
 ): number | null {
-  const limit = state.limits.get(merchandiseId);
-  if (limit === undefined) {
-    return null;
-  }
-
   if (
     state.cart &&
     state.cart.lines.reduce((quantity, line) => quantity + line.quantity, 0) !==
       state.cart.totalQuantity
   ) {
     return 0;
+  }
+
+  const limit = getCartVariantQuantityLimit(state, merchandiseId, fallbackInventory);
+  if (limit === null) {
+    return null;
   }
 
   return Math.max(0, limit - getVariantCartQuantity(state.cart, merchandiseId));

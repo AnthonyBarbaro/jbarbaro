@@ -185,6 +185,45 @@
       "eyebrow": "Journal",
       "title": "Advice for Buying and Wearing Well",
       "description": "Editorial guidance on fit, tailoring, occasion dressing, and wardrobe planning."
+    },
+    "socialReels": {
+      "eyebrow": "Inside J. Barbaro",
+      "title": "Style in motion.",
+      "description": "A closer look at the clothes, the details, and life in the showroom.",
+      "instagramHref": "https://www.instagram.com/j.barbaroclothiers/",
+      "tiktokHref": "https://www.tiktok.com/@jasonbarbaro1",
+      "fallbackImage": "/images/campaign/ss26/canali-coastal-tailoring-portrait-hero.webp",
+      "fallbackImageAlt": "Two models in navy menswear beside a brown convertible, with one holding a map",
+      "clips": [
+        {
+          "id": "tiktok-7629192451126873357",
+          "title": "Wedding outfit",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7629192451126873357",
+          "poster": "/images/social/tiktok/7629192451126873357.jpg",
+          "posterAlt": "A man in a blue blazer with a green pocket square inside the boutique."
+        },
+        {
+          "id": "tiktok-7635880121559207199",
+          "title": "Great Oaks",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7635880121559207199",
+          "poster": "/images/social/tiktok/7635880121559207199.jpg",
+          "posterAlt": "A smiling man in a white polo with a yellow measuring tape around his neck."
+        },
+        {
+          "id": "tiktok-7628826774352432398",
+          "title": "Kentucky Derby outfit",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7628826774352432398",
+          "poster": "/images/social/tiktok/7628826774352432398.jpg",
+          "posterAlt": "A man in a blue checked blazer with a red pocket square at the boutique counter."
+        },
+        {
+          "id": "tiktok-7697859148012145934",
+          "title": "Engagement photo outfit",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7697859148012145934",
+          "poster": "/images/social/tiktok/7697859148012145934.jpg",
+          "posterAlt": "Two men shaking hands in the boutique with shirts and suits displayed behind them."
+        }
+      ]
     }
   },
   "aboutPage": {
@@ -354,10 +393,10 @@
   },
   "reviewsPage": {
     "metaTitle": "Customer Reviews",
-    "metaDescription": "Read verified customer testimonials and review insights for J. Barbaro Clothiers, rated 4.7/5 across Metro Detroit locations.",
+    "metaDescription": "Find Google reviews for J. Barbaro Clothiers and plan a visit to our Metro Detroit locations.",
     "hero": {
       "title": "Customer Reviews",
-      "description": "Our clients trust us for fit precision, professional guidance, and premium menswear service.",
+      "description": "Explore customer feedback on Google and plan your next visit to our Metro Detroit stores.",
       "ctaPrimary": {
         "label": "Book an Appointment",
         "href": "/schedule-appointment"

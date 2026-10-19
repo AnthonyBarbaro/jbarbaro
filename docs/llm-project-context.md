@@ -1,6 +1,8 @@
 # J. Barbaro Clothiers Project Context
 
-Use this document when explaining the project to another LLM. It is written as a compact architecture and route guide for the current repo.
+Historical architecture snapshot. Use [README](../README.md), the [launch checklist](launch-checklist.md),
+and [appointment email setup](appointments-email-setup.md) for current behavior and verification.
+Some details below predate the manual email confirmation workflow and storefront hardening.
 
 ## Paste-Ready LLM Prompt
 
@@ -20,7 +22,12 @@ The app uses Next.js App Router pages under `src/app`. The shared shell is `src/
 
 Shopify is optional but central to commerce. If `SHOPIFY_STORE_DOMAIN` and `SHOPIFY_STOREFRONT_ACCESS_TOKEN` are configured, the app fetches products, collections, recommendations, predictive search, cart state, and checkout URL from the Shopify Storefront API. If Shopify is not configured or fails, pages generally show graceful fallback messaging or omit commerce sections.
 
-Forms are email-only. There is no database. Appointment, contact, and wedding submissions are validated with Zod, given generated references, sent through Nodemailer when SMTP env vars exist, and otherwise logged-only. Contact and wedding forms have honeypot fields and in-memory IP rate limiting. Appointment availability is generated from store hours and holiday closures.
+Forms are email-only. There is no database. Appointment, contact, and wedding submissions are
+validated with Zod and use stable request references. Missing SMTP configuration or unconfirmed staff
+acceptance produces visible recovery feedback; it is never a logged-only success. Acknowledgments
+follow staff acceptance. Staff confirms appointments manually by email reply; generated preferred
+times do not reserve capacity and requests do not send calendar invitations. Contact and wedding
+forms have honeypot fields and in-memory IP rate limiting. Newsletter signup is disabled.
 
 ## Stack
 

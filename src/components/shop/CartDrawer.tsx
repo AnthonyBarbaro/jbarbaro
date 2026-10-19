@@ -15,7 +15,10 @@ import { ClearBagButton } from "@/components/shop/ClearBagButton";
 import {
   SHOPIFY_CART_CHANGED_EVENT,
   SHOPIFY_CART_OPEN_EVENT,
+  SHOPIFY_CART_INVALIDATED_EVENT,
+  SHOPIFY_CART_REVALIDATION_FAILED_EVENT,
   notifyShopifyCartChanged,
+  type ShopifyCartChangePayload,
 } from "@/lib/shopify/cart-events";
 import {
   isShopifyCartMutationPending,
@@ -55,7 +58,7 @@ function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]): string 
 }
 
 export function CartDrawer(): ReactElement | null {
-  const { canAddVariant } = useCartQuantityStatus();
+  const { canAddVariant, isReady } = useCartQuantityStatus();
   const [isOpen, setIsOpen] = useState(false);
   const [cart, setCart] = useState<ShopifyCartSnapshot | null>(null);
   const [giftWrapOffer, setGiftWrapOffer] = useState<ShopifyGiftWrapOffer | null>(null);
@@ -72,13 +75,16 @@ export function CartDrawer(): ReactElement | null {
   const triggerRef = useRef<HTMLElement | null>(null);
   const requestGenerationRef = useRef(0);
   const isRefreshingRef = useRef(false);
+  const interruptedRefreshRef = useRef(false);
   const isWorkingRef = useRef(false);
   const isMountedRef = useRef(true);
   const needsRefreshRef = useRef(false);
   const pendingOpenPayloadRef = useRef<ShopifyCartResponse | null>(null);
   const giftWrapFocusTargetRef = useRef<string | null>(null);
 
-  const applyPayload = useCallback((payload: ShopifyCartResponse): void => {
+  const applyPayload = useCallback((payload: ShopifyCartChangePayload): void => {
+    if (payload.backgroundRefresh && isWorkingRef.current) return;
+    if (!payload.backgroundRefresh) interruptedRefreshRef.current = false;
     requestGenerationRef.current += 1;
     isRefreshingRef.current = false;
     setIsLoading(false);
@@ -90,6 +96,8 @@ export function CartDrawer(): ReactElement | null {
     if ("giftWrapOffer" in payload) {
       setGiftWrapOffer(payload.giftWrapOffer ?? null);
     }
+
+    if (payload.backgroundRefresh) return;
 
     setWarnings(payload.warnings ?? []);
     setIsKnownStockAdjustment(
@@ -179,7 +187,7 @@ export function CartDrawer(): ReactElement | null {
       setIsOpen(true);
       const payload =
         event instanceof CustomEvent
-          ? (event.detail as ShopifyCartResponse | undefined)
+          ? (event.detail as ShopifyCartChangePayload | undefined)
           : undefined;
       const pendingPayload = payload ?? pendingOpenPayloadRef.current;
 
@@ -200,19 +208,52 @@ export function CartDrawer(): ReactElement | null {
     function handleCartChanged(event: Event): void {
       const payload =
         event instanceof CustomEvent
-          ? (event.detail as ShopifyCartResponse | undefined)
+          ? (event.detail as ShopifyCartChangePayload | undefined)
           : undefined;
 
       if (payload) {
-        pendingOpenPayloadRef.current = payload;
+        const reconcileManualRefresh =
+          payload.backgroundRefresh &&
+          (isRefreshingRef.current || interruptedRefreshRef.current) &&
+          !isWorkingRef.current;
+        if (!payload.backgroundRefresh) pendingOpenPayloadRef.current = payload;
         applyPayload(payload);
+        // A background result supersedes the old read; finish the explicit retry with a fresh one.
+        if (reconcileManualRefresh) {
+          interruptedRefreshRef.current = false;
+          void loadCart();
+        }
       } else {
         void loadCart();
       }
     }
 
+    function handleInvalidation(): void {
+      pendingOpenPayloadRef.current = null;
+      if (isWorkingRef.current) return;
+      if (isRefreshingRef.current) {
+        requestGenerationRef.current += 1;
+        isRefreshingRef.current = false;
+        interruptedRefreshRef.current = true;
+      }
+      setIsLoading(true);
+    }
+
+    function handleRevalidationFailure(): void {
+      if (isWorkingRef.current || isRefreshingRef.current) return;
+      interruptedRefreshRef.current = false;
+      setIsLoading(false);
+      setError(
+        (previous) => previous || "We couldn't refresh your bag. Refresh it before continuing.",
+      );
+      needsRefreshRef.current = true;
+      setNeedsRefresh(true);
+    }
+
     window.addEventListener(SHOPIFY_CART_OPEN_EVENT, handleOpen);
     window.addEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
+    window.addEventListener(SHOPIFY_CART_INVALIDATED_EVENT, handleInvalidation);
+    window.addEventListener(SHOPIFY_CART_REVALIDATION_FAILED_EVENT, handleRevalidationFailure);
 
     return () => {
       isMountedRef.current = false;
@@ -220,6 +261,8 @@ export function CartDrawer(): ReactElement | null {
       isRefreshingRef.current = false;
       window.removeEventListener(SHOPIFY_CART_OPEN_EVENT, handleOpen);
       window.removeEventListener(SHOPIFY_CART_CHANGED_EVENT, handleCartChanged);
+      window.removeEventListener(SHOPIFY_CART_INVALIDATED_EVENT, handleInvalidation);
+      window.removeEventListener(SHOPIFY_CART_REVALIDATION_FAILED_EVENT, handleRevalidationFailure);
     };
   }, [applyPayload, loadCart]);
 
@@ -530,7 +573,8 @@ export function CartDrawer(): ReactElement | null {
     return null;
   }
 
-  const controlsDisabled = isLoading || Boolean(mutatingLineId) || isCheckingOut || needsRefresh;
+  const controlsDisabled =
+    !isReady || isLoading || Boolean(mutatingLineId) || isCheckingOut || needsRefresh;
   const itemLines =
     cart?.lines.filter((line) => !isGiftWrapLine(line) && !isCartLinePlaceholder(line)) ?? [];
   const unattachedGiftWrapLines =
@@ -899,7 +943,14 @@ export function CartDrawer(): ReactElement | null {
               </span>
             </div>
             <p className="mt-1 text-xs leading-5 text-smoke">
-              Shipping and taxes are calculated at checkout.
+              Shipping and taxes are calculated at checkout.{" "}
+              <Link
+                href="/shipping-returns"
+                onClick={() => setIsOpen(false)}
+                className="text-deep-teal underline underline-offset-4"
+              >
+                Shipping &amp; returns
+              </Link>
             </p>
 
             <button

@@ -1,3 +1,8 @@
+import {
+  SHOPIFY_CART_MUTATION_FINISHED_EVENT,
+  SHOPIFY_CART_MUTATION_STARTED_EVENT,
+} from "@/lib/shopify/cart-events";
+
 let mutationPending = false;
 
 export function isShopifyCartMutationPending(): boolean {
@@ -10,10 +15,16 @@ export async function requestShopifyCartMutation<T>(operation: () => Promise<T>)
   }
 
   mutationPending = true;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(SHOPIFY_CART_MUTATION_STARTED_EVENT));
+  }
 
   try {
     return await operation();
   } finally {
     mutationPending = false;
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event(SHOPIFY_CART_MUTATION_FINISHED_EVENT));
+    }
   }
 }

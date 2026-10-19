@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { ReactElement } from "react";
 import { ExternalLink, Star } from "lucide-react";
 
 import { PageHero } from "@/components/ui/PageHero";
@@ -12,8 +13,7 @@ import { buildMetadata } from "@/lib/seo";
 import { formatDate } from "@/lib/utils";
 
 const { reviewsPage } = pageContent;
-const GOOGLE_REVIEWS_LISTING_URL =
-  "https://www.google.com/search?newwindow=1&rlz=1C1GCEA_enUS1194US1194&aep=1&cs=1&hl=en-US&sca_esv=74837c4673692df8&sxsrf=ANbL-n44M-dD9t6FegDpdDVpvNjMpv18DA:1777489885037&si=AL3DRZFIhG6pAqfNLal55wUTwygCG0fClF3UxiOmgw9Hq7nbWZoHLaT3ZeMHTlJkXy9S0AsXs_0V4HTWcDmA5rz7jcV7RlXdZ__dlgC4y3X3DGzQcCYfzaahvAcFyPhGQsKOXVF3oIFmAtZxqsxL2G4vCoK-6B6rQg%3D%3D&q=J.+Barbaro+Clothiers+Reviews&sa=X&ved=2ahUKEwiO5cHp4ZOUAxUhJEQIHY9CLVwQ0bkNegQIRRAH&biw=1920&bih=911&dpr=1";
+const GOOGLE_REVIEWS_LISTING_URL = "https://www.google.com/search?q=J.+Barbaro+Clothiers+Reviews";
 
 export const metadata = buildMetadata({
   title: reviewsPage.metaTitle,
@@ -21,7 +21,13 @@ export const metadata = buildMetadata({
   path: "/reviews",
 });
 
-function StarRating({ rating, className = "h-4 w-4" }: { rating: number; className?: string }) {
+function StarRating({
+  rating,
+  className = "h-4 w-4",
+}: {
+  rating: number;
+  className?: string;
+}): ReactElement {
   const roundedRating = Math.round(rating);
 
   return (
@@ -36,7 +42,7 @@ function StarRating({ rating, className = "h-4 w-4" }: { rating: number; classNa
   );
 }
 
-function getReviewDateLabel(review: StoreReview) {
+function getReviewDateLabel(review: StoreReview): string | null {
   if (review.relativeTime) {
     return review.relativeTime;
   }
@@ -44,12 +50,12 @@ function getReviewDateLabel(review: StoreReview) {
   return review.publishTime ? formatDate(review.publishTime) : null;
 }
 
-export default async function ReviewsPage() {
+export default async function ReviewsPage(): Promise<ReactElement> {
   const storeReviewSnapshot = await getStoreReviewSnapshot();
   const primaryGoogleUri =
     storeReviewSnapshot.locations.find((location) => location.googleMapsUri)?.googleMapsUri ?? null;
   const googleReviewsUri = primaryGoogleUri ?? GOOGLE_REVIEWS_LISTING_URL;
-  const isGoogleSource = storeReviewSnapshot.source === "google";
+  const googleSnapshot = storeReviewSnapshot.source === "google" ? storeReviewSnapshot : null;
 
   return (
     <>
@@ -64,24 +70,37 @@ export default async function ReviewsPage() {
         <Container>
           <Card tone="stone">
             <CardContent>
-              <p className="text-sm font-semibold tracking-[0.14em] text-deep-teal uppercase">
-                {isGoogleSource ? "Google Store Rating" : reviewsPage.aggregateLabel}
-              </p>
-              <h2 className="mt-3 font-heading text-5xl text-ink sm:text-6xl">
-                {storeReviewSnapshot.ratingValue.toFixed(1)}{" "}
-                <span className="text-xl text-smoke sm:text-2xl">/ 5.0</span>
-              </h2>
-              <p className="mt-2 text-sm text-smoke">
-                Based on {new Intl.NumberFormat("en-US").format(storeReviewSnapshot.reviewCount)}{" "}
-                {isGoogleSource ? "Google reviews across our store locations" : "customer reviews"}
-              </p>
-              <div className="mt-4">
-                <StarRating rating={storeReviewSnapshot.ratingValue} className="h-5 w-5" />
-              </div>
+              {googleSnapshot ? (
+                <>
+                  <p className="text-sm font-semibold tracking-[0.14em] text-deep-teal uppercase">
+                    Google Store Rating
+                  </p>
+                  <h2 className="mt-3 font-heading text-5xl text-ink sm:text-6xl">
+                    {googleSnapshot.ratingValue.toFixed(1)}{" "}
+                    <span className="text-xl text-smoke sm:text-2xl">/ 5.0</span>
+                  </h2>
+                  <p className="mt-2 text-sm text-smoke">
+                    Based on {new Intl.NumberFormat("en-US").format(googleSnapshot.reviewCount)}{" "}
+                    Google reviews from our store locations
+                  </p>
+                  <div className="mt-4">
+                    <StarRating rating={googleSnapshot.ratingValue} className="h-5 w-5" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <h2 className="font-heading text-3xl text-ink sm:text-4xl">
+                    Read Reviews on Google
+                  </h2>
+                  <p className="mt-3 text-sm leading-7 text-smoke">
+                    Find customer feedback for our Metro Detroit stores on Google.
+                  </p>
+                </>
+              )}
 
-              {storeReviewSnapshot.locations.length > 0 ? (
+              {googleSnapshot && googleSnapshot.locations.length > 0 ? (
                 <div className="mt-6 grid gap-3 md:grid-cols-2">
-                  {storeReviewSnapshot.locations.map((location) => (
+                  {googleSnapshot.locations.map((location) => (
                     <div
                       key={location.slug}
                       className="rounded-md border border-ink/10 bg-white p-4"
@@ -113,74 +132,74 @@ export default async function ReviewsPage() {
                   View Google Reviews
                 </ButtonLink>
               </div>
-              <p className="mt-4 text-xs leading-5 text-smoke">
-                {isGoogleSource
-                  ? "Review highlights are sourced from Google and shown in Google's relevance order."
-                  : "Live Google review data will appear here when Google Places API credentials are configured."}
-              </p>
+              {googleSnapshot ? (
+                <p className="mt-4 text-xs leading-5 text-smoke">Reviews provided by Google.</p>
+              ) : null}
             </CardContent>
           </Card>
         </Container>
       </WaveSection>
 
-      <WaveSection topWave="C" background="stone">
-        <Container>
-          <div className="grid gap-4 md:grid-cols-2">
-            {storeReviewSnapshot.reviews.map((review) => {
-              const dateLabel = getReviewDateLabel(review);
+      {googleSnapshot && googleSnapshot.reviews.length > 0 ? (
+        <WaveSection topWave="C" background="stone">
+          <Container>
+            <div className="grid gap-4 md:grid-cols-2">
+              {googleSnapshot.reviews.map((review) => {
+                const dateLabel = getReviewDateLabel(review);
 
-              return (
-                <Card key={review.id} className="h-full">
-                  <CardContent>
-                    <StarRating rating={review.rating} />
-                    <blockquote className="mt-4 font-heading text-2xl leading-tight text-ink sm:text-3xl">
-                      &ldquo;{review.text}&rdquo;
-                    </blockquote>
-                    <div className="mt-5 space-y-1">
-                      {review.authorUri ? (
+                return (
+                  <Card key={review.id} className="h-full">
+                    <CardContent>
+                      <StarRating rating={review.rating} />
+                      <blockquote className="mt-4 font-heading text-2xl leading-tight text-ink sm:text-3xl">
+                        &ldquo;{review.text}&rdquo;
+                      </blockquote>
+                      <div className="mt-5 space-y-1">
+                        {review.authorUri ? (
+                          <Link
+                            href={review.authorUri}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex text-xs font-semibold tracking-[0.12em] text-smoke uppercase hover:text-deep-teal"
+                          >
+                            {review.authorName}
+                          </Link>
+                        ) : (
+                          <p className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
+                            {review.authorName}
+                          </p>
+                        )}
+                        <p className="text-xs leading-5 text-smoke">
+                          {review.locationName}
+                          {dateLabel ? ` / ${dateLabel}` : ""}
+                        </p>
+                      </div>
+                      {review.googleMapsUri ? (
                         <Link
-                          href={review.authorUri}
+                          href={review.googleMapsUri}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex text-xs font-semibold tracking-[0.12em] text-smoke uppercase hover:text-deep-teal"
+                          className="mt-4 inline-flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
                         >
-                          {review.authorName}
+                          View on Google
+                          <ExternalLink className="h-3.5 w-3.5" />
                         </Link>
                       ) : (
-                        <p className="text-xs font-semibold tracking-[0.12em] text-smoke uppercase">
-                          {review.authorName}
-                        </p>
+                        <Link
+                          href="/schedule-appointment"
+                          className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
+                        >
+                          Book a Similar Experience
+                        </Link>
                       )}
-                      <p className="text-xs leading-5 text-smoke">
-                        {review.locationName}
-                        {dateLabel ? ` / ${dateLabel}` : ""}
-                      </p>
-                    </div>
-                    {review.googleMapsUri ? (
-                      <Link
-                        href={review.googleMapsUri}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-4 inline-flex items-center gap-2 text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
-                      >
-                        View on Google
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </Link>
-                    ) : (
-                      <Link
-                        href="/schedule-appointment"
-                        className="mt-4 inline-flex text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase hover:text-ink"
-                      >
-                        Book a Similar Experience
-                      </Link>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </Container>
-      </WaveSection>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </Container>
+        </WaveSection>
+      ) : null}
     </>
   );
 }

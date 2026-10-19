@@ -535,6 +535,37 @@ export default defineConfig({
                 label: "Journal Section",
                 fields: [textField("eyebrow", "Eyebrow"), textField("title", "Title"), textField("description", "Description", true)],
               },
+              {
+                type: "object",
+                name: "socialReels",
+                label: "Social Reels",
+                fields: [
+                  textField("eyebrow", "Eyebrow"),
+                  textField("title", "Title"),
+                  textField("description", "Description", true),
+                  { ...textField("instagramHref", "Instagram Profile URL"), required: true },
+                  textField("tiktokHref", "TikTok Profile URL"),
+                  { ...imageField("fallbackImage", "Editorial Fallback Image"), required: true },
+                  { ...textField("fallbackImageAlt", "Editorial Image Alt Text"), required: true },
+                  {
+                    type: "object",
+                    name: "clips",
+                    label: "Clips",
+                    list: true,
+                    ui: objectListUi("Social Clip", "title", "id"),
+                    fields: [
+                      { ...textField("id", "ID"), required: true },
+                      { ...textField("title", "Title"), required: true },
+                      {
+                        ...textField("href", "Instagram Reel or TikTok Video URL"),
+                        required: true,
+                      },
+                      { ...imageField("poster", "Poster Image"), required: true },
+                      { ...textField("posterAlt", "Poster Image Alt Text"), required: true },
+                    ],
+                  },
+                ],
+              },
             ],
           },
           {

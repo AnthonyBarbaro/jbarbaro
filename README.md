@@ -62,7 +62,7 @@ See `.env.example`:
 ## Key Features
 
 - Full multi-page marketing site with modern luxury design language
-- Shopify-ready headless commerce scaffold:
+- Headless Shopify storefront:
   - Server-side Storefront API client
   - Secure cart session cookie
   - Cart API routes at `/api/shopify/cart`
@@ -73,7 +73,7 @@ See `.env.example`:
 - Staff confirms appointments by replying directly to the customer's request email
 - Customer acknowledgment explains that the requested time still needs confirmation
 - Internal email notifications for appointment/contact/wedding submissions
-- Contact and wedding submissions send customer confirmation emails
+- Contact and wedding acknowledgments follow confirmed staff SMTP acceptance
 - Appointment, contact and wedding requests are delivered by email; no appointment database is required
 - Tuxedo rentals marketing funnel:
   - `/suit-tuxedo-rentals` catalog page
@@ -117,6 +117,7 @@ See `.env.example`:
 - Tuxedo rentals: `/suit-tuxedo-rentals`
 - Wedding registration: `/register-your-wedding`
 - Contact: `/contact-us`
+- Shipping & returns: `/shipping-returns`
 - Locations: `/locations`, `/location/[locationSlug]`
 - Designers: `/designers/*`, `/collection-brand/[brandSlug]`
 - Men categories: `/for-men/*`
@@ -139,12 +140,12 @@ SMTP acceptance means the mail server accepted the message; it does not prove in
 
 ## Shopify Rollout Notes
 
-The current implementation prepares the site for a headless Shopify setup rather than a hosted template storefront.
+The Next.js storefront already includes Shopify product and collection queries, variant selection,
+Quick Add, bag controls, gift-wrap pairing, and a hosted Shopify checkout handoff. Configure the
+Storefront credentials privately in the deployment environment.
 
-- Add the Storefront API credentials in `.env`
-- Keep the front-end in this Next.js app
-- Use the built-in cart routes for session management and checkout handoff
-- Next implementation milestone:
-  - product and collection queries from Shopify
-  - add-to-cart actions on product/category pages
-  - real cart UI and quantity controls
+See the [launch checklist](docs/launch-checklist.md) for current release evidence and remaining
+provider/staff checks. Checkout tests are currently mocked; hosted payments, fulfillment, and the
+external POS inventory bridge have not been signed off. Newsletter signup is hidden until an
+enrollment service is connected. The approved return rule is 14 days from receipt with tags attached;
+additional fees, exceptions, and exchange rules still need business confirmation.

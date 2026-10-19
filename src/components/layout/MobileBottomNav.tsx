@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, Search, Store, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 
 import { HeaderCartButton } from "@/components/layout/HeaderCartButton";
 import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
@@ -20,7 +20,7 @@ function MobileNavLink({
   href: string;
   icon: React.ReactNode;
   label: string;
-}) {
+}): ReactElement {
   return (
     <Link
       href={href}
@@ -36,10 +36,10 @@ function MobileNavLink({
   );
 }
 
-export function MobileBottomNav() {
-  const pathname = usePathname();
+function MobileBottomNavForPath({ pathname }: { pathname: string }): ReactElement | null {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const searchButtonRef = useRef<HTMLButtonElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement | null>(null);
   const isCheckout = pathname === "/checkout" || pathname.startsWith("/checkout/");
 
   useEffect(() => {
@@ -48,19 +48,87 @@ export function MobileBottomNav() {
     }
 
     const previousOverflow = document.body.style.overflow;
+    const trigger = searchButtonRef.current;
+    const dialog = dialogRef.current;
+    const desktop = window.matchMedia("(min-width: 1024px)");
     document.body.style.overflow = "hidden";
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+    function focusableElements(): HTMLElement[] {
+      return Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          "a[href], button, input, select, textarea, [tabindex]",
+        ) ?? [],
+      ).filter(
+        (element) =>
+          element.tabIndex >= 0 &&
+          !element.matches(":disabled") &&
+          !element.closest("[inert]") &&
+          element.getClientRects().length > 0 &&
+          window.getComputedStyle(element).visibility !== "hidden",
+      );
+    }
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      dialog?.querySelector<HTMLInputElement>('input[type="search"]')?.focus({
+        preventScroll: true,
+      });
+    });
+
+    function handleKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
+        event.preventDefault();
+        setIsSearchOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const elements = focusableElements();
+      const first = elements[0];
+      const last = elements.at(-1);
+
+      if (!first || !last) {
+        event.preventDefault();
+        dialog?.focus({ preventScroll: true });
+      } else if (!dialog?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus({ preventScroll: true });
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    }
+
+    function keepFocusInside(event: FocusEvent): void {
+      if (event.target instanceof Node && !dialog?.contains(event.target)) {
+        (focusableElements()[0] ?? dialog)?.focus({ preventScroll: true });
+      }
+    }
+
+    function closeForDesktop(event: MediaQueryListEvent): void {
+      if (event.matches) {
         setIsSearchOpen(false);
       }
-    };
+    }
 
+    document.addEventListener("focusin", keepFocusInside);
     window.addEventListener("keydown", handleKeyDown);
+    desktop.addEventListener("change", closeForDesktop);
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("focusin", keepFocusInside);
       window.removeEventListener("keydown", handleKeyDown);
+      desktop.removeEventListener("change", closeForDesktop);
       document.body.style.overflow = previousOverflow;
+      if (trigger?.isConnected && trigger.getClientRects().length > 0) {
+        trigger.focus({ preventScroll: true });
+      }
     };
   }, [isSearchOpen]);
 
@@ -92,6 +160,7 @@ export function MobileBottomNav() {
           icon={<Store className="h-[18px] w-[18px]" aria-hidden />}
         />
         <button
+          ref={searchButtonRef}
           type="button"
           onClick={() => setIsSearchOpen(true)}
           className={cn(
@@ -100,6 +169,7 @@ export function MobileBottomNav() {
           )}
           aria-haspopup="dialog"
           aria-expanded={isSearchOpen}
+          aria-controls="mobile-product-search"
         >
           <Search className="h-[18px] w-[18px]" aria-hidden />
           <span>Search</span>
@@ -110,19 +180,22 @@ export function MobileBottomNav() {
 
       {isSearchOpen ? (
         <div
+          ref={dialogRef}
+          id="mobile-product-search"
           className="mobile-search-backdrop fixed inset-0 z-[180] flex items-start justify-center bg-ink/38 px-4 pt-[max(5.5rem,calc(env(safe-area-inset-top)+4rem))] pb-[max(5rem,env(safe-area-inset-bottom))] backdrop-blur-[10px] lg:hidden"
           role="dialog"
           aria-modal="true"
           aria-label="Search products"
+          tabIndex={-1}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
+              event.preventDefault();
               setIsSearchOpen(false);
             }
           }}
         >
           <div className="mobile-search-panel relative w-full max-w-[32rem] rounded-xl border border-white/50 bg-white p-3 shadow-[0_28px_90px_-28px_rgba(0,0,0,0.58)]">
             <button
-              ref={closeButtonRef}
               type="button"
               onClick={() => setIsSearchOpen(false)}
               className="absolute -top-14 right-0 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/45 bg-ink/75 text-white backdrop-blur-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40"
@@ -141,4 +214,10 @@ export function MobileBottomNav() {
       ) : null}
     </>
   );
+}
+
+export function MobileBottomNav(): ReactElement {
+  const pathname = usePathname();
+
+  return <MobileBottomNavForPath key={pathname} pathname={pathname} />;
 }

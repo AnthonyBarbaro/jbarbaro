@@ -9,13 +9,13 @@ required.
 
 Set these privately in the hosting provider, then restart or redeploy the app:
 
-| Setting | Purpose |
-| --- | --- |
-| `SMTP_HOST` | Regional AWS SES SMTP endpoint |
-| `SMTP_PORT`, `SMTP_SECURE` | `587` and `false` for STARTTLS, or `465` and `true` |
-| `SMTP_USER`, `SMTP_PASS` | Regional SES SMTP credentials |
-| `SMTP_FROM` | Verified SES sender address or verified-domain address |
-| `SMTP_REPLY_TO` | Monitored showroom inbox for replies to customer acknowledgments |
+| Setting                       | Purpose                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| `SMTP_HOST`                   | Regional AWS SES SMTP endpoint                                                  |
+| `SMTP_PORT`, `SMTP_SECURE`    | `587` and `false` for STARTTLS, or `465` and `true`                             |
+| `SMTP_USER`, `SMTP_PASS`      | Regional SES SMTP credentials                                                   |
+| `SMTP_FROM`                   | Verified SES sender address or verified-domain address                          |
+| `SMTP_REPLY_TO`               | Monitored showroom inbox for replies to customer acknowledgments                |
 | `APPOINTMENT_NOTIFICATION_TO` | Staff inbox receiving appointment requests; comma-separated addresses supported |
 
 The staff email's Reply-To is the customer's address, so **Reply** opens a message
@@ -26,6 +26,35 @@ Appointment mail requires TLS. AWS SES sandbox accounts can send only to verifie
 recipients; production customer email requires SES production access. See
 [AWS SES SMTP setup](https://docs.aws.amazon.com/ses/latest/dg/send-email-smtp.html).
 Do not put SMTP credentials in Git or public environment variables.
+
+## Verified sending domain
+
+On 2026-10-19, `jbarbaro.com` was verified in SES region `us-west-1` with
+2048-bit Easy DKIM. Three generated CNAME records were added to its authoritative
+Route53 zone. Public DNS resolved all three; Route53 reported `INSYNC`; SES
+reported domain verification and DKIM `SUCCESS`, signing enabled, and verified
+for sending. The SMTP credentials were confirmed to belong to the same AWS
+account. SES production access and sending were enabled at this check.
+
+Use these values in the production host as well as the local environment:
+
+```dotenv
+SMTP_HOST="email-smtp.us-west-1.amazonaws.com"
+SMTP_FROM="J. Barbaro Clothiers <info@jbarbaro.com>"
+SMTP_REPLY_TO="info@jbarbaro.com"
+```
+
+Keep the existing regional SMTP credentials private. The local `SMTP_FROM` was
+updated and a test to the monitored inbox was accepted by SMTP. Hosted production
+environment values were not changed in this operation. Restart/redeploy after
+updating hosted settings and verify a new message has an aligned `jbarbaro.com`
+DKIM signature and `dmarc=pass`.
+
+The original test used a `barbaro.tech` sender with only an `amazonses.com` DKIM
+signature; its headers showed DMARC and Microsoft composite authentication
+failures. The approved sending domain is now `jbarbaro.com`. DMARC can pass
+through its aligned DKIM signature while SES retains its default MAIL FROM.
+Existing MX, SPF, DMARC, and other DKIM records were preserved.
 
 ## What the customer sees
 

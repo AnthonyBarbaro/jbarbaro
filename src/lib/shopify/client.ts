@@ -4,6 +4,7 @@ import { requireShopifyConfig } from "@/lib/shopify/config";
 
 type StorefrontError = {
   message: string;
+  path?: Array<string | number>;
   extensions?: {
     code?: string;
   };
@@ -35,20 +36,23 @@ export async function storefrontRequest<TData, TVariables = Record<string, never
   cache = "no-store",
 }: StorefrontRequest<TVariables>): Promise<TData> {
   const config = requireShopifyConfig();
-  const response = await fetch(`https://${config.storeDomain}/api/${config.apiVersion}/graphql.json`, {
-    method: "POST",
-    cache,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      "X-Shopify-Storefront-Access-Token": config.storefrontAccessToken,
-      ...(buyerIp ? { "Shopify-Storefront-Buyer-IP": buyerIp } : {}),
+  const response = await fetch(
+    `https://${config.storeDomain}/api/${config.apiVersion}/graphql.json`,
+    {
+      method: "POST",
+      cache,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Shopify-Storefront-Access-Token": config.storefrontAccessToken,
+        ...(buyerIp ? { "Shopify-Storefront-Buyer-IP": buyerIp } : {}),
+      },
+      body: JSON.stringify({
+        query,
+        variables,
+      }),
     },
-    body: JSON.stringify({
-      query,
-      variables,
-    }),
-  });
+  );
 
   if (!response.ok) {
     throw new Error(`Shopify Storefront API request failed with status ${response.status}.`);
@@ -57,8 +61,29 @@ export async function storefrontRequest<TData, TVariables = Record<string, never
   const payload = (await response.json()) as StorefrontResponse<TData>;
 
   if (payload.errors?.length) {
+    const inventoryDenied = payload.errors.every(
+      (error) =>
+        error.extensions?.code === "ACCESS_DENIED" &&
+        (error.path?.at(-1) === "quantityAvailable" ||
+          /access denied for quantityAvailable field/i.test(error.message)),
+    );
+    if (
+      inventoryDenied &&
+      !/\bmutation\b/.test(query) &&
+      /^\s*quantityAvailable\s*$/m.test(query)
+    ) {
+      // Inventory permission is optional. Never repeat a cart mutation to recover a read field.
+      return storefrontRequest<TData, TVariables>({
+        query: query.replace(/^\s*quantityAvailable\s*$/gm, ""),
+        variables,
+        buyerIp,
+        cache,
+      });
+    }
     const message = payload.errors
-      .map((error) => (error.extensions?.code ? `${error.extensions.code}: ${error.message}` : error.message))
+      .map((error) =>
+        error.extensions?.code ? `${error.extensions.code}: ${error.message}` : error.message,
+      )
       .join(" ");
 
     throw new Error(message);

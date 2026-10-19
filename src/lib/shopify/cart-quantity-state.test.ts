@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   applyCartQuantityPayload,
   getCartDisplayWarnings,
+  getInventoryQuantityLimit,
   getRemainingCartVariantQuantity,
   getVariantCartQuantity,
   type CartQuantityState,
@@ -69,6 +70,119 @@ test("unknown inventory does not create a quantity ceiling", () => {
   );
   assert.equal(getRemainingCartVariantQuantity(state, "shirt-m"), null);
   assert.equal(getVariantCartQuantity(state.cart, "shirt-m"), 1);
+});
+
+test("a fresh or reloaded cart applies stock before any rejected add", () => {
+  const snapshot = cart([
+    {
+      ...line("last-unit", "shirt-m", 1),
+      inventory: { quantityAvailable: 1, currentlyNotInStock: false, availableForSale: true },
+    },
+  ]);
+  const loaded = applyCartQuantityPayload(emptyState(), payload(snapshot));
+  const reloaded = applyCartQuantityPayload(emptyState(), payload(snapshot));
+  assert.equal(getRemainingCartVariantQuantity(loaded, "shirt-m"), 0);
+  assert.equal(getRemainingCartVariantQuantity(reloaded, "shirt-m"), 0);
+  assert.equal(loaded.limits.size, 0);
+});
+
+test("product stock subtracts wrapped and unwrapped copies without imposing a one-item limit", () => {
+  const snapshot = cart([
+    {
+      ...line("wrapped", "shirt-m", 1),
+      attributes: [{ key: "_gift_wrap_group", value: "group" }],
+    },
+    line("plain", "shirt-m", 1),
+    line("other-size", "shirt-l", 1),
+  ]);
+  const state = applyCartQuantityPayload(emptyState(), payload(snapshot));
+  assert.equal(getRemainingCartVariantQuantity(state, "shirt-m", { quantityAvailable: 2 }), 0);
+  assert.equal(getRemainingCartVariantQuantity(state, "shirt-m", { quantityAvailable: 4 }), 2);
+  assert.equal(getRemainingCartVariantQuantity(state, "shirt-l", { quantityAvailable: 4 }), 3);
+});
+
+test("unknown, malformed and intentional backorder quantities stay uncapped", () => {
+  for (const inventory of [
+    undefined,
+    { quantityAvailable: null },
+    { quantityAvailable: -1 },
+    { quantityAvailable: 1.5 },
+    { quantityAvailable: Number.NaN },
+    { quantityAvailable: Infinity },
+    { quantityAvailable: 0, currentlyNotInStock: true },
+    { quantityAvailable: 2, currentlyNotInStock: true },
+  ]) {
+    assert.equal(getInventoryQuantityLimit(inventory), null);
+  }
+  assert.equal(getInventoryQuantityLimit({ quantityAvailable: 0, currentlyNotInStock: false }), 0);
+  assert.equal(getInventoryQuantityLimit({ quantityAvailable: 6 }), 6);
+  assert.equal(getInventoryQuantityLimit({ availableForSale: false }), 0);
+});
+
+test("fresh cart inventory replaces stale product data and observed ceilings after a restock", () => {
+  const snapshot = cart([line("shirt", "shirt-m", 1)]);
+  const capped = applyCartQuantityPayload(emptyState(), payload(snapshot, "shirt"));
+  const restocked = applyCartQuantityPayload(
+    capped,
+    payload(
+      cart([
+        {
+          ...line("shirt", "shirt-m", 1),
+          inventory: { quantityAvailable: 3, currentlyNotInStock: false },
+        },
+      ]),
+    ),
+  );
+  assert.equal(getRemainingCartVariantQuantity(restocked, "shirt-m", { quantityAvailable: 1 }), 2);
+  const backordered = applyCartQuantityPayload(
+    restocked,
+    payload(
+      cart([
+        {
+          ...line("shirt", "shirt-m", 1),
+          inventory: { quantityAvailable: 0, currentlyNotInStock: true },
+        },
+      ]),
+    ),
+  );
+  assert.equal(
+    getRemainingCartVariantQuantity(backordered, "shirt-m", { quantityAvailable: 1 }),
+    null,
+  );
+});
+
+test("exact cart inventory is used even when the selected variant is outside the variant list", () => {
+  const snapshot = cart([
+    {
+      ...line("shirt", "shirt-m", 1),
+      inventory: { quantityAvailable: 1 },
+      variants: [
+        {
+          id: "shirt-l",
+          title: "L",
+          availableForSale: true,
+          quantityAvailable: 4,
+          price: { amount: "10", currencyCode: "USD" },
+          compareAtPrice: null,
+          selectedOptions: [{ name: "Size", value: "L" }],
+        },
+      ],
+    },
+  ]);
+  const state = applyCartQuantityPayload(emptyState(), payload(snapshot));
+  assert.equal(getRemainingCartVariantQuantity(state, "shirt-m"), 0);
+  assert.equal(getRemainingCartVariantQuantity(state, "shirt-l"), 4);
+});
+
+test("mutation snapshots without inventory preserve fresh limits and server warnings remain authoritative", () => {
+  const loaded = applyCartQuantityPayload(
+    emptyState(),
+    payload(cart([{ ...line("shirt", "shirt-m", 1), inventory: { quantityAvailable: 4 } }])),
+  );
+  const updated = applyCartQuantityPayload(loaded, payload(cart([line("shirt", "shirt-m", 2)])));
+  assert.equal(getRemainingCartVariantQuantity(updated, "shirt-m"), 2);
+  const capped = applyCartQuantityPayload(updated, payload(updated.cart, "shirt"));
+  assert.equal(getRemainingCartVariantQuantity(capped, "shirt-m"), 0);
 });
 
 test("stock ceilings apply to the same variant across wrapped and unwrapped items", () => {

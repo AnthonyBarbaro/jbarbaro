@@ -2,73 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { sendContactSubmissionEmails } from "@/lib/email";
+import {
+  formReference,
+  formRequestIp,
+  invalidForm,
+  readFormJson,
+  submissionEmailResponse,
+} from "@/lib/form-request";
 import { contactRateLimiter } from "@/lib/rate-limit";
-import { createSubmissionReference } from "@/lib/submission-reference";
 import type { ContactSubmissionPayload } from "@/types/submissions";
 
-const contactSchema = z.object({
-  name: z.string().min(2),
-  email: z.email(),
-  phone: z.string().max(30).optional().or(z.literal("")),
-  message: z.string().min(8).max(2000),
-  website: z.string().optional(),
-});
+export const runtime = "nodejs";
 
-function getRequestIp(request: NextRequest) {
-  const forwarded = request.headers.get("x-forwarded-for");
+const contactSchema = z
+  .object({
+    requestId: z.uuid(),
+    name: z.string().trim().min(2).max(120),
+    email: z.email().max(254),
+    phone: z.string().trim().max(30).optional(),
+    message: z.string().trim().min(8).max(2000),
+    website: z.string().max(200).optional(),
+  })
+  .strict();
 
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim();
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const raw = await readFormJson(request);
+  if (!raw.ok) return raw.response;
+  const parsed = contactSchema.safeParse(raw.value);
+  if (!parsed.success || parsed.data.website?.trim()) {
+    return invalidForm("Please check your name, email, phone, and message.");
   }
-
-  return "unknown";
-}
-
-export async function POST(request: NextRequest) {
+  const ip = formRequestIp(request);
+  if (!contactRateLimiter.check(ip).allowed) {
+    return invalidForm("Too many submissions. Please try later or call the showroom.", 429);
+  }
+  const submission: ContactSubmissionPayload = {
+    reference: formReference("CTC", parsed.data.requestId),
+    submittedAt: new Date(),
+    name: parsed.data.name,
+    email: parsed.data.email,
+    phone: parsed.data.phone || null,
+    message: parsed.data.message,
+    ipAddress: ip,
+    userAgent: request.headers.get("user-agent")?.slice(0, 500) || null,
+  };
   try {
-    const raw = await request.json();
-    const parsed = contactSchema.safeParse(raw);
-
-    if (!parsed.success) {
-      return NextResponse.json({ message: "Invalid contact form data." }, { status: 400 });
-    }
-
-    if (parsed.data.website && parsed.data.website.trim() !== "") {
-      return NextResponse.json({ message: "Message received." }, { status: 200 });
-    }
-
-    const ip = getRequestIp(request);
-    const rateCheck = contactRateLimiter.check(ip);
-
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        {
-          message: "Too many submissions from this IP. Please try again later.",
-        },
-        { status: 429 },
-      );
-    }
-
-    const submission: ContactSubmissionPayload = {
-      reference: createSubmissionReference("CTC"),
-      submittedAt: new Date(),
-      name: parsed.data.name,
-      email: parsed.data.email,
-      phone: parsed.data.phone || null,
-      message: parsed.data.message,
-      ipAddress: ip,
-      userAgent: request.headers.get("user-agent"),
-    };
-
     const delivery = await sendContactSubmissionEmails(submission);
-    const deliveryMessage =
-      delivery.customer === "SENT"
-        ? ` Message sent. A confirmation email has been sent. Reference ${submission.reference}.`
-        : ` Message sent. Reference ${submission.reference}.`;
-
-    return NextResponse.json({ message: deliveryMessage.trim() });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Unexpected server error." }, { status: 500 });
+    return submissionEmailResponse(delivery, submission.reference, "message");
+  } catch {
+    console.error("[Contact] Request receipt could not be confirmed.");
+    return submissionEmailResponse(
+      { internal: "UNKNOWN", customer: "SKIPPED" },
+      submission.reference,
+      "message",
+    );
   }
 }

@@ -1,21 +1,15 @@
 import Link from "next/link";
-import { Facebook, Instagram, Linkedin, PinIcon, Star, XIcon } from "lucide-react";
+import type { ReactElement } from "react";
+import { Facebook, Instagram, Linkedin, PinIcon, XIcon } from "lucide-react";
 
-import {
-  footerNewsletterCopy,
-  footerNewsletterTitle,
-  footerShoppingLinks,
-  footerUtilityLinks,
-} from "@/data/navigation";
-import { aggregateRating } from "@/data/testimonials";
+import { footerShoppingLinks, footerUtilityLinks } from "@/data/navigation";
 import { locations } from "@/data/locations";
 import { socialLinks } from "@/data/social";
-import { NewsletterSignup } from "@/components/marketing/NewsletterSignup";
 import { ButtonLink } from "@/components/ui/Button";
 import { LEGAL_OWNER } from "@/lib/constants";
 import { formatPhone } from "@/lib/utils";
 
-function socialIcon(label: string) {
+function socialIcon(label: string): ReactElement | null {
   const classes = "h-4 w-4";
 
   switch (label.toLowerCase()) {
@@ -34,21 +28,17 @@ function socialIcon(label: string) {
   }
 }
 
-export function SiteFooter() {
+export function SiteFooter(): ReactElement {
   return (
     <footer className="mt-16 bg-[#0b0f14] text-white">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.3fr_0.9fr_1fr_1fr] lg:px-8 lg:py-14">
         <section>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">
-            {footerNewsletterTitle}
+            J. Barbaro Clothiers
           </p>
           <h2 className="mt-4 font-heading text-3xl sm:text-4xl">
             Luxury Menswear, Tailored Locally.
           </h2>
-          <p className="mt-4 max-w-md text-sm leading-7 text-white/76">{footerNewsletterCopy}</p>
-          <div className="mt-5 max-w-md">
-            <NewsletterSignup source="footer" inverted />
-          </div>
           <div className="mt-6 flex flex-wrap gap-3">
             <ButtonLink href="/shop" size="sm">
               Shop Now
@@ -116,21 +106,7 @@ export function SiteFooter() {
         </section>
 
         <section>
-          <h2 className="font-heading text-2xl sm:text-3xl">Client Trust</h2>
-          <div className="mt-5 rounded-lg border border-white/16 bg-white/[0.08] p-5">
-            <div className="flex items-end gap-2">
-              <p className="text-4xl font-semibold">{aggregateRating.ratingValue}</p>
-              <p className="pb-1 text-sm text-white/75">/ 5.0</p>
-            </div>
-            <div className="mt-2 flex items-center gap-1 text-gold">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <Star key={index} className="h-4 w-4 fill-current" />
-              ))}
-            </div>
-            <p className="mt-2 text-sm leading-6 text-white/75">
-              Based on {aggregateRating.reviewCount} verified reviews.
-            </p>
-          </div>
+          <h2 className="font-heading text-2xl sm:text-3xl">Help &amp; Policies</h2>
           <ul className="mt-5 space-y-2 text-sm text-white/76">
             {footerUtilityLinks.map((item) => (
               <li key={item.href}>

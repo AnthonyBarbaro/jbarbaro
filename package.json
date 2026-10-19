@@ -21,7 +21,7 @@
     "lucide-react": "^0.577.0",
     "next": "16.3.8",
     "next-mdx-remote": "^6.0.0",
-    "nodemailer": "^8.0.1",
+    "nodemailer": "^10.1.7",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "rehype-autolink-headings": "^7.1.0",
@@ -29,14 +29,13 @@
     "remark-gfm": "^4.0.1",
     "sanitize-html": "2.18.0",
     "tailwind-merge": "^3.5.0",
-    "tinacms": "3.6.1",
+    "tinacms": "3.15.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@tinacms/cli": "2.1.9",
+    "@tinacms/cli": "4.0.3",
     "@types/node": "^24.13.3",
-    "@types/nodemailer": "^7.0.11",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/sanitize-html": "2.16.2",
@@ -45,7 +44,7 @@
     "eslint-config-next": "16.3.8",
     "prettier": "^3.8.1",
     "tailwindcss": "^4",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

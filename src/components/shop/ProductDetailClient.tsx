@@ -202,7 +202,7 @@ export function ProductDetailClient({
       : null;
   const selectedVariantIsAvailable = Boolean(selectedVariant?.availableForSale);
   const selectedVariantStockLimitReached = Boolean(
-    selectedVariant && !quantityStatus.canAddVariant(selectedVariant.id),
+    selectedVariant && !quantityStatus.canAddVariant(selectedVariant.id, 1, selectedVariant),
   );
   const stockLimitMessage = optionGroups.some((group) => /size/i.test(group.name))
     ? "No more available in this size."
@@ -214,7 +214,7 @@ export function ProductDetailClient({
   const addGiftWrap = giftWrapSelected;
   const giftWrapUnavailable = giftWrapSelected && !giftWrapOffer?.availableForSale;
   const giftWrapLimitReached = Boolean(
-    giftWrapOffer && !quantityStatus.canAddVariant(giftWrapOffer.merchandiseId),
+    giftWrapOffer && !quantityStatus.canAddVariant(giftWrapOffer.merchandiseId, 1, giftWrapOffer),
   );
   const giftWrapBlocked = giftWrapSelected && (giftWrapUnavailable || giftWrapLimitReached);
   const giftWrapCheckboxDisabled =
@@ -250,7 +250,9 @@ export function ProductDetailClient({
     ? "Sold out"
     : selectedVariant
       ? selectedVariantIsAvailable
-        ? "In stock, ready to ship"
+        ? selectedVariant.currentlyNotInStock
+          ? "Available on backorder"
+          : "In stock, ready to ship"
         : "Sold out"
       : `${selectionPrompt} to continue`;
   const selectedOptionSummary = selectedVariant?.selectedOptions
@@ -1055,9 +1057,11 @@ export function ProductDetailClient({
                   <AddToCartButton
                     merchandiseId={selectedVariant.id}
                     availableForSale={selectedVariant.availableForSale}
+                    inventory={selectedVariant}
                     itemName={product.title}
                     giftWrap={addGiftWrap}
                     giftWrapVariantId={giftWrapOffer?.merchandiseId}
+                    giftWrapInventory={giftWrapOffer ?? undefined}
                     stockLimitMessage={stockLimitMessage}
                     disabled={isAddingToBag || needsBagReview || giftWrapBlocked}
                     onPendingChange={setIsAddingToBag}
@@ -1107,13 +1111,19 @@ export function ProductDetailClient({
 
               <details className="group">
                 <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 py-3 text-sm font-semibold text-ink">
-                  Shipping &amp; order support
+                  Shipping, returns &amp; order support
                   <ChevronDown className="h-4 w-4 shrink-0 transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="pb-6 text-sm leading-7 text-smoke">
                   <p>
-                    Orders are prepared quickly and packed with care before leaving our shop. For
-                    delivery or availability questions,{" "}
+                    Review our{" "}
+                    <Link
+                      href="/shipping-returns"
+                      className="font-semibold text-deep-teal underline underline-offset-4"
+                    >
+                      shipping and returns information
+                    </Link>
+                    . For delivery or availability questions,{" "}
                     <Link
                       href="/contact-us"
                       className="font-semibold text-deep-teal underline underline-offset-4"
@@ -1179,10 +1189,12 @@ export function ProductDetailClient({
             <AddToCartButton
               merchandiseId={selectedVariant?.id ?? initialVariant.id}
               availableForSale={Boolean(selectedVariant?.availableForSale)}
+              inventory={selectedVariant ?? undefined}
               disabledLabel={disabledPurchaseLabel}
               itemName={product.title}
               giftWrap={addGiftWrap}
               giftWrapVariantId={giftWrapOffer?.merchandiseId}
+              giftWrapInventory={giftWrapOffer ?? undefined}
               stockLimitMessage={stockLimitMessage}
               showStockLimitMessage={false}
               disabled={isAddingToBag || needsBagReview || giftWrapBlocked}

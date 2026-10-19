@@ -9,7 +9,6 @@ import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { appointmentLocationMap, locations } from "@/data/locations";
-import { aggregateRating } from "@/data/testimonials";
 import { buildGoogleMapsEmbedUrl } from "@/lib/maps";
 import { SITE_URL } from "@/lib/constants";
 import { pageContent } from "@/lib/site-content";
@@ -40,11 +39,6 @@ export default function LocationsPage() {
       "@type": "GeoCoordinates",
       latitude: location.latitude,
       longitude: location.longitude,
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: aggregateRating.ratingValue,
-      reviewCount: aggregateRating.reviewCount,
     },
     url: `${SITE_URL}/location/${location.slug}`,
   }));

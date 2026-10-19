@@ -39,6 +39,8 @@ type RawProductVariant = {
   id: string;
   title: string;
   availableForSale: boolean;
+  quantityAvailable?: number | null;
+  currentlyNotInStock?: boolean;
   price: MoneyV2;
   compareAtPrice: MoneyV2 | null;
   selectedOptions: { name: string; value: string }[];
@@ -57,6 +59,9 @@ type RawCartLine = {
   merchandise: {
     id: string;
     title: string;
+    availableForSale?: boolean;
+    quantityAvailable?: number | null;
+    currentlyNotInStock?: boolean;
     selectedOptions: { name: string; value: string }[];
     image: {
       url: string;
@@ -113,7 +118,8 @@ type CartLinesRemoveResponse = {
   cartLinesRemove: CartMutationPayload;
 };
 
-const CART_FRAGMENT = `
+function cartFragment(includeInventory = false): string {
+  return `
   fragment CartSnapshotFields on Cart {
     checkoutUrl
     totalQuantity
@@ -164,6 +170,7 @@ const CART_FRAGMENT = `
           ... on ProductVariant {
             id
             title
+            ${includeInventory ? "availableForSale\nquantityAvailable\ncurrentlyNotInStock" : ""}
             selectedOptions {
               name
               value
@@ -180,6 +187,7 @@ const CART_FRAGMENT = `
                   id
                   title
                   availableForSale
+                  ${includeInventory ? "quantityAvailable\ncurrentlyNotInStock" : ""}
                   price {
                     amount
                     currencyCode
@@ -201,6 +209,9 @@ const CART_FRAGMENT = `
     }
   }
 `;
+}
+
+const CART_FRAGMENT = cartFragment();
 
 function toCartMoney(value: MoneyV2): ShopifyMoney {
   return {
@@ -209,18 +220,27 @@ function toCartMoney(value: MoneyV2): ShopifyMoney {
   };
 }
 
-function normalizeCartVariants(nodes: RawProductVariant[]): ShopifyProductVariant[] {
+function normalizeCartVariants(
+  nodes: RawProductVariant[],
+  includeInventory: boolean,
+): ShopifyProductVariant[] {
   return (Array.isArray(nodes) ? nodes : []).map((variant) => ({
     id: variant.id,
     title: variant.title,
     availableForSale: variant.availableForSale,
+    ...(includeInventory
+      ? {
+          quantityAvailable: variant.quantityAvailable ?? null,
+          currentlyNotInStock: variant.currentlyNotInStock,
+        }
+      : {}),
     price: toCartMoney(variant.price),
     compareAtPrice: variant.compareAtPrice ? toCartMoney(variant.compareAtPrice) : null,
     selectedOptions: variant.selectedOptions,
   }));
 }
 
-function normalizeCart(cart: RawCart): ShopifyCartSnapshot {
+function normalizeCart(cart: RawCart, includeInventory = false): ShopifyCartSnapshot {
   return {
     totalQuantity: cart.totalQuantity,
     checkoutUrl: cart.checkoutUrl,
@@ -240,12 +260,21 @@ function normalizeCart(cart: RawCart): ShopifyCartSnapshot {
       ),
       parentLineId: line.parentRelationship?.parent.id ?? null,
       instructions: line.instructions ?? { canRemove: true, canUpdateQuantity: true },
+      ...(includeInventory && line.merchandise
+        ? {
+            inventory: {
+              availableForSale: line.merchandise.availableForSale,
+              quantityAvailable: line.merchandise.quantityAvailable ?? null,
+              currentlyNotInStock: line.merchandise.currentlyNotInStock,
+            },
+          }
+        : {}),
       selectedOptions: line.merchandise?.selectedOptions ?? [],
       image: line.merchandise?.image ?? null,
       unitPrice: toCartMoney(line.cost.amountPerQuantity),
       totalPrice: toCartMoney(line.cost.totalAmount),
       variants: line.merchandise
-        ? normalizeCartVariants(line.merchandise.product.variants.nodes)
+        ? normalizeCartVariants(line.merchandise.product.variants.nodes, includeInventory)
         : [],
     })),
   };
@@ -396,7 +425,7 @@ export async function getCartWithLineAttributes(
     buyerIp,
     cache: "no-store",
     query: `
-      ${CART_FRAGMENT}
+      ${cartFragment(true)}
       query GetCart($cartId: ID!) {
         cart(id: $cartId) {
           ...CartSnapshotFields
@@ -409,7 +438,7 @@ export async function getCartWithLineAttributes(
   });
 
   return {
-    cart: data.cart ? normalizeCart(data.cart) : null,
+    cart: data.cart ? normalizeCart(data.cart, true) : null,
     // Keep other line properties on the server when replacing the attribute array.
     lineAttributes: new Map(
       (data.cart?.lines.nodes ?? []).map((line) => [line.id, line.attributes ?? []]),

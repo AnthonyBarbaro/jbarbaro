@@ -1,5 +1,10 @@
 # Ecommerce Rollout Plan
 
+Historical rollout proposal. Product pages, collections, bag controls, and checkout handoff are
+implemented. Use the [README](../README.md#shopify-rollout-notes) and
+[launch checklist](launch-checklist.md) for current behavior and remaining provider verification.
+The phases below describe the original rollout, not current missing features.
+
 ## Current state
 
 - Shopify Storefront API is connected.

@@ -75,6 +75,8 @@ type RawProduct = {
       id: string;
       title: string;
       availableForSale: boolean;
+      quantityAvailable?: number | null;
+      currentlyNotInStock?: boolean;
       price: {
         amount: string;
         currencyCode: string;
@@ -256,6 +258,8 @@ const productFields = `
       id
       title
       availableForSale
+      quantityAvailable
+      currentlyNotInStock
       price {
         amount
         currencyCode

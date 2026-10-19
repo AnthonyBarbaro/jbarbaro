@@ -8,7 +8,13 @@ export type ShopifyProductReviewSummary = {
   reviewCount: number;
 };
 
-export type ShopifyProductVariant = {
+export type ShopifyVariantInventory = {
+  quantityAvailable?: number | null;
+  currentlyNotInStock?: boolean;
+  availableForSale?: boolean;
+};
+
+export type ShopifyProductVariant = ShopifyVariantInventory & {
   id: string;
   title: string;
   availableForSale: boolean;
@@ -17,7 +23,7 @@ export type ShopifyProductVariant = {
   selectedOptions: { name: string; value: string }[];
 };
 
-export type ShopifyGiftWrapOffer = {
+export type ShopifyGiftWrapOffer = ShopifyVariantInventory & {
   merchandiseId: string;
   title: string;
   price: ShopifyMoney;
@@ -99,6 +105,7 @@ export type ShopifyCartSnapshot = {
     attributes?: { key: string; value: string }[];
     parentLineId?: string | null;
     instructions?: { canRemove: boolean; canUpdateQuantity: boolean };
+    inventory?: ShopifyVariantInventory;
     selectedOptions: { name: string; value: string }[];
     image: {
       url: string;

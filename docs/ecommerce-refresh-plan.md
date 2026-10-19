@@ -1,8 +1,13 @@
 # Ecommerce Refresh Plan
 
 Date: 2026-04-28
-Status: Multi-agent ecommerce refresh implemented and verified
+Status: Historical refresh record — see launch checklist for current verification
 Mission: Evolve the existing site from marketing-first toward ecommerce-first without changing the core brand, architecture, or service identity.
+
+The snapshot below records the April refresh. Newsletter signup is now hidden and its API disabled;
+its former email/log fallback did not create a marketing subscription. Current behavior, security
+updates, purchase policies, and integration verification are tracked in the
+[launch checklist](launch-checklist.md).
 
 ## Current Implementation Snapshot
 

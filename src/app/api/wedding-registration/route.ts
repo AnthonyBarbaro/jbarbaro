@@ -2,94 +2,74 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { locationMap } from "@/data/locations";
+import { parseAppointmentDate } from "@/lib/appointments/time";
 import { sendWeddingRegistrationEmails } from "@/lib/email";
+import {
+  formReference,
+  formRequestIp,
+  invalidForm,
+  readFormJson,
+  submissionEmailResponse,
+} from "@/lib/form-request";
 import { weddingRateLimiter } from "@/lib/rate-limit";
-import { createSubmissionReference } from "@/lib/submission-reference";
 import type { WeddingRegistrationPayload } from "@/types/submissions";
 
-const weddingRegistrationSchema = z.object({
-  groomName: z.string().min(2),
-  brideName: z.string().min(2),
-  phone: z.string().min(7).max(30),
-  email: z.email(),
-  weddingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  numberGroomsmen: z.number().int().min(1).max(50),
-  locationSlug: z.string().optional(),
-  notes: z.string().max(2000).optional().or(z.literal("")),
-  website: z.string().optional(),
-});
+export const runtime = "nodejs";
 
-function getRequestIp(request: NextRequest) {
-  const forwarded = request.headers.get("x-forwarded-for");
+const weddingRegistrationSchema = z
+  .object({
+    requestId: z.uuid(),
+    groomName: z.string().trim().min(2).max(120),
+    brideName: z.string().trim().min(2).max(120),
+    phone: z.string().trim().min(7).max(30),
+    email: z.email().max(254),
+    weddingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    numberGroomsmen: z.number().int().min(1).max(50),
+    locationSlug: z.string().max(100).optional(),
+    notes: z.string().trim().max(2000).optional(),
+    website: z.string().max(200).optional(),
+  })
+  .strict();
 
-  if (forwarded) {
-    return forwarded.split(",")[0]?.trim();
+export async function POST(request: NextRequest): Promise<NextResponse> {
+  const raw = await readFormJson(request);
+  if (!raw.ok) return raw.response;
+  const parsed = weddingRegistrationSchema.safeParse(raw.value);
+  if (!parsed.success || parsed.data.website?.trim()) {
+    return invalidForm("Please check your names, email, phone, wedding date, and party size.");
   }
-
-  return "unknown";
-}
-
-export async function POST(request: NextRequest) {
+  if (parsed.data.locationSlug && !Object.hasOwn(locationMap, parsed.data.locationSlug)) {
+    return invalidForm("Choose a valid showroom.");
+  }
+  const weddingDate = parseAppointmentDate(parsed.data.weddingDate);
+  if (!weddingDate) return invalidForm("Enter a valid wedding date.");
+  const ip = formRequestIp(request);
+  if (!weddingRateLimiter.check(ip).allowed) {
+    return invalidForm("Too many submissions. Please try later or call the showroom.", 429);
+  }
+  const registration: WeddingRegistrationPayload = {
+    reference: formReference("WDG", parsed.data.requestId),
+    submittedAt: new Date(),
+    groomName: parsed.data.groomName,
+    brideName: parsed.data.brideName,
+    phone: parsed.data.phone,
+    email: parsed.data.email,
+    weddingDate,
+    numberGroomsmen: parsed.data.numberGroomsmen,
+    locationSlug: parsed.data.locationSlug || null,
+    notes: parsed.data.notes || null,
+    ipAddress: ip,
+    userAgent: request.headers.get("user-agent")?.slice(0, 500) || null,
+  };
   try {
-    const raw = await request.json();
-    const parsed = weddingRegistrationSchema.safeParse(raw);
-
-    if (!parsed.success) {
-      return NextResponse.json({ message: "Invalid wedding registration data." }, { status: 400 });
-    }
-
-    if (parsed.data.website && parsed.data.website.trim() !== "") {
-      return NextResponse.json({ message: "Registration received." }, { status: 200 });
-    }
-
-    if (parsed.data.locationSlug && !locationMap[parsed.data.locationSlug]) {
-      return NextResponse.json({ message: "Invalid location selected." }, { status: 400 });
-    }
-
-    const weddingDate = new Date(`${parsed.data.weddingDate}T00:00:00`);
-
-    if (Number.isNaN(weddingDate.getTime())) {
-      return NextResponse.json({ message: "Invalid wedding date." }, { status: 400 });
-    }
-
-    const ip = getRequestIp(request);
-    const rateCheck = weddingRateLimiter.check(ip);
-
-    if (!rateCheck.allowed) {
-      return NextResponse.json(
-        {
-          message: "Too many submissions from this IP. Please try again later.",
-        },
-        { status: 429 },
-      );
-    }
-
-    const registration: WeddingRegistrationPayload = {
-      reference: createSubmissionReference("WDG"),
-      submittedAt: new Date(),
-      groomName: parsed.data.groomName,
-      brideName: parsed.data.brideName,
-      phone: parsed.data.phone,
-      email: parsed.data.email,
-      weddingDate,
-      numberGroomsmen: parsed.data.numberGroomsmen,
-      locationSlug: parsed.data.locationSlug || null,
-      notes: parsed.data.notes || null,
-      ipAddress: ip,
-      userAgent: request.headers.get("user-agent"),
-    };
-
     const delivery = await sendWeddingRegistrationEmails(registration);
-    const deliveryMessage =
-      delivery.customer === "SENT"
-        ? `Wedding registration submitted. Reference ${registration.reference}. A confirmation email has been sent.`
-        : `Wedding registration submitted. Reference ${registration.reference}.`;
-
-    return NextResponse.json({
-      message: deliveryMessage,
-    });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: "Unexpected server error." }, { status: 500 });
+    return submissionEmailResponse(delivery, registration.reference, "wedding registration");
+  } catch {
+    console.error("[Wedding] Request receipt could not be confirmed.");
+    return submissionEmailResponse(
+      { internal: "UNKNOWN", customer: "SKIPPED" },
+      registration.reference,
+      "wedding registration",
+    );
   }
 }

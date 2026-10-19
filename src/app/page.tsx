@@ -1,9 +1,10 @@
-import { MapPin, Phone, Ruler, ShieldCheck, Store, Tags } from "lucide-react";
+import { MapPin, Phone } from "lucide-react";
 
 import { BrandProductRail } from "@/components/home/BrandProductRail";
 import { CollectionRail } from "@/components/home/CollectionRail";
 import { HeroCarousel } from "@/components/home/HeroCarousel";
 import { NewArrivalsCarousel } from "@/components/home/NewArrivalsCarousel";
+import { SocialReels } from "@/components/home/SocialReels";
 import { LocationOpenBadge } from "@/components/locations/LocationOpenBadge";
 import { ShowroomGallery } from "@/components/locations/ShowroomGallery";
 import { ShopProductCard } from "@/components/shop/ShopProductCard";
@@ -474,74 +475,7 @@ export default async function HomePage() {
         </Container>
       </WaveSection>
 
-      <WaveSection topWave="A" background="ivory">
-        <Container className="max-w-none px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
-          <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
-            <div>
-              <Badge variant="gold">Why J. Barbaro</Badge>
-              <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">
-                Menswear, made personal.
-              </h2>
-              <p className="mt-4 max-w-xl text-sm leading-7 text-smoke sm:text-base">
-                Shop premium menswear online with fit guidance when you need it, backed by two Metro
-                Detroit stores and a team that knows the product.
-              </p>
-              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-                <ButtonLink href="/shop" className="w-full sm:w-auto">
-                  Shop Menswear
-                </ButtonLink>
-                <ButtonLink href="/services" variant="secondary" className="w-full sm:w-auto">
-                  Explore Services
-                </ButtonLink>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                {
-                  title: "Expert fit guidance",
-                  copy: "Use Smart Fit online or work one-on-one with our in-store team.",
-                  icon: Ruler,
-                },
-                {
-                  title: "Curated designer brands",
-                  copy: "Premium labels selected for fit, fabric, versatility, and lasting wear.",
-                  icon: Tags,
-                },
-                {
-                  title: "Two local showrooms",
-                  copy: "Visit Partridge Creek or Great Lakes Crossing for personal service.",
-                  icon: Store,
-                },
-                {
-                  title: "Secure online checkout",
-                  copy: "Shop confidently with encrypted, Shopify-powered payment processing.",
-                  icon: ShieldCheck,
-                },
-              ].map((item) => {
-                const Icon = item.icon;
-
-                return (
-                  <div
-                    key={item.title}
-                    className="rounded-lg border border-ink/10 bg-white p-4 shadow-sm shadow-ink/[0.03] sm:p-5"
-                  >
-                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-deep-teal/10 text-deep-teal sm:h-10 sm:w-10">
-                      <Icon className="h-4.5 w-4.5" />
-                    </span>
-                    <h3 className="mt-3 text-sm leading-5 font-semibold text-ink sm:mt-4 sm:text-base sm:leading-6">
-                      {item.title}
-                    </h3>
-                    <p className="mt-1.5 text-sm leading-5 text-smoke sm:mt-2 sm:leading-6">
-                      {item.copy}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </Container>
-      </WaveSection>
+      <SocialReels content={homePage.socialReels} />
     </>
   );
 }

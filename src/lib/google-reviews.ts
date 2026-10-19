@@ -2,7 +2,6 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
-import { aggregateRating, testimonials } from "@/data/testimonials";
 import { locations } from "@/data/locations";
 
 const GOOGLE_PLACES_API_KEY =
@@ -71,13 +70,13 @@ export type StoreReviewLocationSummary = {
 };
 
 export type StoreReviewSnapshot = {
-  source: "google" | "fallback";
-  ratingValue: number;
-  reviewCount: number;
   reviews: StoreReview[];
   locations: StoreReviewLocationSummary[];
   attributionLabel: string;
-};
+} & (
+  | { source: "google"; ratingValue: number; reviewCount: number }
+  | { source: "fallback"; ratingValue: null; reviewCount: 0 }
+);
 
 function getConfiguredPlaceId(locationSlug: string) {
   if (locationSlug === "partridge-creek") {
@@ -94,25 +93,11 @@ function getConfiguredPlaceId(locationSlug: string) {
 function getFallbackReviewSnapshot(): StoreReviewSnapshot {
   return {
     source: "fallback",
-    ratingValue: aggregateRating.ratingValue,
-    reviewCount: aggregateRating.reviewCount,
-    reviews: testimonials.map((testimonial) => {
-      const location = locations.find((item) => item.slug === testimonial.locationSlug);
-
-      return {
-        id: testimonial.id,
-        authorName: testimonial.name,
-        authorUri: null,
-        rating: testimonial.rating,
-        text: testimonial.quote,
-        relativeTime: null,
-        publishTime: testimonial.date,
-        locationName: location ? `${location.brand} ${location.name}` : "J. Barbaro Clothiers",
-        googleMapsUri: null,
-      };
-    }),
+    ratingValue: null,
+    reviewCount: 0,
+    reviews: [],
     locations: [],
-    attributionLabel: "Curated customer reviews",
+    attributionLabel: "",
   };
 }
 
@@ -169,7 +154,7 @@ function normalizeGooglePlaceReview(
   const authorName = review.authorAttribution?.displayName || "Google reviewer";
   const rating = Number(review.rating);
 
-  if (!text.trim() || !Number.isFinite(rating) || rating <= 0) {
+  if (!text.trim() || !Number.isFinite(rating) || rating <= 0 || rating > 5) {
     return null;
   }
 
@@ -186,7 +171,10 @@ function normalizeGooglePlaceReview(
   };
 }
 
-async function fetchPlaceDetails(placeId: string, location: (typeof locations)[number]) {
+async function fetchPlaceDetails(
+  placeId: string,
+  location: (typeof locations)[number],
+): Promise<{ summary: StoreReviewLocationSummary; reviews: StoreReview[] } | null> {
   if (!GOOGLE_PLACES_API_KEY) {
     return null;
   }
@@ -209,7 +197,16 @@ async function fetchPlaceDetails(placeId: string, location: (typeof locations)[n
 
   const payload = (await response.json().catch(() => null)) as GooglePlaceDetailsResponse | null;
 
-  if (!payload || !payload.rating || !payload.userRatingCount) {
+  if (
+    !payload ||
+    typeof payload.rating !== "number" ||
+    !Number.isFinite(payload.rating) ||
+    payload.rating <= 0 ||
+    payload.rating > 5 ||
+    typeof payload.userRatingCount !== "number" ||
+    !Number.isInteger(payload.userRatingCount) ||
+    payload.userRatingCount <= 0
+  ) {
     return null;
   }
 
@@ -239,13 +236,21 @@ async function fetchGoogleStoreReviewSnapshot(): Promise<StoreReviewSnapshot> {
 
   const locationResults = await Promise.all(
     locations.map(async (location) => {
-      const placeId = await resolvePlaceId(location);
+      try {
+        const placeId = await resolvePlaceId(location);
 
-      if (!placeId) {
+        if (!placeId) {
+          return null;
+        }
+
+        return await fetchPlaceDetails(placeId, location);
+      } catch (error) {
+        console.error(
+          "Unable to load Google reviews.",
+          error instanceof Error ? error.name : "Unknown error",
+        );
         return null;
       }
-
-      return fetchPlaceDetails(placeId, location);
     }),
   );
 

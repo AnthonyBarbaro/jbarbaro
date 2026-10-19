@@ -74,7 +74,7 @@ export function CartGiftWrapOption({
     return null;
   }
 
-  const remaining = offer ? getRemainingQuantity(offer.merchandiseId) : null;
+  const remaining = offer ? getRemainingQuantity(offer.merchandiseId, offer) : null;
   const stockLimitReached = remaining !== null && remaining < line.quantity;
   const available = Boolean(offer?.availableForSale && !stockLimitReached);
   const totalPrice = offer ? Number(offer.price.amount) * line.quantity : null;

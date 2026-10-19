@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
@@ -6,7 +8,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata = buildMetadata({
   title: "Terms of Use",
   description:
-    "Terms governing the use of the J. Barbaro Clothiers website and submitted request forms.",
+    "Terms governing shopping, checkout, and submitted requests on the J. Barbaro Clothiers website.",
   path: "/terms-of-use",
 });
 
@@ -23,8 +25,28 @@ export default function TermsOfUsePage() {
             <section>
               <h2 className="font-heading text-2xl text-ink sm:text-3xl">Use of Site</h2>
               <p className="mt-3 text-sm leading-7 text-smoke">
-                This site is provided for informational and appointment-request purposes. You agree
-                not to misuse forms, submit harmful content, or attempt unauthorized access.
+                This site lets you browse products, shop through Shopify checkout, and contact our
+                team about appointments and services. You agree not to misuse forms, submit harmful
+                content, or attempt unauthorized access.
+              </p>
+            </section>
+            <section>
+              <h2 className="font-heading text-2xl text-ink sm:text-3xl">Shopping & Checkout</h2>
+              <p className="mt-3 text-sm leading-7 text-smoke">
+                Review your selected products, sizes, quantities, and gift wrap before continuing to
+                Shopify checkout. Available delivery methods, shipping charges, applicable taxes,
+                and the final total are shown at checkout before you place your order.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-smoke">
+                See our{" "}
+                <Link
+                  href="/shipping-returns"
+                  className="text-deep-teal underline underline-offset-4"
+                >
+                  shipping and returns information
+                </Link>{" "}
+                or contact our team for help with an order. Appointment requests require a separate
+                confirmation from our staff.
               </p>
             </section>
             <section>

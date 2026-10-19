@@ -1,16 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowUpRight, ChevronLeft, ChevronRight, Instagram, Music2, Play, X } from "lucide-react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Instagram, Music2, Play } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { ReelViewer } from "@/components/home/ReelViewer";
 import { Button } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import type { SocialReelsContent } from "@/lib/cms-defaults";
 import { resolveSocialReel, resolveTikTokProfile } from "@/lib/social-reels";
-
-type ResolvedClip = SocialReelsContent["clips"][number] &
-  NonNullable<ReturnType<typeof resolveSocialReel>>;
 
 const fallbackPoster = "/images/campaign/ss26/canali-coastal-tailoring-portrait-hero.webp";
 const focusClass =
@@ -148,79 +146,10 @@ function ProviderEmbed({
   );
 }
 
-function ReelDialog({ clip, onClose }: { clip: ResolvedClip; onClose: () => void }) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-  const platformName = clip.platform === "instagram" ? "Instagram" : "TikTok";
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    const previousOverflow = document.body.style.overflow;
-    dialog.showModal();
-    document.body.style.overflow = "hidden";
-    return () => {
-      dialog.close();
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
-
-  return (
-    <dialog
-      ref={dialogRef}
-      aria-labelledby={titleId}
-      onClose={(event) => {
-        if (!event.currentTarget.open) onClose();
-      }}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) dialogRef.current?.close();
-      }}
-      className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-[26rem] overflow-y-auto rounded-lg bg-white p-0 text-ink backdrop:bg-ink/80"
-    >
-      <div>
-        <div className="flex items-center justify-between gap-4 border-b border-ink/10 p-4">
-          <h3 id={titleId} className="text-sm font-semibold">
-            {clip.title}
-          </h3>
-          <button
-            type="button"
-            autoFocus
-            onClick={() => dialogRef.current?.close()}
-            aria-label="Close video"
-            className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-ink/15 ${focusClass}`}
-          >
-            <X className="h-5 w-5" aria-hidden />
-          </button>
-        </div>
-        {clip.platform === "tiktok" ? (
-          <iframe
-            src={clip.embedSrc}
-            title={`${clip.title} on TikTok`}
-            allow="fullscreen; encrypted-media; picture-in-picture"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            className="aspect-[9/16] w-full border-0 bg-ink"
-          />
-        ) : (
-          <ProviderEmbed href={clip.href} platform="instagram" />
-        )}
-        <a
-          href={clip.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`m-4 flex min-h-11 items-center justify-center gap-2 rounded-md border border-ink/20 px-3 text-sm font-semibold ${focusClass}`}
-        >
-          Watch on {platformName} <ArrowUpRight className="h-4 w-4" aria-hidden />
-        </a>
-      </div>
-    </dialog>
-  );
-}
-
 export function SocialReels({ content }: { content: SocialReelsContent }) {
   const sectionId = useId();
   const railRef = useRef<HTMLUListElement>(null);
-  const [activeClip, setActiveClip] = useState<ResolvedClip | null>(null);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [feedLoaded, setFeedLoaded] = useState(false);
   const [edges, setEdges] = useState({ previous: false, next: false });
   const profile = resolveTikTokProfile(content.tiktokHref ?? "");
@@ -317,17 +246,17 @@ export function SocialReels({ content }: { content: SocialReelsContent }) {
               aria-label="J. Barbaro videos"
               className="mt-8 flex snap-x snap-mandatory scroll-px-1.5 gap-4 overflow-x-auto overscroll-x-contain p-1.5 pb-4 [scrollbar-width:thin]"
             >
-              {clips.map((clip) => (
+              {clips.map((clip, index) => (
                 <li
                   key={clip.id}
                   className="w-[80%] shrink-0 snap-start sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-3rem)/4)]"
                 >
                   <button
                     type="button"
-                    onClick={() => setActiveClip(clip)}
+                    onClick={() => setActiveIndex(index)}
                     aria-label={`Watch ${clip.title} on ${clip.platform === "tiktok" ? "TikTok" : "Instagram"}`}
                     aria-haspopup="dialog"
-                    className={`group block w-full rounded-lg text-left ${focusClass}`}
+                    className={`group block w-full cursor-pointer rounded-lg text-left ${focusClass}`}
                   >
                     <span className="relative block aspect-[9/16] overflow-hidden rounded-lg bg-ink">
                       <Image
@@ -349,11 +278,15 @@ export function SocialReels({ content }: { content: SocialReelsContent }) {
                         )}
                         {clip.platform === "tiktok" ? "TikTok" : "Instagram"}
                       </span>
-                      <span className="absolute inset-x-4 bottom-5 text-white sm:inset-x-5">
-                        <span className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white text-ink transition-colors duration-200 group-hover:bg-gold group-focus-visible:bg-gold">
-                          <Play className="ml-0.5 h-5 w-5 fill-current" aria-hidden />
+                      <span className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3">
+                        <span className="inline-flex h-18 w-18 items-center justify-center rounded-full bg-white text-ink shadow-[0_6px_24px_rgba(0,0,0,0.25)] transition-colors duration-200 group-hover:bg-gold group-focus-visible:bg-gold">
+                          <Play className="ml-1 h-7 w-7 fill-current" aria-hidden />
                         </span>
-                        <span className="block text-xs font-medium text-white/85">Watch video</span>
+                        <span className="rounded-full bg-ink/85 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white">
+                          Play video
+                        </span>
+                      </span>
+                      <span className="absolute inset-x-4 bottom-5 text-white sm:inset-x-5">
                         <span className="mt-1.5 line-clamp-2 text-base leading-6 font-semibold text-white sm:text-lg sm:leading-7">
                           {clip.title}
                         </span>
@@ -457,7 +390,22 @@ export function SocialReels({ content }: { content: SocialReelsContent }) {
           </div>
         )}
       </Container>
-      {activeClip ? <ReelDialog clip={activeClip} onClose={() => setActiveClip(null)} /> : null}
+      {activeIndex !== null && clips[activeIndex] ? (
+        <ReelViewer
+          clips={clips}
+          index={activeIndex}
+          onIndexChange={setActiveIndex}
+          onClose={() => setActiveIndex(null)}
+        >
+          {clips[activeIndex].platform === "instagram" ? (
+            <ProviderEmbed
+              key={clips[activeIndex].href}
+              href={clips[activeIndex].href}
+              platform="instagram"
+            />
+          ) : null}
+        </ReelViewer>
+      ) : null}
     </section>
   );
 }

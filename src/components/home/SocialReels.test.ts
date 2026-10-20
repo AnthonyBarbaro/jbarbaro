@@ -9,7 +9,9 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { defaultHomePage, type SocialReelsContent } from "@/lib/cms-defaults";
 
 function imageSources(markup: string): string[] {
-  return Array.from(markup.matchAll(/<img\b[^>]*\bsrc="([^"]+)"/g), (match) => match[1]);
+  return Array.from(markup.matchAll(/<img\b[^>]*\bsrc="([^"]+)"[^>]*>/g))
+    .filter((match) => !match[0].includes("data-social-profile-avatar"))
+    .map((match) => match[1]);
 }
 
 function watchLabels(markup: string): string[] {
@@ -47,7 +49,8 @@ test("social reels render safe launch content without contacting providers befor
             source: `import React from ${JSON.stringify(reactUrl)};
               export default function Image(props) {
                 return React.createElement("img", {
-                  src: props.src, alt: props.alt, sizes: props.sizes, className: props.className
+                  src: props.src, alt: props.alt, sizes: props.sizes, className: props.className,
+                  "data-social-profile-avatar": props["data-social-profile-avatar"]
                 });
               }`,
             shortCircuit: true,
@@ -81,37 +84,63 @@ test("social reels render safe launch content without contacting providers befor
   };
 
   await context.test(
-    "the default row shows four actual posts instead of the creator load panel",
+    "the profile header identifies the creator and links to the real accounts",
     () => {
-      const clips = defaultHomePage.socialReels.clips;
-      assert.deepEqual(
-        clips.map((clip) => clip.href),
-        [
-          "7629192451126873357",
-          "7635880121559207199",
-          "7628826774352432398",
-          "7697859148012145934",
-        ].map((id) => `https://www.tiktok.com/@jasonbarbaro1/video/${id}`),
-      );
-
       const markup = render();
-      assert.deepEqual(
-        watchLabels(markup),
-        clips.map((clip) => `Watch ${clip.title} on TikTok`),
-      );
-      assert.equal((markup.match(/aria-haspopup="dialog"/g) ?? []).length, 4);
-      assert.deepEqual(
-        imageSources(markup),
-        clips.map((clip) => clip.poster),
-      );
-      assert.doesNotMatch(
+
+      assert.match(markup, /J\. Barbaro Clothiers/);
+      assert.match(markup, /<h2\b[^>]*>Reels<\/h2>/);
+      assert.match(markup, /12 reels/);
+      assert.match(markup, /@jasonbarbaro1/);
+      assert.match(
         markup,
-        /Load TikTok videos|Meet us on your feed|data-embed-type="creator"/,
+        /<img\b[^>]*src="\/images\/social\/tiktok\/jason-barbaro-profile\.jpg"[^>]*data-social-profile-avatar="true"/,
+      );
+      assert.match(
+        markup,
+        /<a\b[^>]*href="https:\/\/www\.tiktok\.com\/@jasonbarbaro1"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*>[\s\S]*?Follow on TikTok[\s\S]*?<\/a>/,
+      );
+      assert.match(
+        markup,
+        /<a\b[^>]*href="https:\/\/www\.instagram\.com\/j\.barbaroclothiers\/"[^>]*target="_blank"[^>]*rel="noopener noreferrer"[^>]*aria-label="Visit J\. Barbaro on Instagram"/,
       );
       assertNoProviderEmbed(markup);
       assert.equal(fetchCalls, 0);
     },
   );
+
+  await context.test("the default row shows four actual posts from a twelve-video playlist", () => {
+    const clips = defaultHomePage.socialReels.clips;
+    const featuredClips = clips.slice(0, 4);
+    assert.equal(clips.length, 12);
+    assert.equal(new Set(clips.map((clip) => clip.href)).size, 12);
+    assert.deepEqual(
+      featuredClips.map((clip) => clip.href),
+      [
+        "7629192451126873357",
+        "7635880121559207199",
+        "7628826774352432398",
+        "7697859148012145934",
+      ].map((id) => `https://www.tiktok.com/@jasonbarbaro1/video/${id}`),
+    );
+
+    const markup = render();
+    assert.deepEqual(
+      watchLabels(markup),
+      featuredClips.map((clip) => `Watch ${clip.title} on TikTok`),
+    );
+    assert.equal((markup.match(/aria-haspopup="dialog"/g) ?? []).length, 4);
+    assert.deepEqual(
+      imageSources(markup),
+      featuredClips.map((clip) => clip.poster),
+    );
+    assert.doesNotMatch(
+      markup,
+      /Load TikTok videos|Meet us on your feed|data-embed-type="creator"/,
+    );
+    assertNoProviderEmbed(markup);
+    assert.equal(fetchCalls, 0);
+  });
 
   await context.test(
     "an explicitly empty clip list keeps the seeded profile load action without an embed",

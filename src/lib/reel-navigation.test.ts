@@ -92,6 +92,24 @@ test("four successive gestures complete a cycle in both directions", () => {
   }
 });
 
+test("the fourth homepage card reaches eight additional reels before wrapping across twelve", () => {
+  const next = getReelSwipeDirection(-80, 0);
+  const previous = getReelSwipeDirection(80, 0);
+  assert.ok(next === 1 && previous === -1);
+
+  let index = 3;
+  const visited: number[] = [];
+  for (let gesture = 0; gesture < 8; gesture += 1) {
+    index = getAdjacentReelIndex(index, next, 12);
+    visited.push(index);
+  }
+  assert.deepEqual(visited, [4, 5, 6, 7, 8, 9, 10, 11]);
+
+  index = getAdjacentReelIndex(index, next, 12);
+  assert.equal(index, 0);
+  assert.equal(getAdjacentReelIndex(index, previous, 12), 11);
+});
+
 test("empty and single-clip lists remain at index zero", () => {
   for (const count of [0, 1]) {
     assert.equal(getAdjacentReelIndex(0, 1, count), 0);

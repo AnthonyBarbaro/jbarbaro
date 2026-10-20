@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ArrowUpRight, ChevronLeft, ChevronRight, Instagram, Music2, Play } from "lucide-react";
+import { ArrowUpRight, Clapperboard, Instagram, Music2, Play } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { ReelViewer } from "@/components/home/ReelViewer";
@@ -10,6 +10,7 @@ import { Container } from "@/components/ui/Container";
 import type { SocialReelsContent } from "@/lib/cms-defaults";
 import { resolveSocialReel, resolveTikTokProfile } from "@/lib/social-reels";
 
+const profileAvatar = "/images/social/tiktok/jason-barbaro-profile.jpg";
 const fallbackPoster = "/images/campaign/ss26/canali-coastal-tailoring-portrait-hero.webp";
 const focusClass =
   "focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2";
@@ -148,10 +149,8 @@ function ProviderEmbed({
 
 export function SocialReels({ content }: { content: SocialReelsContent }) {
   const sectionId = useId();
-  const railRef = useRef<HTMLUListElement>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [feedLoaded, setFeedLoaded] = useState(false);
-  const [edges, setEdges] = useState({ previous: false, next: false });
   const profile = resolveTikTokProfile(content.tiktokHref ?? "");
   const instagramHref = instagramProfile(content.instagramHref);
   const clips = content.clips
@@ -159,69 +158,57 @@ export function SocialReels({ content }: { content: SocialReelsContent }) {
       const resolved = resolveSocialReel(clip.href);
       return resolved ? [{ ...clip, ...resolved }] : [];
     })
-    .slice(0, 4);
+    .slice(0, 12);
+  const featuredClips = clips.slice(0, 4);
 
-  useEffect(() => {
-    const rail = railRef.current;
-    if (!rail) return;
-    function updateEdges(): void {
-      if (!rail) return;
-      setEdges({
-        previous: rail.scrollLeft > 2,
-        next: rail.scrollLeft + rail.clientWidth < rail.scrollWidth - 2,
-      });
-    }
-    updateEdges();
-    const observer = new ResizeObserver(updateEdges);
-    observer.observe(rail);
-    rail.addEventListener("scroll", updateEdges, { passive: true });
-    return () => {
-      observer.disconnect();
-      rail.removeEventListener("scroll", updateEdges);
-    };
-  }, [clips.length]);
-
-  function scrollRail(direction: number): void {
-    const rail = railRef.current;
-    if (!rail) return;
-    rail.scrollBy({
-      left:
-        direction * (rail.firstElementChild?.getBoundingClientRect().width ?? 280) + direction * 16,
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
-    });
-  }
+  const creatorHref = profile?.href ?? instagramHref;
+  const creatorHandle = profile?.handle ?? instagramHref?.split("/")[3];
 
   return (
     <section
       aria-labelledby={`${sectionId}-title`}
-      className="border-t border-ink/10 bg-product-canvas py-12 sm:py-14 lg:py-16"
+      className="border-y border-ink/10 bg-white py-8 sm:py-10 lg:py-12"
     >
       <Container className="max-w-[100rem] px-4 sm:px-6 lg:px-8 xl:px-10 2xl:px-12">
-        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div>
-            <p className="text-xs font-semibold tracking-[0.16em] text-deep-teal uppercase">
-              {content.eyebrow}
-            </p>
-            <h2
-              id={`${sectionId}-title`}
-              className="mt-3 font-heading text-4xl text-ink sm:text-5xl"
-            >
-              {content.title}
-            </h2>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-ink/65 sm:text-base">
-              {content.description}
-            </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-8">
+          <div className="min-w-0">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <Image
+                src={profileAvatar}
+                alt="Jason Barbaro in a light blue jacket"
+                width={64}
+                height={64}
+                data-social-profile-avatar
+                className="h-14 w-14 shrink-0 rounded-full object-cover sm:h-16 sm:w-16"
+              />
+              <div className="min-w-0">
+                <p className="text-lg leading-6 font-bold text-ink sm:text-2xl sm:leading-8">
+                  {content.eyebrow}
+                </p>
+                {creatorHref && creatorHandle ? (
+                  <a
+                    href={creatorHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`mt-0.5 inline-flex min-h-6 max-w-full items-center text-sm text-ink/65 hover:underline ${focusClass}`}
+                  >
+                    <span className="truncate">@{creatorHandle}</span>
+                  </a>
+                ) : null}
+              </div>
+            </div>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-ink/70">{content.description}</p>
           </div>
-          <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <div className="flex shrink-0 gap-2 sm:pt-2">
             {profile ? (
               <a
                 href={profile.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-ink ${focusClass}`}
+                className={`inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-md bg-ink px-5 text-sm font-semibold text-white transition-colors hover:bg-ink/85 sm:flex-none ${focusClass}`}
               >
-                <Music2 className="h-4 w-4" aria-hidden /> TikTok{" "}
-                <ArrowUpRight className="h-4 w-4" aria-hidden />
+                <Music2 className="h-4 w-4" aria-hidden /> Follow on TikTok
+                <ArrowUpRight className="h-3.5 w-3.5" aria-hidden />
               </a>
             ) : null}
             {instagramHref ? (
@@ -229,97 +216,81 @@ export function SocialReels({ content }: { content: SocialReelsContent }) {
                 href={instagramHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`inline-flex min-h-11 items-center gap-2 text-sm font-semibold text-ink ${focusClass}`}
+                aria-label="Visit J. Barbaro on Instagram"
+                className={`inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-md border border-ink/15 px-3 text-sm font-semibold text-ink transition-colors hover:bg-ink/5 ${focusClass}`}
               >
-                <Instagram className="h-4 w-4" aria-hidden /> Instagram{" "}
-                <ArrowUpRight className="h-4 w-4" aria-hidden />
+                <Instagram className="h-5 w-5" aria-hidden />
+                <span className="hidden sm:inline">Instagram</span>
               </a>
             ) : null}
           </div>
         </div>
 
-        {clips.length > 0 ? (
+        <div className="mt-6 flex items-center justify-between border-b border-ink/15">
+          <div className="-mb-px flex min-h-12 items-center gap-2 border-b-2 border-ink px-1">
+            <Clapperboard className="h-5 w-5 text-ink" aria-hidden />
+            <h2 id={`${sectionId}-title`} className="text-sm font-semibold text-ink">
+              {content.title}
+            </h2>
+          </div>
+          {clips.length > 0 ? (
+            <span className="text-xs text-ink/65">
+              {clips.length} {clips.length === 1 ? "reel" : "reels"}
+            </span>
+          ) : null}
+        </div>
+
+        {featuredClips.length > 0 ? (
           <>
             <ul
-              id={`${sectionId}-clips`}
-              ref={railRef}
               aria-label="J. Barbaro videos"
-              className="mt-8 flex snap-x snap-mandatory scroll-px-1.5 gap-4 overflow-x-auto overscroll-x-contain p-1.5 pb-4 [scrollbar-width:thin]"
+              className="mt-1 grid grid-cols-2 gap-1 sm:gap-1.5 md:grid-cols-4"
             >
-              {clips.map((clip, index) => (
-                <li
-                  key={clip.id}
-                  className="w-[80%] shrink-0 snap-start sm:w-[calc((100%-1rem)/2)] lg:w-[calc((100%-3rem)/4)]"
-                >
+              {featuredClips.map((clip, index) => (
+                <li key={clip.id} className="min-w-0">
                   <button
                     type="button"
                     onClick={() => setActiveIndex(index)}
                     aria-label={`Watch ${clip.title} on ${clip.platform === "tiktok" ? "TikTok" : "Instagram"}`}
                     aria-haspopup="dialog"
-                    className={`group block w-full cursor-pointer rounded-lg text-left ${focusClass}`}
+                    className={`group block w-full cursor-pointer text-left ${focusClass}`}
                   >
-                    <span className="relative block aspect-[9/16] overflow-hidden rounded-lg bg-ink">
+                    <span className="relative block aspect-[9/16] overflow-hidden rounded-sm bg-ink">
                       <Image
                         src={localPoster(clip.poster)}
                         alt={clip.posterAlt}
                         fill
-                        sizes="(max-width:640px) 80vw, (max-width:1024px) 50vw, (max-width:1600px) 25vw, 360px"
+                        sizes="(max-width:767px) 50vw, (max-width:1600px) 25vw, 380px"
                         className="object-cover motion-safe:transition-transform motion-safe:duration-300 motion-safe:group-hover:scale-[1.03]"
                       />
                       <span
-                        className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-ink/95 via-ink/60 to-transparent"
+                        className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-ink/90 to-transparent"
                         aria-hidden
                       />
-                      <span className="absolute top-4 left-4 inline-flex items-center gap-1.5 rounded-full bg-ink/85 px-3 py-1.5 text-xs font-semibold text-white">
-                        {clip.platform === "tiktok" ? (
-                          <Music2 className="h-3.5 w-3.5" aria-hidden />
-                        ) : (
-                          <Instagram className="h-3.5 w-3.5" aria-hidden />
-                        )}
-                        {clip.platform === "tiktok" ? "TikTok" : "Instagram"}
+                      <Clapperboard
+                        className="absolute top-3 right-3 h-5 w-5 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]"
+                        aria-hidden
+                      />
+                      <span
+                        className="absolute top-1/2 left-1/2 inline-flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white/95 text-ink shadow-[0_2px_12px_rgba(0,0,0,0.15)] transition-transform group-hover:scale-110 group-focus-visible:scale-110 motion-reduce:transition-none sm:h-12 sm:w-12"
+                        aria-hidden
+                      >
+                        <Play className="ml-0.5 h-5 w-5 fill-current" />
                       </span>
-                      <span className="absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-3">
-                        <span className="inline-flex h-18 w-18 items-center justify-center rounded-full bg-white text-ink shadow-[0_6px_24px_rgba(0,0,0,0.25)] transition-colors duration-200 group-hover:bg-gold group-focus-visible:bg-gold">
-                          <Play className="ml-1 h-7 w-7 fill-current" aria-hidden />
-                        </span>
-                        <span className="rounded-full bg-ink/85 px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white">
-                          Play video
-                        </span>
-                      </span>
-                      <span className="absolute inset-x-4 bottom-5 text-white sm:inset-x-5">
-                        <span className="mt-1.5 line-clamp-2 text-base leading-6 font-semibold text-white sm:text-lg sm:leading-7">
-                          {clip.title}
-                        </span>
+                      <span className="absolute inset-x-3 bottom-3 line-clamp-2 text-sm leading-5 font-semibold text-white sm:inset-x-4 sm:bottom-4 sm:text-base sm:leading-6">
+                        {clip.title}
                       </span>
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
-            <div className="mt-2 flex items-center justify-between gap-4">
-              <p className="text-xs text-ink/65">
-                Select a video to watch.<span className="lg:hidden"> Swipe to explore.</span>
-              </p>
-              <div className="flex gap-2 lg:hidden">
-                {([-1, 1] as const).map((direction) => (
-                  <button
-                    key={direction}
-                    type="button"
-                    onClick={() => scrollRail(direction)}
-                    disabled={direction === -1 ? !edges.previous : !edges.next}
-                    aria-label={direction === -1 ? "Previous videos" : "More videos"}
-                    aria-controls={`${sectionId}-clips`}
-                    className={`inline-flex h-11 w-11 items-center justify-center rounded-full border border-ink/20 text-ink transition-colors hover:bg-white disabled:cursor-not-allowed disabled:opacity-35 ${focusClass}`}
-                  >
-                    {direction === -1 ? (
-                      <ChevronLeft className="h-5 w-5" aria-hidden />
-                    ) : (
-                      <ChevronRight className="h-5 w-5" aria-hidden />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="mt-4 text-xs leading-6 text-ink/65">
+              <span className="md:hidden">Tap a reel, then swipe for more.</span>
+              <span className="hidden md:inline">
+                Open a reel to watch{clips.length > 1 ? ` all ${clips.length}` : ""}.
+              </span>
+            </p>
           </>
         ) : (
           <div className="mt-8 grid overflow-hidden rounded-lg bg-ink lg:grid-cols-[0.65fr_1.35fr]">

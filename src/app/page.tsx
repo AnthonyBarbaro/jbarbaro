@@ -257,6 +257,8 @@ export default async function HomePage() {
         </WaveSection>
       ) : null}
 
+      <SocialReels content={homePage.socialReels} />
+
       <WaveSection
         topWave="C"
         background="stone"
@@ -474,8 +476,6 @@ export default async function HomePage() {
           </div>
         </Container>
       </WaveSection>
-
-      <SocialReels content={homePage.socialReels} />
     </>
   );
 }

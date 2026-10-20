@@ -187,8 +187,8 @@
       "description": "Editorial guidance on fit, tailoring, occasion dressing, and wardrobe planning."
     },
     "socialReels": {
-      "eyebrow": "Inside J. Barbaro",
-      "title": "Style in motion.",
+      "eyebrow": "J. Barbaro Clothiers",
+      "title": "Reels",
       "description": "A closer look at the clothes, the details, and life in the showroom.",
       "instagramHref": "https://www.instagram.com/j.barbaroclothiers/",
       "tiktokHref": "https://www.tiktok.com/@jasonbarbaro1",
@@ -222,6 +222,62 @@
           "href": "https://www.tiktok.com/@jasonbarbaro1/video/7697859148012145934",
           "poster": "/images/social/tiktok/7697859148012145934.jpg",
           "posterAlt": "Two men shaking hands in the boutique with shirts and suits displayed behind them."
+        },
+        {
+          "id": "tiktok-7697858759489506574",
+          "title": "John Wick",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7697858759489506574",
+          "poster": "/images/social/tiktok/7697858759489506574.jpg",
+          "posterAlt": "Two men pointing at each other beside suit racks in the boutique."
+        },
+        {
+          "id": "tiktok-7695577242948209933",
+          "title": "Tee Times wardrobe upgrade",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7695577242948209933",
+          "poster": "/images/social/tiktok/7695577242948209933.jpg",
+          "posterAlt": "Two men shaking hands beside the boutique counter and suit racks."
+        },
+        {
+          "id": "tiktok-7694138239921163533",
+          "title": "Fall family photos",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7694138239921163533",
+          "poster": "/images/social/tiktok/7694138239921163533.jpg",
+          "posterAlt": "A man wearing a measuring tape stands among the boutique’s clothing displays."
+        },
+        {
+          "id": "tiktok-7692958100545867022",
+          "title": "Closing time at J. Barbaro",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7692958100545867022",
+          "poster": "/images/social/tiktok/7692958100545867022.jpg",
+          "posterAlt": "A man in a white polo beside a mannequin and folded shirts in the boutique."
+        },
+        {
+          "id": "tiktok-7692229071907900686",
+          "title": "Fall at J. Barbaro",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7692229071907900686",
+          "poster": "/images/social/tiktok/7692229071907900686.jpg",
+          "posterAlt": "A man in a taupe knit polo with arms folded near the boutique entrance."
+        },
+        {
+          "id": "tiktok-7691533313063914766",
+          "title": "Meet the parents",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7691533313063914766",
+          "poster": "/images/social/tiktok/7691533313063914766.jpg",
+          "posterAlt": "A man in a blue knit polo beside a checked suit display."
+        },
+        {
+          "id": "tiktok-7690400889810504973",
+          "title": "Fall fit check",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7690400889810504973",
+          "poster": "/images/social/tiktok/7690400889810504973.jpg",
+          "posterAlt": "A man in a blue knit polo near the boutique’s front window and clothing displays."
+        },
+        {
+          "id": "tiktok-7689670423621012767",
+          "title": "Street interview",
+          "href": "https://www.tiktok.com/@jasonbarbaro1/video/7689670423621012767",
+          "poster": "/images/social/tiktok/7689670423621012767.jpg",
+          "posterAlt": "A man in a blue blazer holding a takeaway cup and talking on a phone outside."
         }
       ]
     }

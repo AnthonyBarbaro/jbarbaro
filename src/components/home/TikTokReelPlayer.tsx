@@ -1,11 +1,11 @@
 "use client";
 
-import { Play, Volume2 } from "lucide-react";
+import { Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { parseTikTokPlayerEvent } from "@/lib/tiktok-player";
 
-type PlayerCommand = "play" | "pause" | "mute" | "unMute";
+type PlayerCommand = "play" | "pause" | "unMute";
 type PlaybackState = "starting" | "buffering" | "playing" | "paused";
 
 const playerOrigin = "https://www.tiktok.com";
@@ -22,6 +22,7 @@ function autoplaySource(src: string): string | null {
       return null;
     }
     url.searchParams.set("autoplay", "1");
+    url.searchParams.set("muted", "0");
     return url.href;
   } catch {
     return null;
@@ -32,11 +33,10 @@ export function TikTokReelPlayer({ src, title }: { src: string; title: string })
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const confirmedPlayingRef = useRef(false);
   const playbackIntentRef = useRef(true);
-  const mutedRetryRef = useRef(false);
+  const initialSoundRequestedRef = useRef(false);
   const playbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ready, setReady] = useState(false);
   const [playback, setPlayback] = useState<PlaybackState>("starting");
-  const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const source = autoplaySource(src);
 
@@ -75,6 +75,10 @@ export function TikTokReelPlayer({ src, title }: { src: string; title: string })
       switch (message.type) {
         case "ready":
           setReady(true);
+          if (!initialSoundRequestedRef.current) {
+            initialSoundRequestedRef.current = true;
+            sendCommand("unMute");
+          }
           if (!confirmedPlayingRef.current && playbackIntentRef.current) requestPlayback();
           break;
         case "state":
@@ -100,20 +104,17 @@ export function TikTokReelPlayer({ src, title }: { src: string; title: string })
           }
           break;
         case "mute":
-          setMuted(message.value);
           break;
         case "error":
           confirmedPlayingRef.current = false;
-          if (message.code === 3002 && !mutedRetryRef.current) {
-            mutedRetryRef.current = true;
-            sendCommand("mute");
-            requestPlayback();
-          } else {
-            clearPlaybackTimeout();
-            playbackIntentRef.current = false;
-            setPlayback("paused");
-            setError("Try Play, or use Watch on TikTok below.");
-          }
+          clearPlaybackTimeout();
+          playbackIntentRef.current = false;
+          setPlayback("paused");
+          setError(
+            message.code === 3002
+              ? "Tap Play to start the video with sound."
+              : "Try Play, or use Watch on TikTok below.",
+          );
           break;
       }
     }
@@ -181,16 +182,6 @@ export function TikTokReelPlayer({ src, title }: { src: string; title: string })
               {error}
             </span>
           ) : null}
-        </button>
-      ) : null}
-      {ready && muted ? (
-        <button
-          type="button"
-          aria-label="Turn sound on"
-          onClick={() => sendCommand("unMute")}
-          className="absolute bottom-[22%] left-3 inline-flex min-h-11 items-center gap-2 rounded-full border border-white/30 bg-black/90 px-3 text-xs font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold"
-        >
-          <Volume2 className="h-4 w-4" aria-hidden /> Sound on
         </button>
       ) : null}
     </div>

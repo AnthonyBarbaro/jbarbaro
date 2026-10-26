@@ -110,6 +110,17 @@ export default defineConfig({
           textField("siteDescription", "Site Description", true),
           imageField("logoUrl", "Logo"),
           {
+            type: "string",
+            name: "accessibilityButtonPlacement",
+            label: "Accessibility Button Placement",
+            description:
+              "Navigation keeps accessibility options in the header and footer without a floating button.",
+            options: [
+              { value: "floating", label: "Floating button and navigation" },
+              { value: "navigation", label: "Navigation only" },
+            ],
+          },
+          {
             type: "object",
             name: "socialLinks",
             label: "Social Links",

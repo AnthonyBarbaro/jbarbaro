@@ -28,6 +28,7 @@ export type SiteSettingsContent = {
   ratingValue: number;
   reviewCount: number;
   facebookLikes: number;
+  accessibilityButtonPlacement?: "floating" | "navigation";
 };
 
 export type NavigationContent = {

@@ -55,19 +55,22 @@ export function HeaderProductSearch({
   const [searchError, setSearchError] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const dismissedQueryRef = useRef<string | null>(null);
   const resultsId = useId();
   const statusId = useId();
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        dismissedQueryRef.current = query.trim();
         setIsOpen(false);
       }
     }
 
     window.addEventListener("mousedown", handlePointerDown);
     return () => window.removeEventListener("mousedown", handlePointerDown);
-  }, []);
+  }, [query]);
 
   useEffect(() => {
     const normalizedQuery = deferredQuery.trim();
@@ -104,14 +107,22 @@ export function HeaderProductSearch({
 
         setSearchError(null);
         setResults(payload.results);
-        setIsOpen(true);
+        if (
+          dismissedQueryRef.current !== normalizedQuery &&
+          containerRef.current?.contains(document.activeElement)
+        )
+          setIsOpen(true);
       } catch (error) {
         if (isMounted && !(error instanceof DOMException && error.name === "AbortError")) {
           setResults([]);
           setSearchError(
             error instanceof Error ? error.message : "Product search is temporarily unavailable.",
           );
-          setIsOpen(true);
+          if (
+            dismissedQueryRef.current !== normalizedQuery &&
+            containerRef.current?.contains(document.activeElement)
+          )
+            setIsOpen(true);
         }
       } finally {
         if (isMounted) {
@@ -132,7 +143,25 @@ export function HeaderProductSearch({
   }, [deferredQuery]);
 
   return (
-    <div ref={containerRef} className={cn("relative w-full max-w-xl", className)}>
+    <div
+      ref={containerRef}
+      className={cn("relative w-full max-w-xl", className)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          dismissedQueryRef.current = query.trim();
+          setIsOpen(false);
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && isOpen && query.trim().length >= 2) {
+          event.preventDefault();
+          event.stopPropagation();
+          inputRef.current?.focus();
+          dismissedQueryRef.current = query.trim();
+          setIsOpen(false);
+        }
+      }}
+    >
       <form
         action="/shop"
         method="get"
@@ -140,20 +169,26 @@ export function HeaderProductSearch({
       >
         <Search className="h-4 w-4 shrink-0 text-smoke" />
         <input
+          ref={inputRef}
           autoFocus={autoFocus}
           type="search"
           name="q"
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            dismissedQueryRef.current = null;
+            setQuery(event.target.value);
+            setIsOpen(event.target.value.trim().length >= 2);
+          }}
           onFocus={() => {
-            if (results.length > 0) {
+            dismissedQueryRef.current = null;
+            if (results.length > 0 || searchError) {
               setIsOpen(true);
             }
           }}
           placeholder="Search products, brands, sizes, or colors"
           className="h-11 w-full bg-transparent px-3 text-base text-ink outline-none placeholder:text-smoke sm:text-sm"
           aria-label="Search products"
-          aria-controls={resultsId}
+          aria-controls={isOpen && deferredQuery.trim().length >= 2 ? resultsId : undefined}
           aria-describedby={statusId}
         />
         <button
@@ -164,7 +199,7 @@ export function HeaderProductSearch({
         </button>
       </form>
 
-      {(isOpen || isLoading) && deferredQuery.trim().length >= 2 ? (
+      {isOpen && deferredQuery.trim().length >= 2 ? (
         <div
           id={resultsId}
           className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-[120] overflow-hidden rounded-lg border border-ink/10 bg-ivory shadow-xl shadow-ink/10"

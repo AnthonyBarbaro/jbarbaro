@@ -42,6 +42,9 @@ export default function PrivacyPolicyPage() {
                 storage. Saved wishlist items are also stored in your browser until you remove them
                 or clear browser storage. Bag changes use a browser-storage signal to refresh other
                 open tabs; that signal does not contain your cart identifier or checkout link.
+                Accessibility display preferences are saved locally in your browser when you change
+                them. Use Reset display preferences in Accessibility options to remove those
+                choices.
               </p>
             </section>
             <section>

@@ -56,10 +56,16 @@ export function HeaderSmartFitButton() {
   const panelRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    const storedProfile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
-    const storedEnabled = isSmartFitPreferenceEnabled(
-      window.localStorage.getItem(SMART_FIT_ENABLED_STORAGE_KEY),
-    );
+    let storedProfile: FitProfile | null = null;
+    let storedEnabled = true;
+    try {
+      storedProfile = parseFitProfile(window.localStorage.getItem(FIT_PROFILE_STORAGE_KEY));
+      storedEnabled = isSmartFitPreferenceEnabled(
+        window.localStorage.getItem(SMART_FIT_ENABLED_STORAGE_KEY),
+      );
+    } catch {
+      // Keep Smart Fit available for this visit when browser storage is blocked.
+    }
     const frameId = window.requestAnimationFrame(() => {
       setIsEnabled(storedEnabled);
       setProfile(storedProfile);
@@ -96,8 +102,16 @@ export function HeaderSmartFitButton() {
       const firstElement = focusableElements[0];
       const lastElement = focusableElements.at(-1);
 
-      if (!firstElement || !lastElement) return;
-      if (event.shiftKey && document.activeElement === firstElement) {
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        panelRef.current?.focus();
+      } else if (
+        document.activeElement === panelRef.current ||
+        !panelRef.current?.contains(document.activeElement)
+      ) {
+        event.preventDefault();
+        (event.shiftKey ? lastElement : firstElement).focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
         event.preventDefault();
         lastElement.focus();
       } else if (!event.shiftKey && document.activeElement === lastElement) {
@@ -129,7 +143,11 @@ export function HeaderSmartFitButton() {
       shoeSize: profile?.shoeSize,
     });
 
-    window.localStorage.setItem(FIT_PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+    try {
+      window.localStorage.setItem(FIT_PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+    } catch {
+      // The saved profile remains available in memory for this visit.
+    }
     setProfile(nextProfile);
     setIsEditing(false);
   }
@@ -140,7 +158,11 @@ export function HeaderSmartFitButton() {
 
   function toggleSmartFit() {
     const nextEnabled = !isEnabled;
-    window.localStorage.setItem(SMART_FIT_ENABLED_STORAGE_KEY, String(nextEnabled));
+    try {
+      window.localStorage.setItem(SMART_FIT_ENABLED_STORAGE_KEY, String(nextEnabled));
+    } catch {
+      // The preference still applies for this visit without browser storage.
+    }
     setIsEnabled(nextEnabled);
   }
 

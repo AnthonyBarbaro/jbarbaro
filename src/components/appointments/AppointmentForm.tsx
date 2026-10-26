@@ -366,7 +366,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
   }
 
   return (
-    <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 items-start gap-8 wrap-anywhere lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
       <dialog
         ref={confirmationRef}
         aria-labelledby="appointment-received-title"
@@ -399,7 +399,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
         </Button>
       </dialog>
       <Card className="min-w-0">
-        <CardContent className="p-5 sm:p-8 lg:p-10">
+        <CardContent className="p-[20px] sm:p-8 lg:p-10">
           <form
             onSubmit={onSubmit}
             className="space-y-8"
@@ -461,13 +461,19 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
               <div className="space-y-4 border-t border-ink/10 pt-7">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-lg font-semibold text-ink">How can we help?</h3>
+                    <h3 id="appointment-service-label" className="text-lg font-semibold text-ink">
+                      How can we help?
+                    </h3>
                     <p className="text-sm text-smoke">
                       Select the service that best suits your visit.
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <div
+                  role="group"
+                  aria-labelledby="appointment-service-label"
+                  className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                >
                   {services.map((service) => {
                     const selected = serviceType === service;
                     return (
@@ -494,9 +500,15 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
 
               <div className="space-y-4 border-t border-ink/10 pt-7">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-lg font-semibold text-ink">Choose your date</h3>
+                  <h3 id="appointment-date-label" className="text-lg font-semibold text-ink">
+                    Choose your date
+                  </h3>
                 </div>
-                <div className="grid grid-cols-4 gap-2">
+                <div
+                  role="group"
+                  aria-labelledby="appointment-date-label"
+                  className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,5.5rem),1fr))] gap-2"
+                >
                   {availableQuickDates.map((date) => {
                     const selected = preferredDate === date.value;
                     return (
@@ -556,7 +568,9 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
               <div className="space-y-4 border-t border-ink/10 pt-7">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <h3 className="text-lg font-semibold text-ink">Choose a preferred time</h3>
+                    <h3 id="appointment-time-label" className="text-lg font-semibold text-ink">
+                      Choose a preferred time
+                    </h3>
                     <p className="text-sm text-smoke">
                       Please request at least one hour ahead. Our team will confirm your time by
                       email.
@@ -570,12 +584,27 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                   </p>
                 ) : null}
 
-                {slotStatus === "loading" ? (
-                  <p className="text-xs text-smoke">Loading preferred times...</p>
-                ) : null}
+                <p
+                  role="status"
+                  aria-atomic="true"
+                  className={
+                    slotStatus === "loading" || slotMessage ? "text-xs text-ink" : "sr-only"
+                  }
+                >
+                  {slotStatus === "loading"
+                    ? "Loading preferred times..."
+                    : slotMessage ||
+                      (preferredDate && slotStatus === "ready"
+                        ? `${timeSlots.length} preferred times available.`
+                        : "")}
+                </p>
 
                 {preferredDate && slotStatus !== "loading" ? (
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div
+                    role="group"
+                    aria-labelledby="appointment-time-label"
+                    className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                  >
                     {timeSlots.map((slot) => {
                       const selected = preferredTimeWindow === slot;
                       return (
@@ -601,8 +630,6 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                     })}
                   </div>
                 ) : null}
-
-                {slotMessage ? <p className="text-xs text-ink">{slotMessage}</p> : null}
               </div>
 
               {selectedDateLabel && preferredTimeWindow ? (
@@ -628,7 +655,6 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                     <span>Full name *</span>
                     <input
                       className={INPUT_CLASS}
-                      aria-label="Full name"
                       autoComplete="name"
                       value={name}
                       onChange={(event) => setName(event.target.value)}
@@ -641,7 +667,6 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                       <input
                         ref={emailRef}
                         className={INPUT_CLASS}
-                        aria-label="Email"
                         autoComplete="email"
                         type="email"
                         value={email}
@@ -683,7 +708,6 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                   <input
                     id="appointment-phone"
                     className={INPUT_CLASS}
-                    aria-label="Phone"
                     autoComplete="tel"
                     type="tel"
                     placeholder="(555) 123-4567"
@@ -715,7 +739,6 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
                     id="appointment-notes"
                     className={`${INPUT_CLASS} min-h-[100px]`}
                     placeholder="An upcoming event, fit goals, or style preferences…"
-                    aria-label="Notes (optional)"
                     maxLength={1000}
                     value={notes}
                     onChange={(event) => setNotes(event.target.value)}
@@ -770,7 +793,7 @@ export function AppointmentForm({ locations, services }: AppointmentFormProps) {
         </CardContent>
       </Card>
 
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         <Card tone="stone">
           <CardContent>
             <h2 className="font-heading text-2xl text-ink sm:text-3xl">In-Person Experience</h2>

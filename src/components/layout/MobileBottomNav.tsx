@@ -31,7 +31,9 @@ function MobileNavLink({
       )}
     >
       {icon}
-      <span>{label}</span>
+      <span className="min-w-0 max-w-full text-center leading-snug [overflow-wrap:anywhere]">
+        {label}
+      </span>
     </Link>
   );
 }
@@ -40,7 +42,24 @@ function MobileBottomNavForPath({ pathname }: { pathname: string }): ReactElemen
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const searchButtonRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const navRef = useRef<HTMLElement | null>(null);
   const isCheckout = pathname === "/checkout" || pathname.startsWith("/checkout/");
+
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const root = document.documentElement;
+    const updateNavigationHeight = (): void => {
+      root.style.setProperty("--mobile-nav-height", `${nav.getBoundingClientRect().height}px`);
+    };
+    updateNavigationHeight();
+    const observer = new ResizeObserver(updateNavigationHeight);
+    observer.observe(nav);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty("--mobile-nav-height");
+    };
+  }, [isCheckout]);
 
   useEffect(() => {
     if (!isSearchOpen) {
@@ -144,6 +163,7 @@ function MobileBottomNavForPath({ pathname }: { pathname: string }): ReactElemen
   return (
     <>
       <nav
+        ref={navRef}
         className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[95] grid grid-cols-5 border-t border-ink/10 px-1 shadow-[0_-10px_30px_-24px_rgba(11,15,20,0.45)] lg:hidden"
         aria-label="Mobile shopping navigation"
       >
@@ -172,7 +192,9 @@ function MobileBottomNavForPath({ pathname }: { pathname: string }): ReactElemen
           aria-controls="mobile-product-search"
         >
           <Search className="h-[18px] w-[18px]" aria-hidden />
-          <span>Search</span>
+          <span className="min-w-0 max-w-full text-center leading-snug [overflow-wrap:anywhere]">
+            Search
+          </span>
         </button>
         <HeaderWishlistButton mobileNav active={wishlistActive} />
         <HeaderCartButton mobileNav active={cartActive} />

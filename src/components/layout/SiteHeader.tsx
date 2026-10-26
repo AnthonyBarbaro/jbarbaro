@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { ChevronDown, Menu, MoveUpRight, X } from "lucide-react";
 
 import { HeaderAccountButton } from "@/components/layout/HeaderAccountButton";
@@ -11,6 +11,7 @@ import { HeaderCartButton } from "@/components/layout/HeaderCartButton";
 import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
 import { HeaderSmartFitButton } from "@/components/layout/HeaderSmartFitButton";
 import { HeaderWishlistButton } from "@/components/layout/HeaderWishlistButton";
+import { AccessibilityNavButton } from "@/components/ui/AccessibilityNavButton";
 import { primaryNavigation } from "@/data/navigation";
 import type { NavItem } from "@/data/navigation";
 import { siteSettings } from "@/data/site-settings";
@@ -45,6 +46,8 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isDesktopViewport, setIsDesktopViewport] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const navigationId = useId();
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const drawerRef = useRef<HTMLElement | null>(null);
@@ -88,15 +91,26 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
         drawerRef.current?.querySelectorAll<HTMLElement>(
           'a[href], button:not([disabled]), input:not([disabled]), summary, [tabindex]:not([tabindex="-1"])',
         ) ?? [],
-      ).filter((element) => !element.hasAttribute("disabled"));
+      ).filter(
+        (element) =>
+          element.tabIndex >= 0 &&
+          !element.closest("[inert]") &&
+          element.getClientRects().length > 0 &&
+          window.getComputedStyle(element).visibility !== "hidden",
+      );
       const firstElement = focusableElements[0];
       const lastElement = focusableElements.at(-1);
 
       if (!firstElement || !lastElement) {
+        event.preventDefault();
+        drawerRef.current?.focus();
         return;
       }
 
-      if (event.shiftKey && document.activeElement === firstElement) {
+      if (!drawerRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? lastElement : firstElement).focus();
+      } else if (event.shiftKey && document.activeElement === firstElement) {
         event.preventDefault();
         lastElement.focus();
       } else if (!event.shiftKey && document.activeElement === lastElement) {
@@ -155,31 +169,75 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
   }
 
   function renderDesktopNav(items: NavItem[]) {
-    return items.map((item) => {
+    return items.map((item, index) => {
       const dropdownLinks = getDropdownLinks(item);
       const active = isActive(item);
 
       if (dropdownLinks.length > 0) {
         const media = isDesktopViewport ? dropdownMedia[item.label] : undefined;
+        const dropdownId = `${navigationId}-dropdown-${index}`;
+        const expanded = openDropdown === item.label;
 
         return (
-          <div key={item.href || item.label} className="group relative">
+          <div
+            key={item.href || item.label}
+            className="group relative"
+            onMouseEnter={() => setOpenDropdown(item.label)}
+            onMouseLeave={(event) => {
+              if (!event.currentTarget.contains(document.activeElement)) setOpenDropdown(null);
+            }}
+            onFocusCapture={() => setOpenDropdown(item.label)}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) setOpenDropdown(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Escape" && expanded) {
+                event.preventDefault();
+                event.stopPropagation();
+                event.currentTarget.querySelector<HTMLAnchorElement>(":scope > a")?.focus();
+                setOpenDropdown(null);
+              } else if (
+                event.key === "ArrowDown" &&
+                event.target === event.currentTarget.firstElementChild
+              ) {
+                event.preventDefault();
+                setOpenDropdown(item.label);
+                window.requestAnimationFrame(() => {
+                  document
+                    .getElementById(dropdownId)
+                    ?.querySelector<HTMLAnchorElement>("a[href]")
+                    ?.focus();
+                });
+              }
+            }}
+          >
             <Link
               href={item.href || dropdownLinks[0]?.href || "/"}
               target={item.external ? "_blank" : undefined}
               rel={item.external ? "noopener noreferrer" : undefined}
+              aria-current={pathname === item.href ? "page" : undefined}
+              aria-expanded={expanded}
+              aria-controls={dropdownId}
               className={cn(
                 "inline-flex h-10 items-center gap-1 rounded-md px-2 text-sm font-medium text-ink/75 transition-colors hover:bg-stone/55 hover:text-deep-teal",
                 active && "bg-stone/70 font-semibold text-deep-teal",
               )}
             >
               <span>{item.label}</span>
-              <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-180 group-focus-within:rotate-180" />
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform duration-200",
+                  expanded && "rotate-180",
+                )}
+                aria-hidden
+              />
             </Link>
 
             <div
+              id={dropdownId}
+              hidden={!expanded}
               className={cn(
-                "invisible pointer-events-none absolute top-full z-[130] pt-3 opacity-0 transition-all duration-200 group-focus-within:visible group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:visible group-hover:pointer-events-auto group-hover:opacity-100",
+                "absolute top-full z-[130] pt-3",
                 item.label === "Shop"
                   ? "left-0 w-[min(44rem,calc(100vw-2rem))]"
                   : "left-1/2 w-[min(38rem,calc(100vw-2rem))] -translate-x-1/2",
@@ -220,6 +278,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
                         href={child.href}
                         target={child.external ? "_blank" : undefined}
                         rel={child.external ? "noopener noreferrer" : undefined}
+                        aria-current={pathname === child.href ? "page" : undefined}
                         className="flex min-h-11 items-center justify-between gap-3 rounded-md px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-stone/70"
                       >
                         <span className="min-w-0 truncate">{child.label}</span>
@@ -242,6 +301,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
           href={item.href || "/"}
           target={item.external ? "_blank" : undefined}
           rel={item.external ? "noopener noreferrer" : undefined}
+          aria-current={pathname === item.href ? "page" : undefined}
           className={cn(
             "inline-flex h-10 items-center rounded-md px-2 text-sm font-medium text-ink/75 transition-colors hover:bg-stone/55 hover:text-deep-teal",
             active && "bg-stone/70 font-semibold text-deep-teal",
@@ -285,6 +345,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
                   target={child.external ? "_blank" : undefined}
                   rel={child.external ? "noopener noreferrer" : undefined}
                   onClick={() => setIsOpen(false)}
+                  aria-current={pathname === child.href ? "page" : undefined}
                   className="flex min-h-12 items-center justify-between rounded-md bg-white px-3.5 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-ivory hover:text-deep-teal"
                 >
                   <span>{child.label}</span>
@@ -303,6 +364,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
           target={item.external ? "_blank" : undefined}
           rel={item.external ? "noopener noreferrer" : undefined}
           onClick={() => setIsOpen(false)}
+          aria-current={pathname === item.href ? "page" : undefined}
           className={cn(
             "flex min-h-14 items-center justify-between rounded-lg border border-ink/10 bg-white px-4 text-sm font-semibold tracking-[0.08em] text-ink uppercase shadow-sm shadow-ink/[0.03] transition-colors hover:bg-stone/45",
             active && "border-deep-teal/25 bg-deep-teal/8 text-deep-teal",
@@ -332,7 +394,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
       </aside>
       <header className="sticky top-0 z-[96] border-b border-ink/10 bg-ivory/96 backdrop-blur-xl">
         <div className="mx-auto max-w-[84rem] px-4 sm:px-6 lg:px-8">
-          <div className="flex min-h-16 items-center gap-2 lg:min-h-[4.25rem] lg:gap-6">
+          <div className="flex min-h-16 flex-wrap items-center gap-2 py-2 lg:min-h-[4.25rem] lg:gap-6">
             <Link href="/" className="shrink-0" aria-label="J. Barbaro Clothiers Home">
               <Image
                 src={siteSettings.logoUrl}
@@ -348,7 +410,8 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
               <HeaderProductSearch className="max-w-2xl" />
             </div>
 
-            <div className="ml-auto flex shrink-0 items-center gap-1 lg:ml-0 lg:gap-2">
+            <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1 lg:ml-0 lg:gap-2">
+              <AccessibilityNavButton className="text-ink" />
               <HeaderSmartFitButton />
               <HeaderAccountButton compact className="h-11 w-11 rounded-md bg-ivory" />
               <div className="hidden items-center gap-2 lg:flex">
@@ -364,13 +427,15 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
               className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-ink/12 text-ink transition-colors hover:border-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2 xl:hidden"
               aria-label="Open navigation"
               aria-expanded={isOpen}
+              aria-controls={`${navigationId}-mobile`}
+              aria-haspopup="dialog"
             >
               <Menu className="h-5 w-5" />
             </button>
           </div>
 
           <nav
-            className="hidden items-center justify-center gap-2 pb-2.5 xl:flex xl:gap-4 2xl:gap-6"
+            className="hidden flex-wrap items-center justify-center gap-2 pb-2.5 xl:flex xl:gap-4 2xl:gap-6"
             aria-label="Primary"
           >
             {renderDesktopNav(desktopNavItems)}
@@ -388,6 +453,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
       />
 
       <aside
+        id={`${navigationId}-mobile`}
         ref={drawerRef}
         className={cn(
           "fixed inset-y-0 right-0 z-[150] h-dvh w-[calc(100vw-2.5rem)] max-w-[22rem] overflow-y-auto border-l border-ink/10 bg-ivory p-4 pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] shadow-2xl transition-transform duration-300 xl:hidden sm:p-5",
@@ -398,6 +464,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
         aria-hidden={!isOpen}
         inert={!isOpen}
         aria-label="Mobile navigation panel"
+        tabIndex={-1}
       >
         <div className="flex items-center justify-between">
           <Image
@@ -420,6 +487,11 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
 
         <nav className="mt-8 space-y-2" aria-label="Mobile primary">
           {renderMobileNav(mobileNavItems)}
+          <AccessibilityNavButton
+            showLabel
+            className="w-full justify-start border border-ink/15 px-4 text-sm font-semibold text-ink"
+            onOpen={() => setIsOpen(false)}
+          />
         </nav>
       </aside>
     </>

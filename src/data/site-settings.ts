@@ -9,6 +9,7 @@ type SiteSettingsData = {
   ratingValue: number;
   reviewCount: number;
   facebookLikes: number;
+  accessibilityButtonPlacement?: "floating" | "navigation";
 };
 
 export const siteSettings = siteSettingsJson as SiteSettingsData;

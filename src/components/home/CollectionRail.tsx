@@ -65,7 +65,11 @@ export function CollectionRail({ collections }: CollectionRailProps) {
 
     rail.scrollBy({
       left: direction * Math.max(rail.clientWidth * 0.82, 260),
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      behavior:
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
+        document.documentElement.dataset.a11yMotion === "true"
+          ? "auto"
+          : "smooth",
     });
   }
 

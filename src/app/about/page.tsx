@@ -56,8 +56,8 @@ export default function AboutPage() {
 
       <WaveSection topWave="A" bottomWave="C" background="ivory">
         <Container>
-          <div className="grid gap-10 lg:grid-cols-[1.3fr_1fr]">
-            <div>
+          <div className="grid grid-cols-1 gap-10 wrap-anywhere lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <div className="min-w-0">
               <Badge variant="teal">{aboutPage.overview.badge}</Badge>
               <h2 className="mt-4 font-heading text-4xl text-ink sm:text-5xl">{aboutPage.overview.title}</h2>
               {aboutPage.overview.paragraphs.map((paragraph) => (
@@ -67,7 +67,7 @@ export default function AboutPage() {
               ))}
             </div>
 
-            <Card tone="stone">
+            <Card tone="stone" className="min-w-0">
               <CardContent>
                 <h2 className="font-heading text-2xl text-ink sm:text-3xl">Explore More</h2>
                 <ul className="mt-4 space-y-3 text-sm font-semibold tracking-[0.1em] text-ink uppercase">
@@ -87,8 +87,8 @@ export default function AboutPage() {
 
       <WaveSection topWave="C" bottomWave="A" background="stone">
         <Container>
-          <Card className="overflow-hidden">
-            <div className="grid gap-0 md:grid-cols-[340px_1fr]">
+          <Card className="overflow-hidden wrap-anywhere">
+            <div className="grid grid-cols-1 gap-0 md:grid-cols-[340px_minmax(0,1fr)]">
               <div className="relative min-h-[320px] bg-ink/10">
                 <Image
                   src={aboutPage.founderSpotlight.image}
@@ -98,7 +98,7 @@ export default function AboutPage() {
                   className="object-cover object-[72%_center]"
                 />
               </div>
-              <CardContent className="sm:p-8">
+              <CardContent className="min-w-0 p-[20px] sm:p-8">
                 <Badge variant="gold">{aboutPage.founderSpotlight.badge}</Badge>
                 <h2 className="mt-4 font-heading text-3xl text-ink sm:text-4xl">{aboutPage.founderSpotlight.title}</h2>
                 {aboutPage.founderSpotlight.paragraphs.map((paragraph) => (
@@ -128,7 +128,7 @@ export default function AboutPage() {
 
       <WaveSection topWave="C" bottomWave="A" background="stone">
         <Container>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 wrap-anywhere sm:grid-cols-2 lg:grid-cols-4">
             {aboutPage.pillars.map((pillar, index) => {
               const Icon = pillars[index]?.icon || Users;
 

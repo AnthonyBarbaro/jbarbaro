@@ -1217,6 +1217,12 @@ export function ShopCatalogClient({
       if (!firstElement || !lastElement) {
         event.preventDefault();
         fitPanelRef.current?.focus();
+      } else if (
+        document.activeElement === fitPanelRef.current ||
+        !fitPanelRef.current?.contains(document.activeElement)
+      ) {
+        event.preventDefault();
+        (event.shiftKey ? lastElement : firstElement).focus();
       } else if (event.shiftKey && document.activeElement === firstElement) {
         event.preventDefault();
         lastElement.focus();
@@ -2944,7 +2950,7 @@ export function ShopCatalogClient({
       <div className="hidden lg:block">{renderFitProfileLauncher()}</div>
 
       {isMobileFitPromptReady && !fitProfile && !isMobileFitPromptDismissed ? (
-        <div className="fixed right-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] left-3 z-[90] flex items-stretch overflow-hidden rounded-full border border-ink/15 bg-white shadow-[0_18px_50px_-18px_rgba(11,15,20,0.5)] lg:hidden">
+        <div className="fixed right-3 bottom-[calc(var(--mobile-nav-height,4rem)+0.75rem)] left-3 z-[90] flex items-stretch overflow-hidden rounded-full border border-ink/15 bg-white shadow-[0_18px_50px_-18px_rgba(11,15,20,0.5)] lg:hidden">
           <button
             ref={mobileFitTriggerRef}
             type="button"

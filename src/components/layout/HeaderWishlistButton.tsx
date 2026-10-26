@@ -81,7 +81,9 @@ export function HeaderWishlistButton({
             </span>
           ) : null}
         </span>
-        <span>Wishlist</span>
+        <span className="min-w-0 max-w-full text-center leading-snug [overflow-wrap:anywhere]">
+          Wishlist
+        </span>
       </Link>
     );
   }

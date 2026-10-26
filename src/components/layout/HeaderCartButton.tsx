@@ -115,7 +115,9 @@ export function HeaderCartButton({
             </span>
           ) : null}
         </span>
-        <span>Cart</span>
+        <span className="min-w-0 max-w-full text-center leading-snug [overflow-wrap:anywhere]">
+          Cart
+        </span>
       </Link>
     );
   }

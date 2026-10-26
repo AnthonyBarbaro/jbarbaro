@@ -32,8 +32,8 @@ export default function ContactUsPage() {
 
       <WaveSection topWave="A" bottomWave="C" background="stone">
         <Container>
-          <div className="grid gap-6 xl:grid-cols-[1.15fr_1fr]">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+            <div className="min-w-0 space-y-4">
               <Card tone="stone">
                 <CardContent>
                   <Badge variant="teal">{contactPage.supportCard.badge}</Badge>
@@ -49,7 +49,7 @@ export default function ContactUsPage() {
               <ContactForm />
             </div>
 
-            <aside className="space-y-4 xl:sticky xl:top-24 xl:self-start">
+            <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:self-start">
               {locations.map((location) => (
                 <Card key={location.slug} className="overflow-hidden">
                   <div className="relative h-44 w-full border-b border-ink/10 bg-stone/40 sm:h-52">

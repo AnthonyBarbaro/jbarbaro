@@ -6,6 +6,7 @@ import { footerShoppingLinks, footerUtilityLinks } from "@/data/navigation";
 import { locations } from "@/data/locations";
 import { socialLinks } from "@/data/social";
 import { ButtonLink } from "@/components/ui/Button";
+import { AccessibilityNavButton } from "@/components/ui/AccessibilityNavButton";
 import { LEGAL_OWNER } from "@/lib/constants";
 import { formatPhone } from "@/lib/utils";
 
@@ -31,7 +32,7 @@ function socialIcon(label: string): ReactElement | null {
 export function SiteFooter(): ReactElement {
   return (
     <footer className="mt-16 bg-[#0b0f14] text-white">
-      <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.3fr_0.9fr_1fr_1fr] lg:px-8 lg:py-14">
+      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)] lg:px-8 lg:py-14">
         <section>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">
             J. Barbaro Clothiers
@@ -116,6 +117,10 @@ export function SiteFooter(): ReactElement {
               </li>
             ))}
           </ul>
+          <AccessibilityNavButton
+            showLabel
+            className="mt-3 justify-start text-sm text-white hover:text-gold"
+          />
         </section>
       </div>
 
@@ -123,7 +128,7 @@ export function SiteFooter(): ReactElement {
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           <p className="leading-5 text-white/60">
             This site uses an essential cookie for your shopping bag and optional browser storage
-            for saved Smart Fit preferences.{" "}
+            for saved Smart Fit and accessibility preferences.{" "}
             <Link
               href="/privacy-policy"
               className="text-white/85 underline decoration-white/30 underline-offset-4 hover:text-gold focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-ink"

@@ -31,8 +31,8 @@ export default function RegisterWeddingPage() {
 
       <WaveSection topWave="A" bottomWave="C" background="stone">
         <Container>
-          <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
-            <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+            <div className="min-w-0 space-y-4">
               <Card tone="stone">
                 <CardContent>
                   <Badge variant="teal">{weddingPage.intakeCard.badge}</Badge>
@@ -44,7 +44,7 @@ export default function RegisterWeddingPage() {
               <WeddingRegistrationForm locations={locations} />
             </div>
 
-            <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+            <aside className="min-w-0 space-y-4 lg:sticky lg:top-24 lg:self-start">
               <Card>
                 <CardContent>
                   <h2 className="font-heading text-2xl text-ink sm:text-3xl">What Happens Next</h2>

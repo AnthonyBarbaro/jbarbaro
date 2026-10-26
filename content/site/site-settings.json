@@ -27,5 +27,6 @@
   ],
   "ratingValue": 4.8,
   "reviewCount": 235,
-  "facebookLikes": 4077
+  "facebookLikes": 4077,
+  "accessibilityButtonPlacement": "floating"
 }

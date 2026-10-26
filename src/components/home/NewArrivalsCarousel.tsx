@@ -187,12 +187,23 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
 
   useEffect(() => {
     const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncMotionPreference = () => setPrefersReducedMotion(motionPreference.matches);
+    const syncMotionPreference = () =>
+      setPrefersReducedMotion(
+        motionPreference.matches || document.documentElement.dataset.a11yMotion === "true",
+      );
+    const observer = new MutationObserver(syncMotionPreference);
 
     syncMotionPreference();
     motionPreference.addEventListener("change", syncMotionPreference);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-a11y-motion"],
+    });
 
-    return () => motionPreference.removeEventListener("change", syncMotionPreference);
+    return () => {
+      motionPreference.removeEventListener("change", syncMotionPreference);
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {

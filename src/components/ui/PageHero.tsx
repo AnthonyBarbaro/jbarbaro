@@ -35,7 +35,7 @@ export function PageHero({
       )}
     >
       <Container className="relative py-8 sm:py-10 lg:py-12">
-        <div className="max-w-5xl">
+        <div className="max-w-5xl wrap-anywhere">
           {eyebrow ? (
             <div className="inline-flex items-center gap-3 text-[11px] font-semibold tracking-[0.18em] text-smoke uppercase">
               <span className="h-px w-7 bg-gold" aria-hidden />

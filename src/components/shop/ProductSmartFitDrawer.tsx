@@ -209,6 +209,9 @@ export function ProductSmartFitDrawer({
       if (!firstElement || !lastElement) {
         event.preventDefault();
         panelRef.current?.focus();
+      } else if (!panelRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? lastElement : firstElement).focus();
       } else if (event.shiftKey && document.activeElement === firstElement) {
         event.preventDefault();
         lastElement.focus();

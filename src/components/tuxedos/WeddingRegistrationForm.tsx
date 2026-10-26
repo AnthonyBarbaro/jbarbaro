@@ -35,9 +35,13 @@ export function WeddingRegistrationForm({ locations }: WeddingRegistrationFormPr
   }
 
   return (
-    <Card>
-      <CardContent>
-        <form onSubmit={onSubmit} aria-busy={loading} className="grid gap-4 sm:grid-cols-2">
+    <Card className="min-w-0 wrap-anywhere">
+      <CardContent className="p-[20px] sm:p-6 lg:p-7">
+        <form
+          onSubmit={onSubmit}
+          aria-busy={loading}
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2"
+        >
           <div>
             <FieldLabel htmlFor="groomName">Groom&apos;s Full Name</FieldLabel>
             <Input

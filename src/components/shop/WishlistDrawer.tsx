@@ -74,6 +74,10 @@ export function WishlistDrawer() {
 
       if (!firstElement || !lastElement) {
         event.preventDefault();
+        panelRef.current?.focus();
+      } else if (!panelRef.current?.contains(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? lastElement : firstElement).focus();
       } else if (event.shiftKey && document.activeElement === firstElement) {
         event.preventDefault();
         lastElement.focus();
@@ -144,6 +148,7 @@ export function WishlistDrawer() {
                 <li key={item.id} className="flex gap-4 py-4 first:pt-0">
                   <Link
                     href={`/shop/${item.handle}`}
+                    aria-label={`View ${item.title}`}
                     onClick={() => setIsOpen(false)}
                     className="relative h-24 w-20 shrink-0 overflow-hidden rounded-md bg-product-canvas focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/30"
                   >
@@ -176,7 +181,12 @@ export function WishlistDrawer() {
                       <p className="text-sm font-bold text-ink">{item.priceLabel}</p>
                       <button
                         type="button"
-                        onClick={() => removeWishlistItem(item.id)}
+                        onClick={() => {
+                          panelRef.current
+                            ?.querySelector<HTMLElement>('button[aria-label="Close wishlist"]')
+                            ?.focus();
+                          removeWishlistItem(item.id);
+                        }}
                         className="inline-flex min-h-10 items-center gap-1.5 px-2 text-xs font-semibold text-smoke transition-colors hover:text-sale focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/25"
                         aria-label={`Remove ${item.title} from wishlist`}
                       >

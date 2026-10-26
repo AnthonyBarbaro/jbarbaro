@@ -8,6 +8,8 @@ import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
 import { CartDrawer } from "@/components/shop/CartDrawer";
 import { CartQuantityProvider } from "@/components/shop/CartQuantityContext";
 import { WishlistDrawer } from "@/components/shop/WishlistDrawer";
+import { AccessibilityProvider } from "@/components/ui/AccessibilityProvider";
+import { AccessibilityWidget } from "@/components/ui/AccessibilityWidget";
 import { buildPrimaryNavigation } from "@/data/navigation";
 import { locations } from "@/data/locations";
 import { siteSettings } from "@/data/site-settings";
@@ -58,7 +60,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       <body className="luxe-shell antialiased">
         <a
           href="#main-content"
-          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-[100] focus:rounded-full bg-ink px-4 py-2 text-ivory"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[300] focus:rounded-md bg-ink px-4 py-2 text-ivory"
         >
           Skip to content
         </a>
@@ -69,16 +71,21 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             ...locations.map((location) => clothingStoreJsonLd(location)),
           ]}
         />
-        <CartQuantityProvider>
-          <SiteHeader navItems={navItems} />
-          <main id="main-content" className="min-h-[60vh]">
-            {children}
-          </main>
-          <SiteFooter />
-          <MobileBottomNav />
-          <CartDrawer />
-          <WishlistDrawer />
-        </CartQuantityProvider>
+        <AccessibilityProvider>
+          <CartQuantityProvider>
+            <SiteHeader navItems={navItems} />
+            <main id="main-content" tabIndex={-1} className="min-h-[60vh]">
+              {children}
+            </main>
+            <SiteFooter />
+            <MobileBottomNav />
+            <CartDrawer />
+            <WishlistDrawer />
+            <AccessibilityWidget
+              placement={siteSettings.accessibilityButtonPlacement ?? "floating"}
+            />
+          </CartQuantityProvider>
+        </AccessibilityProvider>
       </body>
     </html>
   );

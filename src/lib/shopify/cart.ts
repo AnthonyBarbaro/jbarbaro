@@ -2,6 +2,7 @@ import "server-only";
 
 import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
 import { GIFT_WRAP_GROUP_ATTRIBUTE } from "@/lib/shopify/gift-wrap";
+import { getStorefrontProductTitle } from "@/lib/shopify/product-title-presentation";
 import type {
   ShopifyCartLineInput,
   ShopifyCartLineUpdate,
@@ -71,6 +72,7 @@ type RawCartLine = {
     } | null;
     product: {
       title: string;
+      vendor: string;
       handle: string;
       productType: string;
       variants: {
@@ -180,6 +182,7 @@ function cartFragment(includeInventory = false): string {
             }
             product {
               title
+              vendor
               handle
               productType
               variants(first: 100) {
@@ -252,7 +255,7 @@ function normalizeCart(cart: RawCart, includeInventory = false): ShopifyCartSnap
       quantity: line.quantity,
       variantId: line.merchandise?.id ?? null,
       variantTitle: line.merchandise?.title ?? null,
-      productTitle: line.merchandise?.product.title ?? null,
+      productTitle: line.merchandise ? getStorefrontProductTitle(line.merchandise.product) : null,
       productHandle: line.merchandise?.product.handle ?? null,
       productType: line.merchandise?.product.productType ?? null,
       attributes: (line.attributes ?? []).filter(

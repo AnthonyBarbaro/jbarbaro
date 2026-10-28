@@ -7,6 +7,7 @@ import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
 import { SHOPIFY_STOREFRONT_REVALIDATE_SECONDS } from "@/lib/shopify/config";
 import { GIFT_WRAP_PRODUCT_HANDLE } from "@/lib/shopify/gift-wrap";
 import { sanitizeProductDescriptionHtml } from "@/lib/shopify/product-description.server";
+import { getStorefrontProductTitle } from "@/lib/shopify/product-title-presentation";
 import type {
   ShopifyCollection,
   ShopifyCollectionPreview,
@@ -203,6 +204,8 @@ type RawProductPreview = {
   id: string;
   handle: string;
   title: string;
+  vendor: string;
+  productType: string;
 };
 
 type PaginatedProductPreviewsResponse = {
@@ -277,6 +280,7 @@ const productFields = `
 `;
 
 const SHOPIFY_PAGE_SIZE = 250;
+const PRODUCT_TITLES_CACHE_VERSION = "product-titles-v1";
 
 function parseReviewRatingValue(value: string | null | undefined) {
   if (!value) {
@@ -325,7 +329,7 @@ function normalizeProduct(product: RawProduct): ShopifyProduct {
   return {
     id: product.id,
     handle: product.handle,
-    title: product.title,
+    title: getStorefrontProductTitle(product),
     createdAt: product.createdAt,
     description: product.description,
     descriptionHtml: sanitizeProductDescriptionHtml(product.descriptionHtml),
@@ -338,6 +342,14 @@ function normalizeProduct(product: RawProduct): ShopifyProduct {
     collections: product.collections.nodes,
     priceRange: product.priceRange,
     variants: product.variants.nodes,
+  };
+}
+
+function normalizeProductPreview(product: RawProductPreview): ShopifyProductPreview {
+  return {
+    id: product.id,
+    handle: product.handle,
+    title: getStorefrontProductTitle(product),
   };
 }
 
@@ -440,9 +452,13 @@ async function fetchShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   return data.products.nodes.map(normalizeProduct);
 }
 
-const getShopProductsCached = unstable_cache(fetchShopProducts, ["shopify-products"], {
-  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
-});
+const getShopProductsCached = unstable_cache(
+  fetchShopProducts,
+  ["shopify-products", PRODUCT_TITLES_CACHE_VERSION],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
 
 export async function getShopProducts(limit = 12): Promise<ShopifyProduct[]> {
   return withoutGiftWrap(await getShopProductsCached(limit));
@@ -474,7 +490,7 @@ async function fetchNewArrivalProducts(limit = 20): Promise<ShopifyProduct[]> {
 
 const getNewArrivalProductsCached = unstable_cache(
   fetchNewArrivalProducts,
-  ["shopify-new-arrival-products"],
+  ["shopify-new-arrival-products", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -556,7 +572,7 @@ async function fetchProductsByVendor(
 
 const getProductsByVendorCached = unstable_cache(
   fetchProductsByVendor,
-  ["shopify-products-by-vendor"],
+  ["shopify-products-by-vendor", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -616,7 +632,7 @@ async function fetchAllProductsByVendor(
 
 const getAllProductsByVendorCached = unstable_cache(
   fetchAllProductsByVendor,
-  ["shopify-all-products-by-vendor"],
+  ["shopify-all-products-by-vendor", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -650,7 +666,7 @@ async function fetchBestSellingProducts(limit = 8): Promise<ShopifyProduct[]> {
 
 const getBestSellingProductsCached = unstable_cache(
   fetchBestSellingProducts,
-  ["shopify-available-best-selling-products"],
+  ["shopify-available-best-selling-products", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -685,7 +701,7 @@ async function fetchBestSellingProductsByVendor(
 
 const getBestSellingProductsByVendorCached = unstable_cache(
   fetchBestSellingProductsByVendor,
-  ["shopify-available-best-selling-products-by-vendor"],
+  ["shopify-available-best-selling-products-by-vendor", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -730,9 +746,13 @@ const getShopProductCached = unstable_cache(fetchShopProduct, ["shopify-product"
 export async function getShopProduct(handle: string): Promise<ShopifyProduct | null> {
   const product = await getShopProductCached(handle);
 
-  // Previously cached products also pass through the current HTML policy.
+  // Previously cached products also pass through current title and HTML presentation.
   return product
-    ? { ...product, descriptionHtml: sanitizeProductDescriptionHtml(product.descriptionHtml) }
+    ? {
+        ...product,
+        title: getStorefrontProductTitle(product),
+        descriptionHtml: sanitizeProductDescriptionHtml(product.descriptionHtml),
+      }
     : null;
 }
 
@@ -774,9 +794,13 @@ async function fetchShopCollection(handle: string, limit = 12): Promise<ShopifyC
   return collection ? normalizeCollection(collection) : null;
 }
 
-const getShopCollectionCached = unstable_cache(fetchShopCollection, ["shopify-collection"], {
-  revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
-});
+const getShopCollectionCached = unstable_cache(
+  fetchShopCollection,
+  ["shopify-collection", PRODUCT_TITLES_CACHE_VERSION],
+  {
+    revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
+  },
+);
 
 export async function getShopCollection(
   handle: string,
@@ -866,7 +890,7 @@ async function fetchAllShopCollection(handle: string): Promise<ShopifyCollection
 
 const getAllShopCollectionCached = unstable_cache(
   fetchAllShopCollection,
-  ["shopify-all-collection-products"],
+  ["shopify-all-collection-products", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -963,7 +987,7 @@ async function fetchShopCollectionsWithProducts(
 
 const getShopCollectionsWithProductsCached = unstable_cache(
   fetchShopCollectionsWithProducts,
-  ["shopify-collections-products"],
+  ["shopify-collections-products", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -988,6 +1012,8 @@ async function fetchShopProductPreviews(limit = 100): Promise<ShopifyProductPrev
             id
             handle
             title
+            vendor
+            productType
           }
         }
       }
@@ -997,12 +1023,12 @@ async function fetchShopProductPreviews(limit = 100): Promise<ShopifyProductPrev
     },
   });
 
-  return data.products.nodes;
+  return data.products.nodes.map(normalizeProductPreview);
 }
 
 const getShopProductPreviewsCached = unstable_cache(
   fetchShopProductPreviews,
-  ["shopify-product-previews"],
+  ["shopify-product-previews", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -1013,7 +1039,7 @@ export async function getShopProductPreviews(limit = 100): Promise<ShopifyProduc
 }
 
 async function fetchAllShopProductPreviews(): Promise<ShopifyProductPreview[]> {
-  return fetchAllPages("Shopify product previews", async (cursor) => {
+  const products = await fetchAllPages("Shopify product previews", async (cursor) => {
     const data = await storefrontRequest<
       PaginatedProductPreviewsResponse,
       { cursor: string | null }
@@ -1025,6 +1051,8 @@ async function fetchAllShopProductPreviews(): Promise<ShopifyProductPreview[]> {
               id
               handle
               title
+              vendor
+              productType
             }
             pageInfo {
               hasNextPage
@@ -1038,11 +1066,12 @@ async function fetchAllShopProductPreviews(): Promise<ShopifyProductPreview[]> {
 
     return data.products;
   });
+  return products.map(normalizeProductPreview);
 }
 
 const getAllShopProductPreviewsCached = unstable_cache(
   fetchAllShopProductPreviews,
-  ["shopify-all-product-previews"],
+  ["shopify-all-product-previews", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -1083,7 +1112,7 @@ async function fetchRecommendedProducts(
 
 const getRecommendedProductsCached = unstable_cache(
   fetchRecommendedProducts,
-  ["shopify-product-recommendations"],
+  ["shopify-product-recommendations", PRODUCT_TITLES_CACHE_VERSION],
   {
     revalidate: SHOPIFY_STOREFRONT_REVALIDATE_SECONDS,
   },
@@ -1157,7 +1186,7 @@ export async function searchShopProducts(
   return withoutGiftWrap(data.predictiveSearch.products).map((product) => ({
     id: product.id,
     handle: product.handle,
-    title: product.title,
+    title: getStorefrontProductTitle(product),
     vendor: product.vendor,
     productType: product.productType,
     availableForSale: product.availableForSale,

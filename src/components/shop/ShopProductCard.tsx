@@ -11,6 +11,7 @@ import {
   type FitProfile,
 } from "@/lib/fit-profile";
 import { getProductSales } from "@/lib/shopify/product-merchandising";
+import { getProductDisplayCategory } from "@/lib/shopify/product-title-presentation";
 import type { ShopifyProduct } from "@/lib/shopify/types";
 import { cn, formatMoney } from "@/lib/utils";
 
@@ -73,14 +74,7 @@ export function ShopProductCard({
   const secondaryImage = getSecondaryImage(product);
   const fitMatches = fitProfile ? getProductFitMatchesForProfile(product, fitProfile) : [];
   const fitMatchLabel = fitMatches.length > 0 ? fitMatches.slice(0, 2).join(", ") : null;
-  const productMeta = [product.vendor, product.productType]
-    .filter(
-      (value, index, values): value is string =>
-        Boolean(value) &&
-        values.findIndex((candidate) => candidate?.toLowerCase() === value?.toLowerCase()) ===
-          index,
-    )
-    .join(" · ");
+  const productMeta = getProductDisplayCategory(product);
 
   return (
     <Card className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-lg border-ink/10 bg-white shadow-none transition-[border-color,transform] duration-200 ease-out hover:border-ink/25 focus-within:border-deep-teal/40 motion-safe:hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none">
@@ -177,7 +171,7 @@ export function ShopProductCard({
             {product.title}
           </ProductHeading>
 
-          <div className="mt-auto flex flex-wrap items-baseline gap-2 pr-14 pt-3 sm:pr-16">
+          <div className="mt-auto flex min-h-14 flex-wrap items-baseline gap-2 pr-14 pt-3 sm:pr-16">
             <p
               className={cn(
                 "text-base font-bold tracking-[-0.02em] sm:text-lg",

@@ -1,3 +1,5 @@
+import { getStorefrontProductTitle } from "@/lib/shopify/product-title-presentation";
+
 export const WISHLIST_STORAGE_KEY = "jbarbaro:wishlist";
 export const WISHLIST_CHANGED_EVENT = "jbarbaro:wishlist-changed";
 export const WISHLIST_OPEN_EVENT = "jbarbaro:wishlist-open";
@@ -71,7 +73,7 @@ export function readWishlistItems(): WishlistItem[] {
         parsedValue
           .filter(isWishlistItem)
           .slice(0, MAX_WISHLIST_ITEMS)
-          .map((item) => [item.id, item]),
+          .map((item) => [item.id, { ...item, title: getStorefrontProductTitle(item) }]),
       ).values(),
     );
   } catch {

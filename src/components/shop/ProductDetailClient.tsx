@@ -26,7 +26,6 @@ import {
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { useCartQuantityStatus } from "@/components/shop/CartQuantityContext";
 import { ProductSmartFitDrawer } from "@/components/shop/ProductSmartFitDrawer";
-import { brandSlug } from "@/lib/shopify/brand-slug";
 import { publishProductSelection, type ProductSelectionDetail } from "@/lib/shop-product-selection";
 import {
   FIT_PROFILE_STORAGE_KEY,
@@ -41,6 +40,11 @@ import {
   type ProductFitRecommendation,
 } from "@/lib/fit-profile";
 import { getProductOptionPresentation } from "@/lib/shopify/product-option-presentation";
+import { brandSlug } from "@/lib/shopify/brand-slug";
+import {
+  getProductDisplayBrand,
+  getProductDisplayCategory,
+} from "@/lib/shopify/product-title-presentation";
 import { getRichTextFallback } from "@/lib/shopify/product-description";
 import { GIFT_WRAP_PRODUCT_HANDLE } from "@/lib/shopify/gift-wrap";
 import {
@@ -115,6 +119,8 @@ export function ProductDetailClient({
   giftWrapOffer = null,
 }: ProductDetailClientProps): ReactElement {
   const quantityStatus = useCartQuantityStatus();
+  const displayBrand = getProductDisplayBrand(product);
+  const titleHasBrand = Boolean(displayBrand && product.title.startsWith(displayBrand));
   const initialVariant =
     product.variants.find((variant) => variant.availableForSale) ?? product.variants[0];
   const images = getProductImages(product);
@@ -263,7 +269,7 @@ export function ProductDetailClient({
     )
     .map((option) => optionPresentation.getSummaryPart(option.name, option.value))
     .join(" · ");
-  const metaCategoryLabel = primaryCollection?.title || product.productType;
+  const metaCategoryLabel = primaryCollection?.title || getProductDisplayCategory(product);
   const visibleOptionGroups = optionGroups;
   const smartFitUnavailable = Boolean(smartFitRecommendation && !smartFitRecommendation.variantId);
   const smartFitSupportingCopy = smartFitRecommendation
@@ -814,23 +820,24 @@ export function ProductDetailClient({
         <section className="min-w-0 lg:pt-[3.75rem]">
           <div className="space-y-5 lg:sticky lg:top-28">
             <header>
-              {product.vendor || metaCategoryLabel ? (
+              {metaCategoryLabel ? (
                 <p className="text-xs font-semibold tracking-[0.16em] text-smoke uppercase">
-                  {product.vendor ? (
-                    <Link
-                      href={`/shop/brands/${brandSlug(product.vendor)}`}
-                      className="transition-colors hover:text-deep-teal"
-                    >
-                      {product.vendor}
-                    </Link>
-                  ) : null}
-                  {product.vendor && metaCategoryLabel ? " / " : null}
                   {metaCategoryLabel}
                 </p>
               ) : null}
 
               <h1 className="mt-3 text-balance font-heading text-4xl leading-[1.08] text-ink sm:text-5xl">
-                {product.title}
+                {titleHasBrand && product.vendor ? (
+                  <>
+                    <Link
+                      href={`/shop/brands/${brandSlug(product.vendor)}`}
+                      className="transition-colors hover:text-deep-teal"
+                    >
+                      {displayBrand}
+                    </Link>
+                    {product.title.slice(displayBrand.length)}
+                  </>
+                ) : product.title}
               </h1>
 
               {!selectedVariantStockLimitReached ? (

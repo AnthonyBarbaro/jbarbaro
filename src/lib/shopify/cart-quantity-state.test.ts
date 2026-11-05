@@ -119,6 +119,25 @@ test("unknown, malformed and intentional backorder quantities stay uncapped", ()
   assert.equal(getInventoryQuantityLimit({ availableForSale: false }), 0);
 });
 
+test("purchasable gift wrap with zero reported stock does not acquire a false ceiling", () => {
+  const inventory = {
+    quantityAvailable: 0,
+    currentlyNotInStock: false,
+    availableForSale: true,
+  };
+  assert.equal(getInventoryQuantityLimit(inventory), null);
+  assert.equal(getRemainingCartVariantQuantity(emptyState(), "gift-wrap", inventory), null);
+
+  const snapshot = cart([{ ...line("wrap-line", "gift-wrap", 1), inventory }]);
+  const reloaded = applyCartQuantityPayload(emptyState(), payload(snapshot));
+  assert.equal(getRemainingCartVariantQuantity(reloaded, "gift-wrap", inventory), null);
+
+  const rejected = applyCartQuantityPayload(reloaded, payload(snapshot, "wrap-line"));
+  assert.equal(getRemainingCartVariantQuantity(rejected, "gift-wrap", inventory), 0);
+  assert.equal(getInventoryQuantityLimit({ ...inventory, availableForSale: false }), 0);
+  assert.equal(getInventoryQuantityLimit({ ...inventory, quantityAvailable: 2 }), 2);
+});
+
 test("fresh cart inventory replaces stale product data and observed ceilings after a restock", () => {
   const snapshot = cart([line("shirt", "shirt-m", 1)]);
   const capped = applyCartQuantityPayload(emptyState(), payload(snapshot, "shirt"));

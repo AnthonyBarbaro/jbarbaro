@@ -838,7 +838,15 @@ export function ShopCatalogClient({
     smartFit: smartFitEnabled,
   });
 
-  let filteredProducts = products.filter((product) => {
+  const catalogCollection = showTopPicks
+    ? null
+    : activeTopPicksId === "best"
+      ? { label: "Best Sellers", items: bestSellers }
+      : activeTopPicksId === "new"
+        ? { label: "New Arrivals", items: newArrivals }
+        : null;
+
+  let filteredProducts = (catalogCollection?.items ?? products).filter((product) => {
     const matchesQuery =
       searchableQuery.length === 0 || formatSearchText(product).includes(searchableQuery);
     const matchesType =
@@ -2567,7 +2575,7 @@ export function ShopCatalogClient({
     activeTopPicksTab?.items.slice(0, 5).map((product) => product.id) ?? [],
   );
   const catalogProducts =
-    activeTopPicksTab && !hasActiveFilters
+    showTopPicks && activeTopPicksTab && !hasActiveFilters
       ? [
           ...filteredProducts.filter((product) => !activeTopPickProductIds.has(product.id)),
           ...filteredProducts.filter((product) => activeTopPickProductIds.has(product.id)),
@@ -2946,6 +2954,21 @@ export function ShopCatalogClient({
 
   return (
     <div className="mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-8 2xl:px-12">
+      {catalogCollection ? (
+        <div className="mb-5 flex items-center justify-between gap-4">
+          <h1 className="font-heading text-3xl text-ink sm:text-4xl">{catalogCollection.label}</h1>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTopPicksId(null);
+              clearFilters();
+            }}
+            className="inline-flex min-h-11 shrink-0 items-center px-2 text-sm font-semibold text-deep-teal underline underline-offset-4"
+          >
+            Shop All
+          </button>
+        </div>
+      ) : null}
       {showTopPicks ? renderTopPicks() : null}
       <div className="hidden lg:block">{renderFitProfileLauncher()}</div>
 

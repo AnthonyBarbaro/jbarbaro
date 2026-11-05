@@ -397,7 +397,7 @@ summary::-webkit-details-marker {
   bottom: calc(var(--mobile-nav-height, 4rem) + 4rem);
   left: 1rem;
   z-index: 95;
-  display: inline-flex;
+  display: none;
   align-items: center;
   justify-content: center;
   width: 3rem;
@@ -415,6 +415,7 @@ summary::-webkit-details-marker {
 
 @media (min-width: 64rem) {
   .accessibility-floating-button {
+    display: inline-flex;
     bottom: 1.5rem;
     left: 1.5rem;
   }

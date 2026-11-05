@@ -57,10 +57,8 @@ export default async function ShopPage() {
   const availableProducts = products.filter((product) =>
     product.variants.some((variant) => variant.availableForSale),
   );
-  const bestSellerIds = new Set(bestSellers.map((product) => product.id));
   const newArrivals = [...availableProducts]
     .sort((left, right) => +new Date(right.createdAt) - +new Date(left.createdAt))
-    .filter((product) => !bestSellerIds.has(product.id))
     .slice(0, 10);
   const itemListJsonLd = {
     "@context": "https://schema.org",

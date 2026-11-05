@@ -22,6 +22,10 @@ export function getInventoryQuantityLimit(
     return 0;
   }
   const quantity = inventory.quantityAvailable;
+  // Shopify can keep a variant purchasable without a positive tracked stock count.
+  if (quantity === 0 && inventory.availableForSale === true) {
+    return null;
+  }
   return typeof quantity === "number" && Number.isSafeInteger(quantity) && quantity >= 0
     ? quantity
     : null;

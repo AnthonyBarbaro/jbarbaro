@@ -302,7 +302,7 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
 
         <div className="flex w-full flex-wrap items-center justify-between gap-3 sm:w-auto sm:justify-end">
           <Link
-            href="/shop?top=new#top-picks"
+            href="/shop?top=new&sort=newest"
             className="inline-flex min-h-11 items-center px-1 text-xs font-semibold tracking-[0.14em] text-deep-teal uppercase transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal focus-visible:ring-offset-2"
           >
             Shop New Arrivals

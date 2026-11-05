@@ -277,7 +277,7 @@ export default async function HomePage() {
               <h2 className="mt-2 font-heading text-4xl text-ink sm:text-5xl">Best Sellers</h2>
             </div>
             <ButtonLink
-              href="/shop?top=best#top-picks"
+              href="/shop?top=best"
               variant="secondary"
               className="w-full rounded-none border-ink/25 bg-transparent hover:bg-ivory sm:w-auto"
             >

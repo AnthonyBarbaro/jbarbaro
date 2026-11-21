@@ -55,6 +55,7 @@ export default async function HtmlSitemapPage() {
         { label: "Contact Us", href: "/contact-us" },
         { label: "Shipping & Returns", href: "/shipping-returns" },
         { label: "Terms of Use", href: "/terms-of-use" },
+        { label: "Mobile Terms of Service", href: "/mobile-terms-of-service" },
         { label: "Privacy Policy", href: "/privacy-policy" },
         { label: "Blog", href: "/blog" },
         { label: "Style Guide", href: "/style-guide" },

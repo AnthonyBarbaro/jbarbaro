@@ -61,21 +61,14 @@ export default function TermsOfUsePage() {
                 In-Store Tailoring Text Notifications
               </h2>
               <p className="mt-3 text-sm leading-7 text-smoke">
-                Customers may opt in verbally during in-store tailoring intake to receive
-                transactional text messages from J. Barbaro Clothiers about an active tailoring
-                order. Messages may include ready-for-pickup notifications and necessary
-                order-status updates. No marketing or promotional messages are sent through this
-                program.
-              </p>
-              <p className="mt-3 text-sm leading-7 text-smoke">
-                Message frequency varies. Message and data rates may apply. Consent is not a
-                condition of purchase. Reply STOP to unsubscribe or HELP for assistance. For help,
-                visit jbarbaro.com, call 586-286-7400 for The Mall at Partridge Creek, or call
-                248-332-2323 for Great Lakes Crossing Outlet.
-              </p>
-              <p className="mt-3 text-sm leading-7 text-smoke">
-                Wireless carriers are not liable for delayed or undelivered messages. Our collection
-                and use of mobile information is described in our Privacy Policy.
+                Our{" "}
+                <Link
+                  href="/mobile-terms-of-service"
+                  className="text-deep-teal underline underline-offset-4"
+                >
+                  Mobile Terms of Service
+                </Link>{" "}
+                explain how to sign up for tailoring order texts, what we send, and how to opt out.
               </p>
             </section>
             <section>

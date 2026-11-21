@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
@@ -70,7 +72,14 @@ export default function PrivacyPolicyPage() {
                 When you opt in during an in-store tailoring visit, we may use your mobile number
                 and consent record to send transactional updates about your tailoring order,
                 including ready-for-pickup notifications. Message frequency varies. You may reply
-                STOP to opt out at any time.
+                STOP to opt out at any time. See the{" "}
+                <Link
+                  href="/mobile-terms-of-service"
+                  className="text-deep-teal underline underline-offset-4"
+                >
+                  Mobile Terms of Service
+                </Link>{" "}
+                for sign-up and support details.
               </p>
               <p className="mt-3 text-sm leading-7 text-smoke">
                 Mobile information will not be sold, rented, or shared with third parties or

@@ -28,6 +28,7 @@ export async function getSitemapRoutes() {
     "/style-guide",
     "/privacy-policy",
     "/terms-of-use",
+    "/mobile-terms-of-service",
     "/shipping-returns",
     "/sitemap",
   ];

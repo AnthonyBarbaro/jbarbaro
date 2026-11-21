@@ -165,7 +165,7 @@ export function HeaderProductSearch({
       <form
         action="/shop"
         method="get"
-        className="header-product-search flex h-11 items-center rounded-md border border-ink/12 bg-ivory px-3 shadow-none transition-[border-color,box-shadow] focus-within:border-deep-teal focus-within:ring-4 focus-within:ring-deep-teal/15"
+        className="header-product-search flex h-11 items-center rounded-md border border-ink/12 bg-ivory px-3 shadow-none"
       >
         <Search className="h-4 w-4 shrink-0 text-smoke" />
         <input

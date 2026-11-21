@@ -54,6 +54,7 @@ export function TextOffersLauncher({ siteId }: { siteId: string }) {
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       setOpened(true);
       dialog.showModal();
+      dialog.focus({ preventScroll: true });
     }
     return true;
   }, []);
@@ -124,6 +125,7 @@ export function TextOffersLauncher({ siteId }: { siteId: string }) {
 
       dialog.close();
       dialog.showModal();
+      dialog.focus({ preventScroll: true });
     }
 
     window.addEventListener("klaviyoForms", handleFormEvent);

@@ -68,6 +68,15 @@ footer :focus-visible,
   outline-color: var(--color-gold);
 }
 
+.header-product-search:has(input:focus-visible) {
+  outline: 2px solid var(--color-deep-teal);
+  outline-offset: -1px;
+}
+
+.header-product-search input:focus-visible {
+  outline: none;
+}
+
 #main-content {
   scroll-margin-top: 9rem;
 }
@@ -924,7 +933,8 @@ html[data-a11y-motion="true"] *::after {
 }
 
 @media (forced-colors: active) {
-  :focus-visible {
+  :focus-visible:not(.header-product-search input),
+  .header-product-search:has(input:focus-visible) {
     outline: 3px solid Highlight !important;
   }
 }

@@ -57,9 +57,7 @@ export default function TermsOfUsePage() {
               </p>
             </section>
             <section>
-              <h2 className="font-heading text-2xl text-ink sm:text-3xl">
-                In-Store Tailoring Text Notifications
-              </h2>
+              <h2 className="font-heading text-2xl text-ink sm:text-3xl">Text Messaging</h2>
               <p className="mt-3 text-sm leading-7 text-smoke">
                 Our{" "}
                 <Link
@@ -68,7 +66,8 @@ export default function TermsOfUsePage() {
                 >
                   Mobile Terms of Service
                 </Link>{" "}
-                explain how to sign up for tailoring order texts, what we send, and how to opt out.
+                explain how to sign up separately for tailoring updates or promotional texts, what
+                we send, and how to opt out.
               </p>
             </section>
             <section>

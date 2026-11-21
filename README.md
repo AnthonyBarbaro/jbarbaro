@@ -50,6 +50,7 @@ See `.env.example`:
 - `SHOPIFY_STOREFRONT_ACCESS_TOKEN`
 - Optional `SHOPIFY_STOREFRONT_API_VERSION` (default: `2026-01`)
 - Optional `SHOPIFY_GIFT_WRAP_ENABLED` (default: `false`)
+- Optional `NEXT_PUBLIC_KLAVIYO_SITE_ID` (Klaviyo public API key, also called Site ID)
 - `NEXT_PUBLIC_TINA_CLIENT_ID`, `TINA_TOKEN`
 - Optional `NEXT_PUBLIC_TINA_BRANCH` (defaults to `main`)
 - Optional `TINA_SEARCH_TOKEN`

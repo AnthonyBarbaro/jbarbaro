@@ -5,9 +5,11 @@ import { Facebook, Instagram, Linkedin, PinIcon, XIcon } from "lucide-react";
 import { footerShoppingLinks, footerUtilityLinks } from "@/data/navigation";
 import { locations } from "@/data/locations";
 import { socialLinks } from "@/data/social";
+import { CookieNotice } from "@/components/layout/CookieNotice";
 import { ButtonLink } from "@/components/ui/Button";
 import { AccessibilityNavButton } from "@/components/ui/AccessibilityNavButton";
 import { LEGAL_OWNER } from "@/lib/constants";
+import { getKlaviyoSiteId, TEXT_SIGNUP_PATH } from "@/lib/klaviyo";
 import { formatPhone } from "@/lib/utils";
 
 function socialIcon(label: string): ReactElement | null {
@@ -82,6 +84,13 @@ export function SiteFooter(): ReactElement {
                 </Link>
               </li>
             ))}
+            {getKlaviyoSiteId() ? (
+              <li>
+                <Link href={TEXT_SIGNUP_PATH} className="hover:text-gold">
+                  Text Me Offers
+                </Link>
+              </li>
+            ) : null}
           </ul>
         </section>
 
@@ -126,7 +135,7 @@ export function SiteFooter(): ReactElement {
 
       <div className="border-t border-white/15 py-4 text-xs text-white/72">
         <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
-          <p className="leading-5 text-white/60">
+          <div className="leading-5 text-white/60">
             This site uses an essential cookie for your shopping bag and optional browser storage
             for saved Smart Fit and accessibility preferences.{" "}
             <Link
@@ -134,8 +143,12 @@ export function SiteFooter(): ReactElement {
               className="text-white/85 underline decoration-white/30 underline-offset-4 hover:text-gold focus-visible:rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
             >
               Privacy Policy
-            </Link>
-          </p>
+            </Link>{" "}
+            <span className="mx-1" aria-hidden>
+              ·
+            </span>{" "}
+            <CookieNotice />
+          </div>
           <div className="mt-3 flex flex-wrap items-center justify-center gap-3 sm:justify-between">
             <p>
               © {new Date().getFullYear()} {LEGAL_OWNER}. All rights reserved.

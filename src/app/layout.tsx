@@ -5,6 +5,7 @@ import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { TextOffersLauncher } from "@/components/marketing/TextOffersLauncher";
 import { CartDrawer } from "@/components/shop/CartDrawer";
 import { CartQuantityProvider } from "@/components/shop/CartQuantityContext";
 import { WishlistDrawer } from "@/components/shop/WishlistDrawer";
@@ -15,6 +16,7 @@ import { locations } from "@/data/locations";
 import { siteSettings } from "@/data/site-settings";
 import { socialLinks } from "@/data/social";
 import { SITE_URL } from "@/lib/constants";
+import { getKlaviyoSiteId } from "@/lib/klaviyo";
 import { absoluteUrl, getDefaultSiteMetadata } from "@/lib/seo";
 import { clothingStoreJsonLd, websiteJsonLd } from "@/lib/structured-data";
 
@@ -54,6 +56,7 @@ const organizationJsonLd = {
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const navItems = buildPrimaryNavigation();
+  const klaviyoSiteId = getKlaviyoSiteId();
 
   return (
     <html lang="en" className={`${manrope.variable} ${cormorantGaramond.variable}`}>
@@ -78,6 +81,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
               {children}
             </main>
             <SiteFooter />
+            {klaviyoSiteId ? <TextOffersLauncher siteId={klaviyoSiteId} /> : null}
             <MobileBottomNav />
             <CartDrawer />
             <WishlistDrawer />

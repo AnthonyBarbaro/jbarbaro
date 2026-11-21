@@ -48,6 +48,12 @@ export default function PrivacyPolicyPage() {
                 them. Use Reset display preferences in Accessibility options to remove those
                 choices.
               </p>
+              <p className="mt-3 text-sm leading-7 text-smoke">
+                Our promotional text signup uses a Klaviyo form. Optional Klaviyo cookies help
+                measure site activity when you accept them. You can change your choice using Cookie
+                settings in the footer. Your cookie choice is separate from signing up for
+                promotional texts.
+              </p>
             </section>
             <section>
               <h2 className="font-heading text-2xl text-ink sm:text-3xl">How We Use Information</h2>
@@ -71,8 +77,13 @@ export default function PrivacyPolicyPage() {
               <p className="mt-3 text-sm leading-7 text-smoke">
                 When you opt in during an in-store tailoring visit, we may use your mobile number
                 and consent record to send transactional updates about your tailoring order,
-                including ready-for-pickup notifications. Message frequency varies. You may reply
-                STOP to opt out at any time. See the{" "}
+                including ready-for-pickup notifications. If you separately sign up for promotional
+                SMS, we may use your mobile number and consent record to send marketing texts
+                through Klaviyo. If your signup includes cart reminders, we may use information
+                about your shopping bag to send those reminders.
+              </p>
+              <p className="mt-3 text-sm leading-7 text-smoke">
+                Message frequency varies. You may reply STOP to opt out at any time. See the{" "}
                 <Link
                   href="/mobile-terms-of-service"
                   className="text-deep-teal underline underline-offset-4"

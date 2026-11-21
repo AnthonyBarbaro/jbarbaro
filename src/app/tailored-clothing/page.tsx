@@ -221,7 +221,11 @@ export default function TailoredClothingPage() {
                       key={button.href}
                       href={button.href}
                       variant={index === 0 ? "teal" : "secondary"}
-                      className={index === 0 ? undefined : "border-ivory/70 text-ivory hover:border-gold hover:text-gold"}
+                      className={
+                        index === 0
+                          ? undefined
+                          : "border-ivory text-black hover:border-ivory hover:bg-stone"
+                      }
                     >
                       {button.label}
                     </ButtonLink>

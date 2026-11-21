@@ -392,6 +392,30 @@ summary::-webkit-details-marker {
   box-shadow: var(--shadow-luxe);
 }
 
+.text-offers-tab {
+  top: clamp(8rem, 29dvh, 17rem);
+  left: env(safe-area-inset-left, 0px);
+  writing-mode: vertical-rl;
+  text-orientation: sideways;
+  translate: 0 -50%;
+  rotate: 180deg;
+}
+
+.text-offers-panel {
+  inset: 0 auto 0 max(0.75rem, env(safe-area-inset-left));
+  margin-block: auto;
+}
+
+body:has(.text-offers-panel[open]) {
+  overflow: hidden;
+}
+
+@media (min-width: 64rem) {
+  .text-offers-panel {
+    left: 1.5rem;
+  }
+}
+
 .accessibility-floating-button {
   position: fixed;
   bottom: calc(var(--mobile-nav-height, 4rem) + 4rem);

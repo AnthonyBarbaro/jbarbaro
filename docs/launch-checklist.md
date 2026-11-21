@@ -27,7 +27,7 @@ suite passed **20/20**, Quick Add inventory wiring **2/2**, and production admin
 the login shell rendered. Authenticated Tina publishing is still unverified.
 
 **Still open before a public release:** hosted configuration/deployment and domain checks; received
-email authentication and full staff/customer workflows; deployed inventory configuration, gift-wrap setup, shipping
+email authentication and full staff/customer workflows; deployed inventory configuration, shipping
 promotion, account/checkout/fulfillment and POS verification; authenticated Tina publishing; remaining
 policy rules and support ownership; and resolution or an explicit release decision for upstream audit
 findings. The user selected **mocked checkout only** for this pass. No live order or POS test was run.
@@ -56,7 +56,7 @@ The authorized code fixes are implemented and locally verified. Provider, hostin
 | 2                       | Make contact/wedding success depend on staff SMTP acceptance, with honest retry recovery, bounded fields, and exact wedding-date validation.                                                 | 2, 24           |
 | 3                       | Add proactive stock ceilings and refresh stale bag state across tabs. Preserve unknown-stock and intentional-backorder behavior.                                                             | 4, 11           |
 | In parallel             | Choose a newsletter provider/audience or hide signup; approve shipping/returns/exchange rules and commerce terms/privacy; support or remove review claims; reconcile the shipping promotion. | 3, 5–8          |
-| Before release          | Record real email, gift-wrap, checkout/order, POS, account, production configuration, and Tina publishing checks. No such live checks were performed in this review.                         | 9–16            |
+| Before release          | Confirm gift wrap is hidden. Record real email, checkout/order, POS, account, production configuration, and Tina publishing checks. No such live checks were performed in this review.       | 9–16            |
 | Final release pass      | Review catalog/business data and deployed mobile/accessibility, performance, SEO, rollback, and support ownership.                                                                           | 17–21           |
 | Explicit scope decision | Decide release timing for size discovery/recommendation continuity, analytics, and historical documentation. Form validation should accompany the delivery fix above.                        | 22–25           |
 
@@ -261,6 +261,9 @@ The website does not reserve a slot or synchronize a calendar. Staff replies are
 
 ### 10. VERIFY — Gift-wrap product configuration
 
+Gift wrap is off for launch. Verify the product page, bag, and bag drawer hide the add-on.
+Run the configuration and wrapped-item checks when re-enabling it with `SHOPIFY_GIFT_WRAP_ENABLED=true`.
+
 - [ ] Confirm Shopify product handle `gift-wrap` is published to the correct Storefront channel and configured as the intended paid service.
 
 **Done when:** the offer resolves to the intended variant, shows the current Shopify price, and has suitable stock/inventory, tax, and shipping settings. Do not accidentally restrict every shopper to one wrap through the service's inventory configuration. Check unavailable-wrap handling and confirm the holiday banner matches the live offer. The current offer selector requires one available variant or one total variant.
@@ -290,7 +293,7 @@ The website does not reserve a slot or synchronize a calendar. Staff replies are
 
 ### 12. VERIFY — Checkout, payment, orders, and fulfillment
 
-- [ ] Complete an approved test order through the hosted Shopify checkout, including a gift-wrapped item.
+- [ ] Complete an approved test order through the hosted Shopify checkout. Include a gift-wrapped item when gift wrap is enabled.
 
 **Done when:** variant, quantity, price, discounts, shipping, taxes, currency, and final total match the confirmed bag. Test successful payment and a declined/abandoned checkout without duplicate orders. Verify customer/staff order emails, order visibility, shipping/tracking, cancellation, and full/partial refund handling. Fulfillment staff must identify exactly which item and quantity receive gift wrap from the actual order/packing workflow. Apply the approved gift-wrap refund rule.
 

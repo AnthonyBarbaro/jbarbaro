@@ -33,9 +33,9 @@ export default function TermsOfUsePage() {
             <section>
               <h2 className="font-heading text-2xl text-ink sm:text-3xl">Shopping & Checkout</h2>
               <p className="mt-3 text-sm leading-7 text-smoke">
-                Review your selected products, sizes, quantities, and gift wrap before continuing to
-                Shopify checkout. Available delivery methods, shipping charges, applicable taxes,
-                and the final total are shown at checkout before you place your order.
+                Review the items, options, and quantities in your bag before continuing to Shopify
+                checkout. Available delivery methods, shipping charges, applicable taxes, and the
+                final total are shown at checkout before you place your order.
               </p>
               <p className="mt-3 text-sm leading-7 text-smoke">
                 See our{" "}

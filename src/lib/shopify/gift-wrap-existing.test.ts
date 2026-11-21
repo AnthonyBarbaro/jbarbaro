@@ -208,6 +208,7 @@ function clothingQuantities(payload: Payload): Array<[string | null, number]> {
 
 test("gift wrap can be attached to an existing item without requiring more clothing stock", async (context) => {
   const environment = {
+    SHOPIFY_GIFT_WRAP_ENABLED: "true",
     SHOPIFY_STORE_DOMAIN: "existing-wrap.myshopify.com",
     SHOPIFY_STOREFRONT_ACCESS_TOKEN: "existing-wrap-test-token",
     SHOPIFY_STOREFRONT_API_VERSION: "2026-01",

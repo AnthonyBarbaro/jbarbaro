@@ -70,14 +70,14 @@ export function CartGiftWrapOption({
   const descriptionId = useId();
   const { getRemainingQuantity } = useCartQuantityStatus();
 
-  if (isGiftWrapLine(line) || line.parentLineId || line.quantity < 1 || !line.variantId) {
+  if (!offer || isGiftWrapLine(line) || line.parentLineId || line.quantity < 1 || !line.variantId) {
     return null;
   }
 
-  const remaining = offer ? getRemainingQuantity(offer.merchandiseId, offer) : null;
+  const remaining = getRemainingQuantity(offer.merchandiseId, offer);
   const stockLimitReached = remaining !== null && remaining < line.quantity;
-  const available = Boolean(offer?.availableForSale && !stockLimitReached);
-  const totalPrice = offer ? Number(offer.price.amount) * line.quantity : null;
+  const available = offer.availableForSale && !stockLimitReached;
+  const totalPrice = Number(offer.price.amount) * line.quantity;
 
   return (
     <div className={cn("border-t border-ink/10 pt-3", className)} aria-busy={pending}>
@@ -97,19 +97,17 @@ export function CartGiftWrapOption({
         />
         <span className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <span className="font-semibold">{pending ? "Adding gift wrap..." : "Add gift wrap"}</span>
-          {offer ? (
-            <span className="text-xs font-medium text-deep-teal">
-              +{formatMoney(offer.price.amount, offer.price.currencyCode)} per item
-            </span>
-          ) : null}
+          <span className="text-xs font-medium text-deep-teal">
+            +{formatMoney(offer.price.amount, offer.price.currencyCode)} per item
+          </span>
         </span>
       </label>
       <p id={descriptionId} className="ml-8 text-xs leading-5 text-smoke">
-        {!offer?.availableForSale
+        {!offer.availableForSale
           ? "Gift wrap is currently unavailable."
           : stockLimitReached
             ? "Not enough gift wrap available for this quantity."
-            : line.quantity > 1 && totalPrice !== null
+            : line.quantity > 1
               ? `Wraps all ${line.quantity} items in this row · ${formatMoney(totalPrice.toFixed(2), offer.price.currencyCode)} total.`
               : "Adds wrapping to this item without changing its quantity."}
       </p>

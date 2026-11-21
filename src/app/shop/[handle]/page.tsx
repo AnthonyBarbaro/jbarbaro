@@ -11,7 +11,7 @@ import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { absoluteUrl, buildMetadata } from "@/lib/seo";
 import { GIFT_WRAP_PRODUCT_HANDLE } from "@/lib/shopify/gift-wrap";
-import { getGiftWrapOffer } from "@/lib/shopify/gift-wrap-product.server";
+import { getGiftWrapOffer, isGiftWrapEnabled } from "@/lib/shopify/gift-wrap-product.server";
 import {
   getAllShopProductPreviews,
   getProductsByVendor,
@@ -62,6 +62,10 @@ function getUniqueProducts(
 }
 
 async function loadShopProduct(handle: string) {
+  if (handle.toLowerCase() === GIFT_WRAP_PRODUCT_HANDLE && !isGiftWrapEnabled()) {
+    return { product: null, unavailable: false };
+  }
+
   try {
     return {
       product: await getShopProduct(handle),

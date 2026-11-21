@@ -49,6 +49,7 @@ See `.env.example`:
 - `SHOPIFY_STORE_DOMAIN`
 - `SHOPIFY_STOREFRONT_ACCESS_TOKEN`
 - Optional `SHOPIFY_STOREFRONT_API_VERSION` (default: `2026-01`)
+- Optional `SHOPIFY_GIFT_WRAP_ENABLED` (default: `false`)
 - `NEXT_PUBLIC_TINA_CLIENT_ID`, `TINA_TOKEN`
 - Optional `NEXT_PUBLIC_TINA_BRANCH` (defaults to `main`)
 - Optional `TINA_SEARCH_TOKEN`
@@ -143,6 +144,10 @@ SMTP acceptance means the mail server accepted the message; it does not prove in
 The Next.js storefront already includes Shopify product and collection queries, variant selection,
 Quick Add, bag controls, gift-wrap pairing, and a hosted Shopify checkout handoff. Configure the
 Storefront credentials privately in the deployment environment.
+
+Gift wrap is off by default. To restore it, publish the `gift-wrap` product to the Shopify
+Storefront channel, set `SHOPIFY_GIFT_WRAP_ENABLED=true` in the deployment environment, and
+redeploy so cached product pages pick up the setting.
 
 See the [launch checklist](docs/launch-checklist.md) for current release evidence and remaining
 provider/staff checks. Checkout tests are currently mocked; hosted payments, fulfillment, and the

@@ -213,23 +213,23 @@ export function ProductDetailClient({
   const stockLimitMessage = optionGroups.some((group) => /size/i.test(group.name))
     ? "No more available in this size."
     : "No more available for this option.";
-  const showGiftWrapOption = product.handle !== GIFT_WRAP_PRODUCT_HANDLE;
+  const showGiftWrapOption = giftWrapOffer !== null && product.handle !== GIFT_WRAP_PRODUCT_HANDLE;
   const giftWrapPriceLabel = giftWrapOffer
     ? formatMoney(giftWrapOffer.price.amount, giftWrapOffer.price.currencyCode)
     : null;
-  const addGiftWrap = giftWrapSelected;
-  const giftWrapUnavailable = giftWrapSelected && !giftWrapOffer?.availableForSale;
+  const addGiftWrap = showGiftWrapOption && giftWrapSelected;
+  const giftWrapUnavailable = addGiftWrap && !giftWrapOffer?.availableForSale;
   const giftWrapLimitReached = Boolean(
     giftWrapOffer && !quantityStatus.canAddVariant(giftWrapOffer.merchandiseId, 1, giftWrapOffer),
   );
-  const giftWrapBlocked = giftWrapSelected && (giftWrapUnavailable || giftWrapLimitReached);
+  const giftWrapBlocked = addGiftWrap && (giftWrapUnavailable || giftWrapLimitReached);
   const giftWrapCheckboxDisabled =
     isAddingToBag ||
     needsBagReview ||
     ((!giftWrapOffer?.availableForSale || giftWrapLimitReached) && !giftWrapSelected);
   const purchaseLabel = giftWrapUnavailable
     ? "Gift Wrap Unavailable"
-    : giftWrapSelected && giftWrapLimitReached
+    : addGiftWrap && giftWrapLimitReached
       ? "No More Gift Wrap"
       : "Add to Bag";
   const giftWrapSupportingCopy = !giftWrapOffer?.availableForSale

@@ -194,6 +194,7 @@ function mutation(
 
 test("gift wrap is attached and verified at the server purchase boundaries", async (context) => {
   const environment = {
+    SHOPIFY_GIFT_WRAP_ENABLED: "true",
     SHOPIFY_STORE_DOMAIN: "gift-test.myshopify.com",
     SHOPIFY_STOREFRONT_ACCESS_TOKEN: "gift-test-token",
     SHOPIFY_STOREFRONT_API_VERSION: "2026-01",

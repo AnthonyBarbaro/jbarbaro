@@ -75,6 +75,20 @@ test("gift-wrap offers use the published product variant and price without guess
     hook.deregister(),
   );
 
+  const previousSetting = process.env.SHOPIFY_GIFT_WRAP_ENABLED;
+  context.after(() => {
+    if (previousSetting === undefined) delete process.env.SHOPIFY_GIFT_WRAP_ENABLED;
+    else process.env.SHOPIFY_GIFT_WRAP_ENABLED = previousSetting;
+  });
+
+  await context.test("skips Shopify when gift wrap has not been enabled", async () => {
+    delete process.env.SHOPIFY_GIFT_WRAP_ENABLED;
+    lookupError = new Error("Unexpected Shopify product lookup");
+    await assert.equal(await getGiftWrapOffer(), null);
+    lookupError = null;
+  });
+  process.env.SHOPIFY_GIFT_WRAP_ENABLED = "true";
+
   await context.test("returns the current variant, title, currency and price", async () => {
     assert.deepEqual(await getGiftWrapOffer(), {
       merchandiseId: "current-gift-variant",

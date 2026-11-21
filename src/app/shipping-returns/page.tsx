@@ -44,7 +44,7 @@ export default function ShippingReturnsPage() {
               <p className="mt-3 text-sm leading-7 text-smoke">
                 Contact our team for exchange assistance. Before purchasing altered, custom, or
                 rental items, ask us about the return terms that apply. We can also answer questions
-                about shipping charges and gift-wrap fees.
+                about shipping charges.
               </p>
             </section>
             <section>

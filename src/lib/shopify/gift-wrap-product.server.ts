@@ -4,7 +4,15 @@ import { GIFT_WRAP_PRODUCT_HANDLE } from "@/lib/shopify/gift-wrap";
 import { getShopProduct } from "@/lib/shopify/products";
 import type { ShopifyGiftWrapOffer } from "@/lib/shopify/types";
 
+export function isGiftWrapEnabled(): boolean {
+  return process.env.SHOPIFY_GIFT_WRAP_ENABLED === "true";
+}
+
 export async function getGiftWrapOffer(): Promise<ShopifyGiftWrapOffer | null> {
+  if (!isGiftWrapEnabled()) {
+    return null;
+  }
+
   const product = await getShopProduct(GIFT_WRAP_PRODUCT_HANDLE);
 
   if (!product) {

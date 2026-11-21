@@ -15,6 +15,7 @@ import { Container } from "@/components/ui/Container";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { locations } from "@/data/locations";
 import { partridgeCreekShowroomPhotos } from "@/data/showroom-gallery";
+import { getKlaviyoSiteId, TEXT_SIGNUP_PATH } from "@/lib/klaviyo";
 import { pageContent } from "@/lib/site-content";
 import { buildMetadata } from "@/lib/seo";
 import { getShopBrands } from "@/lib/shopify/brands";
@@ -150,6 +151,9 @@ function uniqueProducts(products: ShopifyProduct[]) {
 }
 
 export default async function HomePage() {
+  const heroSlides = getKlaviyoSiteId()
+    ? homePage.heroSlides
+    : homePage.heroSlides.filter((slide) => slide.href !== TEXT_SIGNUP_PATH);
   const resolvedCategories = await resolveMenCategories(50, 1);
   const categories = getStorefrontCategories(resolvedCategories);
   let bestSellers: ShopifyProduct[] = [];
@@ -207,7 +211,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <HeroCarousel slides={homePage.heroSlides} />
+      <HeroCarousel slides={heroSlides} />
 
       <WaveSection topWave="A" background="ivory" padded={false} className="border-b border-ink/15">
         <CollectionRail collections={categories} />

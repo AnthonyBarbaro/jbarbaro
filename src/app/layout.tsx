@@ -5,6 +5,7 @@ import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { MobileBottomNav } from "@/components/layout/MobileBottomNav";
+import { KlaviyoTracking } from "@/components/marketing/KlaviyoOnsiteScript";
 import { TextOffersLauncher } from "@/components/marketing/TextOffersLauncher";
 import { CartDrawer } from "@/components/shop/CartDrawer";
 import { CartQuantityProvider } from "@/components/shop/CartQuantityContext";
@@ -74,6 +75,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
             ...locations.map((location) => clothingStoreJsonLd(location)),
           ]}
         />
+        {klaviyoSiteId ? <KlaviyoTracking siteId={klaviyoSiteId} /> : null}
         <AccessibilityProvider>
           <CartQuantityProvider>
             <SiteHeader navItems={navItems} />

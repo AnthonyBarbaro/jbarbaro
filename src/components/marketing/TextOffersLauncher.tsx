@@ -5,7 +5,11 @@ import { Tag, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import { KlaviyoTextSignupForm } from "@/components/marketing/KlaviyoTextSignupForm";
-import { KLAVIYO_TEXT_SIGNUP_FORM_ID, TEXT_SIGNUP_PATH } from "@/lib/klaviyo";
+import {
+  KLAVIYO_TEXT_SIGNUP_FORM_ID,
+  TEXT_SIGNUP_OPEN_EVENT,
+  TEXT_SIGNUP_PATH,
+} from "@/lib/klaviyo";
 
 const hiddenOfferKey = "jbarbaro:text-offer-hidden";
 
@@ -24,8 +28,9 @@ function subscribeToStoredOfferDismissal(onChange: () => void) {
 
 export function TextOffersLauncher({ siteId }: { siteId: string }) {
   const pathname = usePathname();
-  const launcherRef = useRef<HTMLButtonElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const klaviyoFormDeclinedRef = useRef(false);
   const [opened, setOpened] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const hiddenInBrowser = useSyncExternalStore(
@@ -40,7 +45,21 @@ export function TextOffersLauncher({ siteId }: { siteId: string }) {
     pathname.startsWith("/categories/") ||
     pathname.startsWith("/shop/brands");
 
+  const openOffer = useCallback(() => {
+    const dialog = dialogRef.current;
+    if (!dialog || klaviyoFormDeclinedRef.current) return false;
+
+    if (!dialog.open) {
+      openerRef.current =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      setOpened(true);
+      dialog.showModal();
+    }
+    return true;
+  }, []);
+
   const dismissOffer = useCallback(() => {
+    openerRef.current = null;
     dialogRef.current?.close();
     setDismissed(true);
     try {
@@ -52,11 +71,25 @@ export function TextOffersLauncher({ siteId }: { siteId: string }) {
   }, []);
 
   useEffect(() => {
-    if (!opened || dismissed || hiddenInBrowser) return;
+    if (!isBrowsing) return;
+
+    function handleOpenRequest(event: Event) {
+      if (openOffer()) event.preventDefault();
+    }
+
+    window.addEventListener(TEXT_SIGNUP_OPEN_EVENT, handleOpenRequest);
+    return () => window.removeEventListener(TEXT_SIGNUP_OPEN_EVENT, handleOpenRequest);
+  }, [isBrowsing, openOffer]);
+
+  useEffect(() => {
+    if (!opened || !isBrowsing) return;
 
     function handleFormEvent(event: Event) {
-      if (!(event instanceof CustomEvent)) return;
+      if (!(event instanceof CustomEvent) || !dialogRef.current?.open) return;
       if (event.detail?.type === "close" && event.detail.formId === KLAVIYO_TEXT_SIGNUP_FORM_ID) {
+        // Klaviyo removes a declined embed. A later signup click can open the standalone page.
+        klaviyoFormDeclinedRef.current = true;
+        setOpened(false);
         dismissOffer();
       }
     }
@@ -101,42 +134,40 @@ export function TextOffersLauncher({ siteId }: { siteId: string }) {
       window.removeEventListener("dd_response_displayed", showVerification);
       window.removeEventListener("dd_response_unload", restoreSignupModal);
     };
-  }, [dismissOffer, dismissed, hiddenInBrowser, opened]);
+  }, [dismissOffer, isBrowsing, opened]);
 
-  if (!isBrowsing || dismissed || hiddenInBrowser) return null;
+  if (!isBrowsing) return null;
 
   return (
     <>
-      <div className="text-offers-launcher fixed z-[85]">
-        <button
-          ref={launcherRef}
-          type="button"
-          aria-haspopup="dialog"
-          aria-controls="text-offers-panel"
-          onClick={() => {
-            setOpened(true);
-            dialogRef.current?.showModal();
-          }}
-          className="text-offers-tab flex min-w-11 items-center gap-2 rounded-l-md border border-gold/55 bg-ink px-3 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-deep-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
-        >
-          <Tag className="h-4 w-4 text-gold" aria-hidden />
-          Save 5%
-        </button>
-        <button
-          type="button"
-          aria-label="Hide Save 5% offer"
-          onClick={dismissOffer}
-          className="absolute -top-2 -right-2 inline-flex size-7 items-center justify-center rounded-full border border-ink/20 bg-ivory text-ink shadow-sm hover:bg-stone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
-        >
-          <X className="size-3.5" aria-hidden />
-        </button>
-      </div>
+      {!dismissed && !hiddenInBrowser ? (
+        <div className="text-offers-launcher fixed z-[85]">
+          <button
+            type="button"
+            aria-haspopup="dialog"
+            aria-controls="text-offers-panel"
+            onClick={openOffer}
+            className="text-offers-tab flex min-w-11 items-center gap-2 rounded-l-md border border-gold/55 bg-ink px-3 py-3.5 text-sm font-semibold text-white shadow-md hover:bg-deep-teal focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+          >
+            <Tag className="h-4 w-4 text-gold" aria-hidden />
+            Save 5%
+          </button>
+          <button
+            type="button"
+            aria-label="Hide Save 5% offer"
+            onClick={dismissOffer}
+            className="absolute -top-2 -right-2 inline-flex size-7 items-center justify-center rounded-full border border-ink/20 bg-ivory text-ink shadow-sm hover:bg-stone focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
+          >
+            <X className="size-3.5" aria-hidden />
+          </button>
+        </div>
+      ) : null}
       <dialog
         id="text-offers-panel"
         ref={dialogRef}
         aria-label="Text signup"
         onClose={(event) => {
-          if (!event.currentTarget.open) launcherRef.current?.focus({ preventScroll: true });
+          if (!event.currentTarget.open) openerRef.current?.focus({ preventScroll: true });
         }}
         onClick={(event) => {
           if (event.target !== event.currentTarget) return;

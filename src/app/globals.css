@@ -392,6 +392,30 @@ summary::-webkit-details-marker {
   box-shadow: var(--shadow-luxe);
 }
 
+.hero-text-signup-shade {
+  background: linear-gradient(
+    0deg,
+    rgb(11 15 20 / 98%) 0%,
+    rgb(11 15 20 / 83%) 43%,
+    rgb(11 15 20 / 38%) 73%,
+    rgb(11 15 20 / 14%) 100%
+  );
+}
+
+@media (min-width: 40rem) {
+  .hero-text-signup-shade {
+    background:
+      linear-gradient(0deg, rgb(11 15 20 / 65%), transparent 30%),
+      linear-gradient(
+        90deg,
+        rgb(11 15 20 / 96%) 0%,
+        rgb(11 15 20 / 84%) 34%,
+        rgb(11 15 20 / 27%) 67%,
+        rgb(11 15 20 / 12%) 100%
+      );
+  }
+}
+
 .text-offers-launcher {
   top: clamp(8rem, 29dvh, 17rem);
   left: env(safe-area-inset-left, 0px);

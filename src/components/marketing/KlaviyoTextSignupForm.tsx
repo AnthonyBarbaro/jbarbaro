@@ -1,9 +1,8 @@
 "use client";
 
-import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 
-import { applyKlaviyoTrackingPreference } from "@/lib/cookie-preference";
+import { KlaviyoOnsiteScript } from "@/components/marketing/KlaviyoOnsiteScript";
 import { KLAVIYO_TEXT_SIGNUP_FORM_ID } from "@/lib/klaviyo";
 
 type FormStatus = "loading" | "ready" | "unavailable";
@@ -19,13 +18,11 @@ export function KlaviyoTextSignupForm({
   const formRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<FormStatus>("loading");
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>("idle");
-  const [canLoadScript, setCanLoadScript] = useState(false);
 
   useEffect(() => {
     const form = formRef.current;
     if (!form) return;
 
-    applyKlaviyoTrackingPreference();
     const loadTimeout = window.setTimeout(() => setStatus("unavailable"), 8000);
     let submissionTimeout: number | undefined;
 
@@ -50,10 +47,7 @@ export function KlaviyoTextSignupForm({
 
     const observer = new MutationObserver(checkForm);
     observer.observe(form, { childList: true, subtree: true, attributeFilter: ["disabled"] });
-    const frame = window.requestAnimationFrame(() => {
-      checkForm();
-      setCanLoadScript(true);
-    });
+    const frame = window.requestAnimationFrame(checkForm);
 
     return () => {
       observer.disconnect();
@@ -65,14 +59,7 @@ export function KlaviyoTextSignupForm({
 
   return (
     <div>
-      {canLoadScript ? (
-        <Script
-          id="klaviyo-onsite"
-          src={`https://static.klaviyo.com/onsite/js/${siteId}/klaviyo.js`}
-          strategy="afterInteractive"
-          onError={() => setStatus("unavailable")}
-        />
-      ) : null}
+      <KlaviyoOnsiteScript siteId={siteId} onError={() => setStatus("unavailable")} />
       <div ref={formRef} className={`klaviyo-form-${KLAVIYO_TEXT_SIGNUP_FORM_ID}`} />
       <div role="status" className="text-center text-sm leading-6 text-ink">
         {submissionStatus !== "idle" ? (

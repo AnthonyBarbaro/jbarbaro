@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 
 import { ButtonLink } from "@/components/ui/Button";
+import { TEXT_SIGNUP_OPEN_EVENT, TEXT_SIGNUP_PATH } from "@/lib/klaviyo";
 import type { HeroSlide } from "@/types/site";
 import { cn } from "@/lib/utils";
 
@@ -100,6 +101,7 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
   }
 
   const activeSlide = slides[activeIndex];
+  const isTextSignup = activeSlide.href === TEXT_SIGNUP_PATH;
   const nextSlide = slides.length > 1 ? slides[(activeIndex + 1) % slides.length] : null;
   const renderedSlides = nextSlide ? [activeSlide, nextSlide] : [activeSlide];
 
@@ -240,6 +242,7 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
     >
       {renderedSlides.map((slide, index) => {
         const isActive = index === 0;
+        const isTextSignupSlide = slide.href === TEXT_SIGNUP_PATH;
 
         return (
           <article
@@ -261,15 +264,25 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
               src={slide.image}
               alt={isActive ? slide.imageAlt : ""}
               fill
-              priority={activeIndex === 0 && isActive}
-              quality={92}
+              preload={activeIndex === 0 && isActive}
+              quality={isTextSignupSlide ? 75 : 92}
               sizes="100vw"
-              className={cn("object-cover", getImagePosition(slide))}
+              className={cn(
+                "object-cover",
+                getImagePosition(slide),
+                isTextSignupSlide && "saturate-[0.78] sepia-[0.14]",
+              )}
             />
-            {!slide.imageHasLogo ? (
-              <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(20,17,12,0.92),rgba(20,17,12,0.64)_48%,rgba(20,17,12,0.18))]" />
-            ) : null}
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,20,0.02),rgba(11,15,20,0.62))]" />
+            {isTextSignupSlide ? (
+              <div className="hero-text-signup-shade absolute inset-0" aria-hidden />
+            ) : (
+              <>
+                {!slide.imageHasLogo ? (
+                  <div className="absolute inset-0 bg-[linear-gradient(100deg,rgba(20,17,12,0.92),rgba(20,17,12,0.64)_48%,rgba(20,17,12,0.18))]" />
+                ) : null}
+                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,15,20,0.02),rgba(11,15,20,0.62))]" />
+              </>
+            )}
             <div className="hero-page-fold absolute inset-0" aria-hidden />
           </article>
         );
@@ -311,7 +324,8 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
           <div
             key={activeSlide.id}
             className={cn(
-              "hero-copy-enter max-w-4xl",
+              "max-w-4xl",
+              !isTextSignup && "hero-copy-enter",
               activeSlide.imageHasLogo && "sm:ml-auto sm:max-w-md sm:text-right",
             )}
           >
@@ -330,12 +344,18 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
                 className={cn(
                   "max-w-5xl text-balance font-heading text-5xl leading-[0.94] tracking-[-0.025em] sm:text-6xl lg:text-7xl",
                   activeSlide.imageHasLogo && "sm:sr-only",
+                  isTextSignup && "max-w-[12ch] lg:text-[clamp(4.5rem,6.5vw,5.8rem)]",
                 )}
               >
                 {activeSlide.title}
               </h1>
             )}
-            <p className="mt-5 hidden max-w-2xl text-pretty text-[0.98rem] leading-7 text-white/84 sm:block sm:text-lg sm:leading-8">
+            <p
+              className={cn(
+                "mt-5 max-w-2xl text-pretty text-[0.98rem] leading-7 text-white/84 sm:block sm:text-lg sm:leading-8",
+                isTextSignup ? "max-w-md text-white/92" : "hidden",
+              )}
+            >
               {activeSlide.caption}
             </p>
 
@@ -347,12 +367,28 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
             >
               <ButtonLink
                 href={activeSlide.href}
+                aria-haspopup={isTextSignup ? "dialog" : undefined}
+                aria-controls={isTextSignup ? "text-offers-panel" : undefined}
+                onNavigate={
+                  isTextSignup
+                    ? (event) => {
+                        const request = new Event(TEXT_SIGNUP_OPEN_EVENT, { cancelable: true });
+                        if (!window.dispatchEvent(request)) event.preventDefault();
+                      }
+                    : undefined
+                }
                 target={activeSlide.external ? "_blank" : undefined}
                 rel={activeSlide.external ? "noopener noreferrer" : undefined}
                 size="lg"
-                className="w-full rounded-none border border-ivory bg-ivory text-ink hover:border-gold hover:bg-gold sm:w-auto"
+                className={cn(
+                  "w-full rounded-none border text-ink sm:w-auto",
+                  isTextSignup
+                    ? "border-gold bg-gold after:absolute after:inset-0 hover:border-ivory hover:bg-ivory active:scale-none"
+                    : "border-ivory bg-ivory hover:border-gold hover:bg-gold",
+                )}
               >
                 {getPrimaryCtaLabel(activeSlide)}
+                {isTextSignup ? <ArrowRight className="size-4" aria-hidden /> : null}
               </ButtonLink>
             </div>
           </div>

@@ -59,6 +59,16 @@
         "imageFit": "cover"
       },
       {
+        "id": "text-promotions",
+        "title": "Stay in the Loop",
+        "caption": "Get updates on new arrivals, special offers, and store events.",
+        "href": "/text-signup",
+        "ctaLabel": "Sign Up for Texts",
+        "image": "/images/locations/DSC_0528_3_optimized_4500.jpg",
+        "imageAlt": "Inside the J. Barbaro showroom, with tailored jackets, folded menswear, and a glass display case",
+        "mobileFocalPoint": "right-quarter"
+      },
+      {
         "id": "slide-3",
         "title": "Tuxedo Rentals for the Whole Party",
         "caption": "Explore tuxedo and suit rentals for weddings, galas, proms, and black-tie events.",

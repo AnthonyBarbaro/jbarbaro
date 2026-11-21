@@ -168,7 +168,11 @@ export default async function MenCategoryPage({
         </h2>
         {products.length > 0 ? (
           <Suspense fallback={null}>
-            <ShopCatalogClient products={products} productHeadingLevel="h3" />
+            <ShopCatalogClient
+              products={products}
+              productHeadingLevel="h3"
+              topPicksPriceLimit={category.slug === "pants" ? 300 : undefined}
+            />
           </Suspense>
         ) : (
           <Container>

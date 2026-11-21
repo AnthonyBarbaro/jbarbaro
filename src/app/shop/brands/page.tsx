@@ -21,7 +21,9 @@ export default async function ShopBrandsPage() {
   let storefrontAvailable = true;
 
   try {
-    brands = await getShopBrands();
+    brands = (await getShopBrands())
+      .filter((brand) => brand.productCount > 2)
+      .sort((left, right) => right.productCount - left.productCount);
   } catch (error) {
     storefrontAvailable = false;
     console.error("Unable to load Shopify brands for /shop/brands.", error);
@@ -53,7 +55,7 @@ export default async function ShopBrandsPage() {
               <CardContent className="p-6 sm:p-8">
                 <h1 className="font-heading text-3xl text-ink sm:text-4xl">
                   {storefrontAvailable
-                    ? "No brands are online right now."
+                    ? "Explore the online shop."
                     : "The brand directory is temporarily unavailable."}
                 </h1>
                 <p className="mt-4 max-w-3xl text-sm leading-7 text-smoke">

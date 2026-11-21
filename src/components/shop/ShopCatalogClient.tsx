@@ -6,6 +6,7 @@ import {
   useCallback,
   useDeferredValue,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -59,6 +60,7 @@ type ShopCatalogClientProps = {
   newArrivals?: ShopifyProduct[];
   productHeadingLevel?: "h2" | "h3" | "h4";
   showTopPicks?: boolean;
+  topPicksPriceLimit?: number;
 };
 
 type FacetKey = "availability" | "price" | "brand" | "size" | "length" | "color";
@@ -114,7 +116,6 @@ const sortLabels: Record<SortOption, string> = {
 };
 const availabilityOptions: AvailabilityOption[] = ["all", "in-stock", "sold-out"];
 const priceOptions: PriceOption[] = ["all", "under-100", "100-250", "250-500", "500-plus"];
-const topPicksIds = ["best", "new", "under-100"];
 const controlledShopSearchParams = [
   "q",
   "sort",
@@ -382,11 +383,12 @@ function readStringList(searchParams: SearchParamsReader, key: string) {
   );
 }
 
-function readShopUrlState(searchParams: SearchParamsReader): ShopUrlState {
+function readShopUrlState(searchParams: SearchParamsReader, priceTopPickId: string): ShopUrlState {
   const requestedSort = searchParams.get("sort");
   const requestedAvailability = searchParams.get("availability");
   const requestedPrice = searchParams.get("price");
   const requestedTopPicksId = searchParams.get("top");
+  const topPicksId = requestedTopPicksId === "under-100" ? priceTopPickId : requestedTopPicksId;
 
   return {
     query: searchParams.get("q")?.trim() || "",
@@ -412,7 +414,9 @@ function readShopUrlState(searchParams: SearchParamsReader): ShopUrlState {
     selectedColors: readStringList(searchParams, "color"),
     smartFitEnabled: searchParams.get("fit") === "1",
     topPicksId:
-      requestedTopPicksId && topPicksIds.includes(requestedTopPicksId) ? requestedTopPicksId : null,
+      topPicksId === "best" || topPicksId === "new" || topPicksId === priceTopPickId
+        ? topPicksId
+        : null,
   };
 }
 
@@ -452,11 +456,13 @@ export function ShopCatalogClient({
   newArrivals = [],
   productHeadingLevel = "h2",
   showTopPicks = true,
+  topPicksPriceLimit = 100,
 }: ShopCatalogClientProps) {
   const TopPicksHeading = productHeadingLevel;
+  const priceTopPickId = `under-${topPicksPriceLimit}`;
   const searchParams = useSearchParams();
   const shopUrlSignature = searchParams.toString();
-  const initialUrlState = readShopUrlState(searchParams);
+  const initialUrlState = readShopUrlState(searchParams, priceTopPickId);
   const [isPending, startTransition] = useTransition();
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -468,6 +474,9 @@ export function ShopCatalogClient({
     initialUrlState.topPicksId,
   );
   const pillBarRef = useRef<HTMLDivElement | null>(null);
+  const facetViewportRef = useRef<HTMLDivElement>(null);
+  const facetTriggerRef = useRef<HTMLButtonElement>(null);
+  const facetPopoverRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState(initialUrlState.query);
   const [sort, setSort] = useState<SortOption>(initialUrlState.sort);
   const [availability, setAvailability] = useState<AvailabilityOption>(
@@ -633,7 +642,7 @@ export function ShopCatalogClient({
       return;
     }
 
-    const nextUrlState = readShopUrlState(new URLSearchParams(shopUrlSignature));
+    const nextUrlState = readShopUrlState(new URLSearchParams(shopUrlSignature), priceTopPickId);
     const nextNonQueryStateSignature = JSON.stringify({
       sort: nextUrlState.sort,
       availability: nextUrlState.availability,
@@ -670,7 +679,7 @@ export function ShopCatalogClient({
     });
 
     return () => window.cancelAnimationFrame(frameId);
-  }, [shopUrlSignature]);
+  }, [priceTopPickId, shopUrlSignature]);
 
   useEffect(() => {
     if (isApplyingShopUrlStateRef.current) {
@@ -753,12 +762,61 @@ export function ShopCatalogClient({
     return () => window.clearTimeout(timeoutId);
   }, [currentShopUrlState]);
 
+  const closeFacet = useCallback(() => {
+    setOpenFacet(null);
+    facetTriggerRef.current?.focus({ preventScroll: true });
+  }, [setOpenFacet]);
+
+  useLayoutEffect(() => {
+    const bar = pillBarRef.current;
+    const viewport = facetViewportRef.current;
+    const trigger = facetTriggerRef.current;
+    const popover = facetPopoverRef.current;
+    if (!openFacet || !bar || !viewport || !trigger || !popover) {
+      return;
+    }
+
+    const positionPopover = () => {
+      const barRect = bar.getBoundingClientRect();
+      const viewportRect = viewport.getBoundingClientRect();
+      const triggerRect = trigger.getBoundingClientRect();
+
+      if (
+        viewportRect.width === 0 ||
+        triggerRect.right <= viewportRect.left ||
+        triggerRect.left >= viewportRect.right
+      ) {
+        setOpenFacet(null);
+        return;
+      }
+
+      const maxLeft = Math.max(0, barRect.width - popover.offsetWidth);
+      const left = Math.min(maxLeft, Math.max(0, triggerRect.left - barRect.left));
+      popover.style.left = `${left}px`;
+      popover.style.top = `${triggerRect.bottom - barRect.top}px`;
+    };
+
+    positionPopover();
+    popover.focus({ preventScroll: true });
+
+    const observer = new ResizeObserver(positionPopover);
+    observer.observe(bar);
+    observer.observe(viewport);
+    observer.observe(trigger);
+    viewport.addEventListener("scroll", positionPopover, { passive: true });
+
+    return () => {
+      observer.disconnect();
+      viewport.removeEventListener("scroll", positionPopover);
+    };
+  }, [openFacet]);
+
   useEffect(() => {
     if (!openFacet) {
       return;
     }
 
-    function handlePointerDown(event: MouseEvent) {
+    function handlePointerDown(event: PointerEvent) {
       if (pillBarRef.current && !pillBarRef.current.contains(event.target as Node)) {
         setOpenFacet(null);
       }
@@ -766,18 +824,18 @@ export function ShopCatalogClient({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setOpenFacet(null);
+        closeFacet();
       }
     }
 
-    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("pointerdown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("pointerdown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [openFacet]);
+  }, [closeFacet, openFacet]);
 
   useEffect(() => {
     if (hasLoadedFitProfileRef.current) {
@@ -2558,13 +2616,13 @@ export function ShopCatalogClient({
     { id: "best", label: "Best Sellers", items: bestSellers.slice(0, 10) },
     { id: "new", label: "New Arrivals", items: newArrivals.slice(0, 10) },
     {
-      id: "under-100",
-      label: "Under $100",
+      id: priceTopPickId,
+      label: `Under $${topPicksPriceLimit}`,
       items: products
         .filter(
           (product) =>
             product.variants.some((variant) => variant.availableForSale) &&
-            getProductPrice(product) < 100,
+            getProductPrice(product) < topPicksPriceLimit,
         )
         .slice(0, 10),
     },
@@ -3100,7 +3158,7 @@ export function ShopCatalogClient({
           </div>
         </div>
 
-        <FilterScrollRow>
+        <FilterScrollRow viewportRef={facetViewportRef}>
           <div className="shrink-0">
             <button
               ref={mobileFilterTriggerRef}
@@ -3146,7 +3204,10 @@ export function ShopCatalogClient({
 
           <button
             type="button"
-            onClick={() => setIsSearchOpen((current) => !current)}
+            onClick={() => {
+              setOpenFacet(null);
+              setIsSearchOpen((current) => !current);
+            }}
             className={cn(
               "inline-flex h-11 shrink-0 items-center gap-2 rounded-full border px-4 text-sm font-medium transition-colors duration-200",
               isSearchOpen || query
@@ -3164,8 +3225,13 @@ export function ShopCatalogClient({
           {facetPills.map((pill) => (
             <button
               key={pill.key}
+              id={`shop-facet-trigger-${pill.key}`}
+              ref={openFacet === pill.key ? facetTriggerRef : undefined}
               type="button"
-              onClick={() => setOpenFacet((current) => (current === pill.key ? null : pill.key))}
+              onClick={() => {
+                setIsSearchOpen(false);
+                setOpenFacet((current) => (current === pill.key ? null : pill.key));
+              }}
               aria-expanded={openFacet === pill.key}
               aria-controls={`shop-facet-popover-${pill.key}`}
               className={cn(
@@ -3224,8 +3290,12 @@ export function ShopCatalogClient({
 
         {openFacet ? (
           <div
+            ref={facetPopoverRef}
             id={`shop-facet-popover-${openFacet}`}
-            className="absolute top-full left-0 z-[60] mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-lg border border-ink/10 bg-white p-4 shadow-[0_30px_70px_-40px_rgba(11,15,20,0.5)] lg:hidden"
+            role="group"
+            aria-labelledby={`shop-facet-trigger-${openFacet}`}
+            tabIndex={-1}
+            className="absolute z-[60] mt-2 w-80 max-w-full rounded-lg border border-ink/10 bg-white p-4 shadow-[0_30px_70px_-40px_rgba(11,15,20,0.5)] outline-none lg:hidden"
           >
             {renderFacetPopoverContent(openFacet)}
             <div className="mt-4 flex items-center justify-between border-t border-ink/10 pt-3">
@@ -3238,7 +3308,7 @@ export function ShopCatalogClient({
               </button>
               <button
                 type="button"
-                onClick={() => setOpenFacet(null)}
+                onClick={closeFacet}
                 className="inline-flex min-h-11 items-center justify-center rounded-full border border-ink bg-ink px-4 text-xs font-semibold tracking-[0.12em] text-white uppercase transition-colors hover:bg-deep-teal"
               >
                 Done

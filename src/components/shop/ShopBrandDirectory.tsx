@@ -6,45 +6,29 @@ import { ArrowRight, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import type { ShopBrand } from "@/lib/shopify/brands";
-import { cn } from "@/lib/utils";
 
 type ShopBrandDirectoryProps = {
   brands: ShopBrand[];
 };
 
-const ALL_BRANDS = "All";
-
-function getBrandInitial(name: string) {
-  const initial = name.trim().charAt(0).toUpperCase();
-  return /^[A-Z]$/.test(initial) ? initial : "#";
-}
-
 export function ShopBrandDirectory({ brands }: ShopBrandDirectoryProps) {
   const [query, setQuery] = useState("");
-  const [activeLetter, setActiveLetter] = useState(ALL_BRANDS);
-  const availableLetters = useMemo(
-    () => Array.from(new Set(brands.map((brand) => getBrandInitial(brand.name)))).sort(),
-    [brands],
-  );
   const filteredBrands = useMemo(() => {
     const normalizedQuery = query.trim().toLocaleLowerCase();
 
+    if (!normalizedQuery) {
+      return brands;
+    }
+
     return brands.filter((brand) => {
-      const matchesLetter =
-        activeLetter === ALL_BRANDS || getBrandInitial(brand.name) === activeLetter;
       const searchableContent = [brand.name, brand.vendor, brand.presentation?.description]
         .filter(Boolean)
         .join(" ")
         .toLocaleLowerCase();
 
-      return matchesLetter && (!normalizedQuery || searchableContent.includes(normalizedQuery));
+      return searchableContent.includes(normalizedQuery);
     });
-  }, [activeLetter, brands, query]);
-
-  function clearFilters() {
-    setQuery("");
-    setActiveLetter(ALL_BRANDS);
-  }
+  }, [brands, query]);
 
   return (
     <>
@@ -58,8 +42,8 @@ export function ShopBrandDirectory({ brands }: ShopBrandDirectoryProps) {
               Shop by Brand
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-              Browse {brands.length} designer brand{brands.length === 1 ? "" : "s"} currently
-              represented in the online shop.
+              Explore the online selection from {brands.length} designer brand
+              {brands.length === 1 ? "" : "s"}.
             </p>
           </div>
 
@@ -97,33 +81,7 @@ export function ShopBrandDirectory({ brands }: ShopBrandDirectoryProps) {
 
       <section className="bg-ivory py-6 sm:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <nav
-            className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden"
-            aria-label="Filter brands by first letter"
-          >
-            {[ALL_BRANDS, ...availableLetters].map((letter) => {
-              const isActive = activeLetter === letter;
-
-              return (
-                <button
-                  key={letter}
-                  type="button"
-                  onClick={() => setActiveLetter(letter)}
-                  aria-pressed={isActive}
-                  className={cn(
-                    "inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md border px-3 text-xs font-semibold tracking-[0.1em] uppercase transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20",
-                    isActive
-                      ? "border-deep-teal bg-deep-teal text-white"
-                      : "border-ink/12 bg-white text-ink hover:border-deep-teal/40 hover:text-deep-teal",
-                  )}
-                >
-                  {letter}
-                </button>
-              );
-            })}
-          </nav>
-
-          <p className="mt-5 text-sm text-smoke" aria-live="polite" aria-atomic="true">
+          <p className="text-sm text-smoke" aria-live="polite" aria-atomic="true">
             {filteredBrands.length} brand{filteredBrands.length === 1 ? "" : "s"} shown
           </p>
 
@@ -170,7 +128,7 @@ export function ShopBrandDirectory({ brands }: ShopBrandDirectoryProps) {
                             {brand.name}
                           </h2>
                           <p className="mt-1 text-xs leading-5 text-smoke">
-                            {brand.productCount} product{brand.productCount === 1 ? "" : "s"}
+                            {brand.productCount} products
                           </p>
                         </div>
                         <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-[0.12em] text-deep-teal uppercase">
@@ -192,14 +150,14 @@ export function ShopBrandDirectory({ brands }: ShopBrandDirectoryProps) {
                 No brands match your search.
               </h2>
               <p className="mt-2 text-sm leading-7 text-smoke">
-                Try another name or clear the filters to see every online brand.
+                Try another name or clear your search to see the full list.
               </p>
               <button
                 type="button"
-                onClick={clearFilters}
+                onClick={() => setQuery("")}
                 className="mt-5 inline-flex min-h-11 items-center justify-center rounded-md border border-ink/15 bg-white px-4 text-xs font-semibold tracking-[0.14em] text-ink uppercase transition-colors hover:border-deep-teal hover:text-deep-teal focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-deep-teal/20"
               >
-                Clear Filters
+                Clear Search
               </button>
             </div>
           )}

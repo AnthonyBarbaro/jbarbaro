@@ -1,16 +1,20 @@
 "use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
-export function FilterScrollRow({ children }: { children: ReactNode }) {
+type FilterScrollRowProps = {
+  children: ReactNode;
+  viewportRef: RefObject<HTMLDivElement | null>;
+};
+
+export function FilterScrollRow({ children, viewportRef }: FilterScrollRowProps) {
   const id = useId();
-  const rowRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ previous: false, next: false });
 
   useEffect(() => {
-    const row = rowRef.current;
+    const row = viewportRef.current;
     const content = contentRef.current;
     if (!row || !content) return;
     const update = (): void => {
@@ -27,10 +31,10 @@ export function FilterScrollRow({ children }: { children: ReactNode }) {
       observer.disconnect();
       row.removeEventListener("scroll", update);
     };
-  }, []);
+  }, [viewportRef]);
 
   function scroll(direction: -1 | 1): void {
-    const row = rowRef.current;
+    const row = viewportRef.current;
     if (!row) return;
     row.scrollBy({
       left: direction * row.clientWidth * 0.8,
@@ -55,7 +59,7 @@ export function FilterScrollRow({ children }: { children: ReactNode }) {
       </button>
       <div
         id={id}
-        ref={rowRef}
+        ref={viewportRef}
         className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <div ref={contentRef} className="flex w-max items-start gap-2">

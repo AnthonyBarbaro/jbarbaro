@@ -1,6 +1,7 @@
 export type ShowroomPhoto = {
   src: string;
   alt: string;
+  quality?: number;
 };
 
 export const partridgeCreekShowroomPhotos: ShowroomPhoto[] = [
@@ -31,5 +32,10 @@ export const partridgeCreekShowroomPhotos: ShowroomPhoto[] = [
   {
     src: "/images/locations/partridge-creek/showroom-04-2400.webp",
     alt: "Colorful polos and casual menswear displayed at J. Barbaro Partridge Creek",
+  },
+  {
+    src: "/images/locations/DSC_0546.jpg",
+    alt: "Jason Barbaro, owner of J. Barbaro Clothiers, at the Partridge Creek showroom counter",
+    quality: 92,
   },
 ];

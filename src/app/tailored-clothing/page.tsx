@@ -106,9 +106,10 @@ export default function TailoredClothingPage() {
               <div className="relative aspect-[4/5] sm:aspect-[16/10] lg:aspect-[4/5]">
                 <Image
                   src={tailoredPage.heroImage}
-                  alt="Expert suit fitting and tailored menswear"
+                  alt="Jason Barbaro, owner of J. Barbaro Clothiers, at the showroom counter"
                   fill
-                  sizes="(max-width: 1024px) 100vw, 48vw"
+                  quality={92}
+                  sizes="(min-width: 1280px) 1220px, (min-width: 640px) 100vw, 180vw"
                   className="object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink/55 via-transparent to-transparent" />
@@ -204,12 +205,13 @@ export default function TailoredClothingPage() {
               <div className="relative aspect-[4/3]">
                 <Image
                   src={tailoredPage.insetImage}
-                  alt="J. Barbaro tailored clothing consultation"
+                  alt="Sport coats, belts, and accessories on display in the J. Barbaro showroom"
                   fill
-                  sizes="(max-width: 1024px) 100vw, 38vw"
+                  quality={92}
+                  sizes="(min-width: 1280px) 640px, (min-width: 1024px) 50vw, 110vw"
                   className="object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-ink/75 via-ink/35 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink/35 via-transparent to-transparent" />
               </div>
               <CardContent>
                 <p className="text-[11px] font-semibold tracking-[0.14em] text-ivory/70 uppercase">{tailoredPage.optionsSection.insetBadge}</p>

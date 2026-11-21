@@ -253,8 +253,8 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
                   alt={isActive ? photo.alt : ""}
                   aria-hidden={!isActive}
                   fill
-                  quality={75}
-                  sizes="100vw"
+                  quality={photo.quality ?? 75}
+                  sizes="(max-width: 480px) 480px, 100vw"
                   loading="lazy"
                   placeholder="blur"
                   blurDataURL={galleryBlurDataUrl}
@@ -326,7 +326,7 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
         </div>
         <div
           ref={inlineThumbnailRailRef}
-          className="grid snap-x snap-mandatory grid-flow-col auto-cols-[28%] gap-2 overflow-x-auto pb-2 [scrollbar-width:thin] sm:auto-cols-[20%] lg:grid-flow-row lg:grid-cols-7"
+          className="grid snap-x snap-mandatory grid-flow-col auto-cols-[28%] gap-2 overflow-x-auto pb-2 [scrollbar-width:thin] sm:auto-cols-[20%] lg:auto-cols-[minmax(5rem,1fr)]"
           aria-label="Showroom photo thumbnails"
         >
           {photos.map((photo, index) => {
@@ -352,7 +352,7 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
                   alt=""
                   fill
                   quality={75}
-                  sizes="(max-width: 640px) 28vw, (max-width: 1024px) 20vw, 14vw"
+                  sizes="(max-width: 640px) 28vw, (max-width: 1024px) 20vw, 12.5vw"
                   placeholder="blur"
                   blurDataURL={galleryBlurDataUrl}
                   className={cn(
@@ -422,7 +422,7 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
                   alt={isActive ? photo.alt : ""}
                   aria-hidden={!isActive}
                   fill
-                  quality={75}
+                  quality={photo.quality ?? 75}
                   sizes="100vw"
                   loading="eager"
                   placeholder="blur"

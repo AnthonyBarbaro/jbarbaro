@@ -383,7 +383,7 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
                 className={cn(
                   "w-full rounded-none border text-ink sm:w-auto",
                   isTextSignup
-                    ? "border-gold bg-gold after:absolute after:inset-0 hover:border-ivory hover:bg-ivory active:scale-none"
+                    ? "border-gold bg-gold hover:border-ivory hover:bg-ivory"
                     : "border-ivory bg-ivory hover:border-gold hover:bg-gold",
                 )}
               >

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
+import { useReducedMotion } from "@/components/ui/AccessibilityProvider";
 import type { Testimonial } from "@/types/site";
 
 import { aggregateRating } from "@/data/testimonials";
@@ -17,9 +18,10 @@ type TestimonialsCarouselProps = {
 
 export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
-    if (testimonials.length < 2) {
+    if (prefersReducedMotion || testimonials.length < 2) {
       return;
     }
 
@@ -28,7 +30,7 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
     }, 7000);
 
     return () => clearInterval(timer);
-  }, [testimonials.length]);
+  }, [prefersReducedMotion, testimonials.length]);
 
   if (!testimonials.length) {
     return null;
@@ -53,7 +55,7 @@ export function TestimonialsCarousel({ testimonials }: TestimonialsCarouselProps
               <Star key={index} className="h-5 w-5 fill-current" />
             ))}
           </div>
-          <ButtonLink href="/reviews" variant="secondary" className="mt-7 border-ivory/80 text-ivory hover:border-gold hover:text-gold">
+          <ButtonLink href="/reviews" variant="secondaryOnDark" className="mt-7">
             Read All Reviews
           </ButtonLink>
         </div>

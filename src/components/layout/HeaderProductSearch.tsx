@@ -165,7 +165,7 @@ export function HeaderProductSearch({
       <form
         action="/shop"
         method="get"
-        className="flex h-11 items-center rounded-md border border-ink/12 bg-ivory px-3 shadow-none transition-[border-color,box-shadow] focus-within:border-deep-teal focus-within:ring-4 focus-within:ring-deep-teal/15"
+        className="header-product-search flex h-11 items-center rounded-md border border-ink/12 bg-ivory px-3 shadow-none transition-[border-color,box-shadow] focus-within:border-deep-teal focus-within:ring-4 focus-within:ring-deep-teal/15"
       >
         <Search className="h-4 w-4 shrink-0 text-smoke" />
         <input
@@ -186,7 +186,7 @@ export function HeaderProductSearch({
             }
           }}
           placeholder="Search products, brands, sizes, or colors"
-          className="h-11 w-full bg-transparent px-3 text-base text-ink outline-none placeholder:text-smoke sm:text-sm"
+          className="h-full w-full min-w-0 bg-transparent px-3 text-base text-ink outline-none placeholder:text-smoke sm:text-sm"
           aria-label="Search products"
           aria-controls={isOpen && deferredQuery.trim().length >= 2 ? resultsId : undefined}
           aria-describedby={statusId}

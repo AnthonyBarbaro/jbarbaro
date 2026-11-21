@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
+import { useReducedMotion } from "@/components/ui/AccessibilityProvider";
+
 const AUTOPLAY_DELAY_MS = 6500;
 const SCROLL_IDLE_DELAY_MS = 180;
 
@@ -76,7 +78,7 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
   const [isScrolling, setIsScrolling] = useState(false);
   const [isInView, setIsInView] = useState(true);
   const [isDocumentVisible, setIsDocumentVisible] = useState(true);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   const syncRailState = useCallback(() => {
     const rail = railRef.current;
@@ -142,7 +144,7 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
 
       rail.scrollTo({
         left: targetPosition,
-        behavior: prefersReducedMotion || shouldWrap ? "auto" : "smooth",
+        behavior: prefersReducedMotion || shouldWrap ? "instant" : "smooth",
       });
     },
     [prefersReducedMotion],
@@ -183,27 +185,6 @@ export function NewArrivalsCarousel({ children, itemCount }: NewArrivalsCarousel
     observer.observe(section);
 
     return () => observer.disconnect();
-  }, []);
-
-  useEffect(() => {
-    const motionPreference = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const syncMotionPreference = () =>
-      setPrefersReducedMotion(
-        motionPreference.matches || document.documentElement.dataset.a11yMotion === "true",
-      );
-    const observer = new MutationObserver(syncMotionPreference);
-
-    syncMotionPreference();
-    motionPreference.addEventListener("change", syncMotionPreference);
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ["data-a11y-motion"],
-    });
-
-    return () => {
-      motionPreference.removeEventListener("change", syncMotionPreference);
-      observer.disconnect();
-    };
   }, []);
 
   useEffect(() => {

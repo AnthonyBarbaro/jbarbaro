@@ -5,7 +5,9 @@ import { ChevronLeft, ChevronRight, Expand, Pause, Play, X } from "lucide-react"
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 
+import { useReducedMotion } from "@/components/ui/AccessibilityProvider";
 import type { ShowroomPhoto } from "@/data/showroom-gallery";
+import { getScrollBehavior } from "@/lib/accessibility";
 import { cn } from "@/lib/utils";
 
 const galleryBlurDataUrl =
@@ -33,9 +35,6 @@ function getStagedPhotoIndexes(activeIndex: number, photoCount: number) {
 function centerThumbnailInRail(rail: HTMLDivElement | null, element: HTMLButtonElement | null) {
   if (!rail || !element) return;
 
-  const behavior = window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ? "auto"
-    : "smooth";
   const railRect = rail.getBoundingClientRect();
   const elementRect = element.getBoundingClientRect();
   const left =
@@ -44,13 +43,14 @@ function centerThumbnailInRail(rail: HTMLDivElement | null, element: HTMLButtonE
     railRect.left -
     (rail.clientWidth - element.clientWidth) / 2;
 
-  rail.scrollTo({ left, behavior });
+  rail.scrollTo({ left, behavior: getScrollBehavior() });
 }
 
 export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [isAutoplaying, setIsAutoplaying] = useState(true);
+  const prefersReducedMotion = useReducedMotion();
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const didSwipe = useRef(false);
   const hasSelectedPhotoChanged = useRef(false);
@@ -154,14 +154,14 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
   }, [currentIndex]);
 
   useEffect(() => {
-    if (!isAutoplaying || isLightboxOpen || photoCount < 2) return;
+    if (prefersReducedMotion || !isAutoplaying || isLightboxOpen || photoCount < 2) return;
 
     const timer = window.setTimeout(() => {
       setSelectedIndex((current) => (current + 1) % photoCount);
     }, 3000);
 
     return () => window.clearTimeout(timer);
-  }, [currentIndex, isAutoplaying, isLightboxOpen, photoCount]);
+  }, [currentIndex, isAutoplaying, isLightboxOpen, photoCount, prefersReducedMotion]);
 
   useEffect(() => {
     if (!isLightboxOpen) return;
@@ -270,7 +270,7 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
             <span className="absolute top-3 right-3 z-30 inline-flex h-11 w-11 items-center justify-center border border-white/35 bg-ink/70 text-white sm:top-5 sm:right-5">
               <Expand className="h-4 w-4" aria-hidden />
             </span>
-            <span className="absolute bottom-5 left-4 z-30 max-w-[60%] font-heading text-2xl leading-tight text-white sm:left-6 sm:text-3xl">
+            <span data-a11y-on-photo className="absolute bottom-5 left-4 z-30 max-w-[60%] font-heading text-2xl leading-tight text-white sm:left-6 sm:text-3xl">
               The Partridge Creek showroom
             </span>
           </button>
@@ -280,10 +280,17 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
               <button
                 type="button"
                 onClick={() => setIsAutoplaying((current) => !current)}
-                className="absolute top-3 left-3 z-40 inline-flex h-11 w-11 items-center justify-center border border-white/30 bg-ink/72 text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/50 sm:top-5 sm:left-5"
-                aria-label={isAutoplaying ? "Pause showroom slideshow" : "Play showroom slideshow"}
+                className="absolute top-3 left-3 z-40 inline-flex h-11 w-11 items-center justify-center border border-white/30 bg-ink/72 text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/50 disabled:opacity-60 sm:top-5 sm:left-5"
+                disabled={prefersReducedMotion}
+                aria-label={
+                  prefersReducedMotion
+                    ? "Showroom autoplay disabled by reduced motion preference"
+                    : isAutoplaying
+                      ? "Pause showroom slideshow"
+                      : "Play showroom slideshow"
+                }
               >
-                {isAutoplaying ? (
+                {isAutoplaying && !prefersReducedMotion ? (
                   <Pause className="h-4 w-4" aria-hidden />
                 ) : (
                   <Play className="h-4 w-4" aria-hidden />

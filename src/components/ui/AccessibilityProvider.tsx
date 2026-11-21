@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
@@ -11,6 +12,7 @@ import {
 
 import {
   ACCESSIBILITY_STORAGE_KEY,
+  REDUCED_MOTION_QUERY,
   accessibilityAttribute,
   accessibilityOptions,
   defaultAccessibilityPreferences,
@@ -56,8 +58,9 @@ function savePreferences(next: AccessibilityPreferences): void {
 type AccessibilityContextValue = {
   preferences: AccessibilityPreferences;
   setPreferences: (preferences: AccessibilityPreferences) => void;
-  isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
+  panelTrigger: HTMLButtonElement | null;
+  togglePanel: (trigger: HTMLButtonElement) => void;
+  closePanel: () => void;
 };
 
 const AccessibilityContext = createContext<AccessibilityContextValue | null>(null);
@@ -68,7 +71,8 @@ export function AccessibilityProvider({ children }: { children: ReactNode }): Re
     () => preferences,
     () => defaultAccessibilityPreferences,
   );
-  const [isOpen, setIsOpen] = useState(false);
+  const [panelTrigger, setPanelTrigger] = useState<HTMLButtonElement | null>(null);
+  const closePanel = useCallback(() => setPanelTrigger(null), []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -81,7 +85,14 @@ export function AccessibilityProvider({ children }: { children: ReactNode }): Re
 
   return (
     <AccessibilityContext.Provider
-      value={{ preferences: current, setPreferences: savePreferences, isOpen, setIsOpen }}
+      value={{
+        preferences: current,
+        setPreferences: savePreferences,
+        panelTrigger,
+        togglePanel: (trigger) =>
+          setPanelTrigger((current) => (current === trigger ? null : trigger)),
+        closePanel,
+      }}
     >
       {children}
     </AccessibilityContext.Provider>
@@ -92,4 +103,20 @@ export function useAccessibility(): AccessibilityContextValue {
   const context = useContext(AccessibilityContext);
   if (!context) throw new Error("Accessibility controls require AccessibilityProvider.");
   return context;
+}
+
+function subscribeToSystemMotion(onChange: () => void) {
+  const preference = window.matchMedia(REDUCED_MOTION_QUERY);
+  preference.addEventListener("change", onChange);
+  return () => preference.removeEventListener("change", onChange);
+}
+
+export function useReducedMotion(): boolean {
+  const accessibility = useContext(AccessibilityContext);
+  const systemPrefersReducedMotion = useSyncExternalStore(
+    subscribeToSystemMotion,
+    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
+    () => false,
+  );
+  return accessibility?.preferences.motion === true || systemPrefersReducedMotion;
 }

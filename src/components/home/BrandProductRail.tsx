@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
+import { getScrollBehavior } from "@/lib/accessibility";
+
 type BrandProductRailProps = {
   brandName: string;
   brandSlug: string;
@@ -57,11 +59,7 @@ export function BrandProductRail({ brandName, brandSlug, children }: BrandProduc
 
     rail.scrollBy({
       left: direction * Math.max(rail.clientWidth * 0.82, 260),
-      behavior:
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-        document.documentElement.dataset.a11yMotion === "true"
-          ? "auto"
-          : "smooth",
+      behavior: getScrollBehavior(),
     });
   }
 

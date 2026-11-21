@@ -897,47 +897,47 @@ export const defaultLocationsPageContent: LocationsPageContent = {
 export const defaultTailoredPage: TailoredPageContent = {
   metaTitle: "Tailored Clothing & Made-to-Measure Fittings",
   metaDescription:
-    "Discover precision tailoring at J. Barbaro Clothiers with fit-first consultations, made-to-measure services, and expert alterations.",
+    "Try on menswear, get fitted in store, or bring in a garment for alterations at J. Barbaro Clothiers. Explore made-to-measure options and book a fitting.",
   heroTitle: "Tailored Clothing",
   heroDescription:
-    "A fit-first tailoring experience built around your body, your style goals, and how you actually live.",
-  heroCtaPrimary: { label: "Book Tailoring Consultation", href: "/schedule-appointment" },
+    "Come in to try on suits and sport coats, get measured for something new, or have a favorite piece altered.",
+  heroCtaPrimary: { label: "Book a Fitting", href: "/schedule-appointment" },
   heroCtaSecondary: { label: "Choose Your Location", href: "/locations" },
   heroHighlights: [
     {
-      title: "Style Brief",
-      copy: "Consultation based on your wardrobe goals and event needs.",
+      title: "Ready-to-Wear",
+      copy: "Try on different cuts and fabrics with help from our team.",
     },
     {
-      title: "Precision Measuring",
-      copy: "Body mapping and fit diagnostics for clean, confident drape.",
+      title: "Made-to-Measure",
+      copy: "Choose your cloth and details, then get measured for your order.",
     },
     {
-      title: "Final Refinement",
-      copy: "Final fitting and styling guidance before pickup or event day.",
+      title: "Alterations",
+      copy: "Get a new purchase adjusted or bring in a garment you already own.",
     },
   ],
   heroImage: tailoringHeroImage,
   insetImage: tailoringInsetImage,
   fitSection: {
-    badge: "Best Fit Standard",
-    title: "How We Deliver the Best Fit Possible",
+    badge: "In-Store Tailoring",
+    title: "A Better Fit Starts in Store",
     description:
-      "We combine traditional tailoring standards with modern fit diagnostics so your garments look sharp and feel effortless all day.",
-    introTitle: "Tailoring Designed Around You",
+      "Try the garment on with us. We'll show you what a small change, like shortening a sleeve or cleaning up a trouser hem, can do for the fit.",
+    introTitle: "What We Look For at a Fitting",
     introCopy:
-      "The goal is simple: a garment that reads polished from every angle and remains comfortable in motion. Each appointment is one-on-one and tailored to your build, preferences, and schedule.",
+      "We'll look at how the garment sits and how it feels when you move. Together, we'll decide which adjustments are worth making.",
     pillars: tailoringPillars.map((item) => ({ ...item })),
     buttons: [
-      { label: "Reserve Appointment", href: "/schedule-appointment" },
+      { label: "Book a Fitting", href: "/schedule-appointment" },
       { label: "View Services", href: "/services" },
     ],
   },
   processSection: {
-    eyebrow: "Fit Method",
-    title: "A Structured Process from Consultation to Final Press",
+    eyebrow: "Your Visit",
+    title: "From Your First Try-On to Pickup",
     description:
-      "Our process is consistent, transparent, and designed to reduce guesswork while maximizing fit confidence.",
+      "If you're dressing for an event, tell us the date when you come in so we can talk through the timing with you.",
     steps: tailoringSteps.map((item) => ({ ...item })),
   },
   optionsSection: {

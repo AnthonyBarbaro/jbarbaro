@@ -30,7 +30,7 @@ export function CtaTileGrid({ tiles }: CtaTileGridProps) {
                 className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(11,15,14,0.86),rgba(11,15,14,0.18))]" />
-              <div className="relative z-10 flex h-full flex-col justify-end p-6 text-ivory">
+              <div data-a11y-on-photo className="relative z-10 flex h-full flex-col justify-end p-6 text-ivory">
                 <h3 className="font-heading text-3xl leading-tight">{tile.title}</h3>
                 <p className="mt-3 text-sm text-ivory/85">{tile.description}</p>
                 <Link

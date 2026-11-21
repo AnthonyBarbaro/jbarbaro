@@ -3,7 +3,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-type ButtonVariant = "primary" | "secondary" | "teal" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "secondaryOnDark" | "teal" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
 
 type SharedProps = {
@@ -31,6 +31,8 @@ const variantClasses: Record<ButtonVariant, string> = {
     "border border-gold bg-gold text-ink shadow-sm hover:border-[#b99354] hover:bg-[#d7b979] focus-visible:ring-deep-teal",
   secondary:
     "border border-ink/18 bg-ivory text-ink hover:border-ink/35 hover:bg-stone/55 focus-visible:ring-deep-teal",
+  secondaryOnDark:
+    "border border-ivory bg-ivory text-black hover:bg-stone focus-visible:ring-deep-teal",
   teal: "border border-deep-teal bg-deep-teal !text-white shadow-sm hover:border-[#136868] hover:bg-[#136868] focus-visible:ring-ink",
   ghost:
     "border border-transparent bg-transparent text-ink hover:border-ink/20 hover:bg-stone/55 focus-visible:ring-deep-teal",
@@ -50,6 +52,7 @@ export function Button({
   return (
     <button
       type={type}
+      data-button-variant={variant}
       className={cn(commonClassName, sizeClasses[size], variantClasses[variant], className)}
       {...props}
     >
@@ -67,6 +70,7 @@ export function ButtonLink({
 }: ButtonLinkProps) {
   return (
     <Link
+      data-button-variant={variant}
       className={cn(commonClassName, sizeClasses[size], variantClasses[variant], className)}
       {...props}
     >

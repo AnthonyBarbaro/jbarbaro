@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { KlaviyoOnsiteScript } from "@/components/marketing/KlaviyoOnsiteScript";
 import { KLAVIYO_TEXT_SIGNUP_FORM_ID } from "@/lib/klaviyo";
 
 type FormStatus = "loading" | "ready" | "unavailable";
 type SubmissionStatus = "idle" | "submitting" | "delayed";
+const formLoadTimeoutMs = 5000;
 
 export function KlaviyoTextSignupForm({
   siteId,
@@ -18,12 +19,13 @@ export function KlaviyoTextSignupForm({
   const formRef = useRef<HTMLDivElement>(null);
   const [status, setStatus] = useState<FormStatus>("loading");
   const [submissionStatus, setSubmissionStatus] = useState<SubmissionStatus>("idle");
+  const markFormUnavailable = useCallback(() => setStatus("unavailable"), []);
 
   useEffect(() => {
     const form = formRef.current;
     if (!form) return;
 
-    const loadTimeout = window.setTimeout(() => setStatus("unavailable"), 8000);
+    const loadTimeout = window.setTimeout(markFormUnavailable, formLoadTimeoutMs);
     let submissionTimeout: number | undefined;
 
     const checkForm = () => {
@@ -55,11 +57,11 @@ export function KlaviyoTextSignupForm({
       window.clearTimeout(submissionTimeout);
       window.cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [markFormUnavailable]);
 
   return (
     <div>
-      <KlaviyoOnsiteScript siteId={siteId} onError={() => setStatus("unavailable")} />
+      <KlaviyoOnsiteScript siteId={siteId} onError={markFormUnavailable} />
       <div ref={formRef} className={`klaviyo-form-${KLAVIYO_TEXT_SIGNUP_FORM_ID}`} />
       <div role="status" className="text-center text-sm leading-6 text-ink">
         {submissionStatus !== "idle" ? (
@@ -81,14 +83,20 @@ export function KlaviyoTextSignupForm({
       {status !== "ready" ? (
         <div className="klaviyo-form-status flex min-h-36 flex-col items-center justify-center gap-2 p-6 text-center text-sm leading-6">
           <p role="status">
-            {status === "loading"
-              ? "Loading text signup…"
-              : "Text signup couldn’t load. Please try again."}
+            {status === "loading" ? "Loading text signup…" : "Text signup couldn’t load."}
           </p>
-          {status === "unavailable" && fallbackHref ? (
+          {fallbackHref ? (
             <a href={fallbackHref} className="text-deep-teal underline underline-offset-4">
               Open the signup page
             </a>
+          ) : status === "unavailable" ? (
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="text-deep-teal underline underline-offset-4"
+            >
+              Reload signup page
+            </button>
           ) : null}
         </div>
       ) : null}

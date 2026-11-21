@@ -15,7 +15,7 @@ export function AccessibilityNavButton({
   onOpen?: () => void;
   showLabel?: boolean;
 }): ReactElement {
-  const { isOpen, setIsOpen } = useAccessibility();
+  const { panelTrigger, togglePanel } = useAccessibility();
 
   return (
     <button
@@ -25,12 +25,11 @@ export function AccessibilityNavButton({
         className,
       )}
       aria-label="Accessibility options"
-      aria-haspopup="dialog"
       aria-controls="accessibility-widget-panel"
-      aria-expanded={isOpen}
-      onClick={() => {
+      aria-expanded={panelTrigger !== null}
+      onClick={(event) => {
         onOpen?.();
-        setIsOpen(true);
+        togglePanel(event.currentTarget);
       }}
       data-a11y-opener
     >

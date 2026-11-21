@@ -45,8 +45,30 @@ test("preference attributes match the site's CSS hooks", () => {
   assert.equal(accessibilityAttribute("readingGuide"), "data-a11y-reading-guide");
 });
 
-test("all 40,960 supported preference combinations survive saving and restoring", () => {
-  const keys = [...accessibilityOptions.map(({ key }) => key), "hideFloating"] as const;
+test("reading guide defaults to large and restores a saved standard size", () => {
+  assert.equal(
+    parseAccessibilityPreferences(JSON.stringify({ readingGuide: true })).readingGuideSize,
+    "large",
+  );
+  for (const readingGuideSize of ["standard", "large"] as const) {
+    assert.equal(
+      parseAccessibilityPreferences(JSON.stringify({ readingGuideSize })).readingGuideSize,
+      readingGuideSize,
+    );
+  }
+  assert.equal(
+    parseAccessibilityPreferences(JSON.stringify({ readingGuideSize: "unsupported" }))
+      .readingGuideSize,
+    "large",
+  );
+});
+
+test("boolean preferences and text sizes survive saving and restoring", () => {
+  const keys = [
+    ...accessibilityOptions.map(({ key }) => key),
+    "hideFloating",
+    "dimOutsideGuide",
+  ] as const;
   for (let mask = 0; mask < 2 ** keys.length; mask += 1) {
     for (const fontScale of [100, 125, 150, 175, 200]) {
       const preferences = { ...defaultAccessibilityPreferences, fontScale };

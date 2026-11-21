@@ -33,7 +33,7 @@ function socialIcon(label: string): ReactElement | null {
 
 export function SiteFooter(): ReactElement {
   return (
-    <footer className="mt-16 bg-[#0b0f14] text-white">
+    <footer id="site-footer" tabIndex={-1} className="mt-16 bg-[#0b0f14] text-white">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)] lg:px-8 lg:py-14">
         <section>
           <p className="text-[11px] font-semibold tracking-[0.18em] text-gold uppercase">

@@ -223,6 +223,7 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
     <section
       aria-label="Featured collections"
       aria-roledescription="carousel"
+      data-a11y-on-photo
       className="relative touch-pan-y overflow-hidden bg-[#0b0f14] text-white select-none [perspective:1600px]"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -249,7 +250,7 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
             key={slide.id}
             aria-hidden={!isActive}
             className={cn(
-              "absolute inset-0 overflow-hidden",
+              "hero-carousel-slide absolute inset-0 overflow-hidden",
               isActive
                 ? cn(
                     "z-[1] opacity-100",
@@ -397,7 +398,7 @@ export function HeroCarousel({ slides }: HeroCarouselProps) {
 
       {slides.length > 1 ? (
         <div
-          className="absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2"
+          className="hero-carousel-pagination absolute bottom-3 left-1/2 z-20 flex -translate-x-1/2"
           role="group"
           aria-label="Choose featured collection"
         >

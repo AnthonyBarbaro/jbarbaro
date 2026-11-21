@@ -72,9 +72,9 @@ export default function RegisterWeddingPage() {
                         href={button.href}
                         target="_blank"
                         rel="noopener noreferrer"
-                        variant={index === 0 ? "teal" : "secondary"}
+                        variant={index === 0 ? "teal" : "secondaryOnDark"}
                         size="sm"
-                        className={`w-full sm:w-auto ${index === 0 ? "" : "border-ivory/80 text-ivory hover:border-gold hover:text-gold"}`}
+                        className="w-full sm:w-auto"
                       >
                         <span className="mr-2 inline-flex"><Download className="h-4 w-4" /></span>
                         {button.label}

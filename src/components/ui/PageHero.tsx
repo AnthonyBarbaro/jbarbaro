@@ -30,7 +30,7 @@ export function PageHero({
   return (
     <section
       className={cn(
-        "relative overflow-hidden border-b border-ink/10 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-ink",
+        "page-hero relative overflow-hidden border-b border-ink/10 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] text-ink",
         className,
       )}
     >

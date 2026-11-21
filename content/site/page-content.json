@@ -651,11 +651,11 @@
   },
   "tailoredPage": {
     "metaTitle": "Tailored Clothing & Made-to-Measure Fittings",
-    "metaDescription": "Discover precision tailoring at J. Barbaro Clothiers with fit-first consultations, made-to-measure services, and expert alterations.",
+    "metaDescription": "Try on menswear, get fitted in store, or bring in a garment for alterations at J. Barbaro Clothiers. Explore made-to-measure options and book a fitting.",
     "heroTitle": "Tailored Clothing",
-    "heroDescription": "A fit-first tailoring experience built around your body, your style goals, and how you actually live.",
+    "heroDescription": "Come in to try on suits and sport coats, get measured for something new, or have a favorite piece altered.",
     "heroCtaPrimary": {
-      "label": "Book Tailoring Consultation",
+      "label": "Book a Fitting",
       "href": "/schedule-appointment"
     },
     "heroCtaSecondary": {
@@ -664,47 +664,47 @@
     },
     "heroHighlights": [
       {
-        "title": "Style Brief",
-        "copy": "Consultation based on your wardrobe goals and event needs."
+        "title": "Ready-to-Wear",
+        "copy": "Try on different cuts and fabrics with help from our team."
       },
       {
-        "title": "Precision Measuring",
-        "copy": "Body mapping and fit diagnostics for clean, confident drape."
+        "title": "Made-to-Measure",
+        "copy": "Choose your cloth and details, then get measured for your order."
       },
       {
-        "title": "Final Refinement",
-        "copy": "Final fitting and styling guidance before pickup or event day."
+        "title": "Alterations",
+        "copy": "Get a new purchase adjusted or bring in a garment you already own."
       }
     ],
     "heroImage": "/images/locations/DSC_0546.jpg",
     "insetImage": "/images/locations/DSC_0544.jpg",
     "fitSection": {
-      "badge": "Best Fit Standard",
-      "title": "How We Deliver the Best Fit Possible",
-      "description": "We combine traditional tailoring standards with modern fit diagnostics so your garments look sharp and feel effortless all day.",
-      "introTitle": "Tailoring Designed Around You",
-      "introCopy": "The goal is simple: a garment that reads polished from every angle and remains comfortable in motion. Each appointment is one-on-one and tailored to your build, preferences, and schedule.",
+      "badge": "In-Store Tailoring",
+      "title": "A Better Fit Starts in Store",
+      "description": "Try the garment on with us. We'll show you what a small change, like shortening a sleeve or cleaning up a trouser hem, can do for the fit.",
+      "introTitle": "What We Look For at a Fitting",
+      "introCopy": "We'll look at how the garment sits and how it feels when you move. Together, we'll decide which adjustments are worth making.",
       "pillars": [
         {
-          "title": "Precision Measurement",
-          "copy": "We use a detailed multi-point measuring process to map posture, shoulder balance, and body shape before any cutting begins."
+          "title": "Jacket Fit",
+          "copy": "We check how the jacket sits at the shoulders, whether it closes comfortably, and where the sleeves end."
         },
         {
-          "title": "Fit-First Patterning",
-          "copy": "Garment structure is built around your proportions and movement, not an off-the-rack block pattern."
+          "title": "Trouser Fit",
+          "copy": "We check the waist and leg shape, then pin the hem to fall where you want it over your shoes."
         },
         {
-          "title": "Refinement Appointments",
-          "copy": "Every fitting is focused on clean drape, sleeve break, trouser line, and comfort through the full range of motion."
+          "title": "Comfort in Motion",
+          "copy": "Sit, stand, or reach while you're trying things on so we can see where the garment pulls or feels tight."
         },
         {
-          "title": "Long-Term Wardrobe Planning",
-          "copy": "We keep your fit profile on file so future pieces stay consistent as your wardrobe grows season after season."
+          "title": "Clothes You Already Own",
+          "copy": "Bring in a piece you'd like to wear again. We'll check what can be adjusted and talk through your options."
         }
       ],
       "buttons": [
         {
-          "label": "Reserve Appointment",
+          "label": "Book a Fitting",
           "href": "/schedule-appointment"
         },
         {
@@ -714,25 +714,25 @@
       ]
     },
     "processSection": {
-      "eyebrow": "Fit Method",
-      "title": "A Structured Process from Consultation to Final Press",
-      "description": "Our process is consistent, transparent, and designed to reduce guesswork while maximizing fit confidence.",
+      "eyebrow": "Your Visit",
+      "title": "From Your First Try-On to Pickup",
+      "description": "If you're dressing for an event, tell us the date when you come in so we can talk through the timing with you.",
       "steps": [
         {
-          "title": "Style Brief",
-          "copy": "We define your goals, preferred silhouette, and where the garment will be worn."
+          "title": "Choose Your Style",
+          "copy": "Tell us what you're dressing for. We'll pull a few options in your size so you can compare cuts, colors, and fabrics."
         },
         {
-          "title": "Body Mapping",
-          "copy": "Comprehensive measurements and fit notes establish a profile unique to you."
+          "title": "Get Measured",
+          "copy": "We'll take your measurements and, if you're having a garment altered, pin the changes while you're wearing it."
         },
         {
-          "title": "Construction & Alteration",
-          "copy": "Our team fine-tunes balance, shape, and drape to deliver a sharp but wearable result."
+          "title": "Have It Tailored",
+          "copy": "Our in-house tailor makes the agreed alterations. We'll let you know when to come back for pickup or another fitting."
         },
         {
-          "title": "Final Fit Session",
-          "copy": "You review the finished garment with styling guidance and optional follow-up adjustments."
+          "title": "Try It On at Pickup",
+          "copy": "Try on the finished piece with us so we can check the fit and see if it needs a final adjustment."
         }
       ]
     },

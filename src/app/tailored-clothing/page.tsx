@@ -222,12 +222,7 @@ export default function TailoredClothingPage() {
                     <ButtonLink
                       key={button.href}
                       href={button.href}
-                      variant={index === 0 ? "teal" : "secondary"}
-                      className={
-                        index === 0
-                          ? undefined
-                          : "border-ivory text-black hover:border-ivory hover:bg-stone"
-                      }
+                      variant={index === 0 ? "teal" : "secondaryOnDark"}
                     >
                       {button.label}
                     </ButtonLink>
@@ -282,8 +277,7 @@ export default function TailoredClothingPage() {
                     <ButtonLink
                       key={button.href}
                       href={button.href}
-                      variant={index === 0 ? "teal" : "secondary"}
-                      className={index === 0 ? undefined : "border-ivory/70 text-ivory hover:border-gold hover:text-gold"}
+                      variant={index === 0 ? "teal" : "secondaryOnDark"}
                     >
                       {button.label}
                     </ButtonLink>

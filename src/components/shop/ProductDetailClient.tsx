@@ -26,6 +26,7 @@ import {
 import { AddToCartButton } from "@/components/shop/AddToCartButton";
 import { useCartQuantityStatus } from "@/components/shop/CartQuantityContext";
 import { ProductSmartFitDrawer } from "@/components/shop/ProductSmartFitDrawer";
+import { getScrollBehavior } from "@/lib/accessibility";
 import { publishProductSelection, type ProductSelectionDetail } from "@/lib/shop-product-selection";
 import {
   FIT_PROFILE_STORAGE_KEY,
@@ -171,7 +172,7 @@ export function ProductDetailClient({
 
       rail.scrollTo({
         left: Math.max(0, targetLeft),
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        behavior: getScrollBehavior(),
       });
     });
 

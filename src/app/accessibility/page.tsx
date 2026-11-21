@@ -65,8 +65,8 @@ export default function AccessibilityPage() {
             <section>
               <h2 className="font-heading text-2xl text-ink sm:text-3xl">Display preferences</h2>
               <p className="mt-3">
-                Use Accessibility options to adjust text size, increase contrast, or reduce motion.
-                Your choices are saved in this browser.
+                Use Accessibility options to adjust text size, increase contrast, turn on a reading
+                guide, or reduce motion. Your choices are saved in this browser.
               </p>
               <AccessibilityNavButton
                 showLabel

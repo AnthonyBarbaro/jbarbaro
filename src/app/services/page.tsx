@@ -56,8 +56,8 @@ export default function ServicesPage() {
                   <ButtonLink
                     key={button.href}
                     href={button.href}
-                    variant={index === 0 ? "primary" : "secondary"}
-                    className={`w-full sm:w-auto ${index === 0 ? "" : "border-ivory/80 text-ivory hover:border-gold hover:text-gold"}`}
+                    variant={index === 0 ? "primary" : "secondaryOnDark"}
+                    className="w-full sm:w-auto"
                   >
                     {button.label}
                   </ButtonLink>

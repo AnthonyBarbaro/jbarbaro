@@ -3,6 +3,8 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 
+import { getScrollBehavior } from "@/lib/accessibility";
+
 type FilterScrollRowProps = {
   children: ReactNode;
   viewportRef: RefObject<HTMLDivElement | null>;
@@ -38,7 +40,7 @@ export function FilterScrollRow({ children, viewportRef }: FilterScrollRowProps)
     if (!row) return;
     row.scrollBy({
       left: direction * row.clientWidth * 0.8,
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      behavior: getScrollBehavior(),
     });
   }
 

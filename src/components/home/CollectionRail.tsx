@@ -6,6 +6,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 import { Card } from "@/components/ui/Card";
+import { getScrollBehavior } from "@/lib/accessibility";
 
 export type CollectionRailItem = {
   slug: string;
@@ -65,11 +66,7 @@ export function CollectionRail({ collections }: CollectionRailProps) {
 
     rail.scrollBy({
       left: direction * Math.max(rail.clientWidth * 0.82, 260),
-      behavior:
-        window.matchMedia("(prefers-reduced-motion: reduce)").matches ||
-        document.documentElement.dataset.a11yMotion === "true"
-          ? "auto"
-          : "smooth",
+      behavior: getScrollBehavior(),
     });
   }
 
@@ -124,7 +121,7 @@ export function CollectionRail({ collections }: CollectionRailProps) {
                       className="object-cover transition-transform duration-500 ease-out motion-safe:group-hover:scale-[1.025] motion-reduce:transition-none"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-ink/92 via-ink/12 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 sm:p-5">
+                    <div data-a11y-on-photo className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 sm:p-5">
                       <h3 className="min-w-0 font-heading text-3xl leading-none text-white">
                         {collection.name}
                       </h3>

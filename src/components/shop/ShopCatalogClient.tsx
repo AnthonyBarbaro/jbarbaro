@@ -36,6 +36,7 @@ import { FilterScrollRow } from "@/components/shop/FilterScrollRow";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardContent } from "@/components/ui/Card";
 import { FieldLabel, Input, Select } from "@/components/ui/Field";
+import { getScrollBehavior } from "@/lib/accessibility";
 import {
   buildFitProfile,
   FIT_PROFILE_STORAGE_KEY,
@@ -1167,7 +1168,7 @@ export function ShopCatalogClient({
 
       window.scrollTo({
         top: Math.max(0, targetY),
-        behavior: "smooth",
+        behavior: getScrollBehavior(),
       });
 
       shouldScrollToResultsRef.current = false;
@@ -1678,7 +1679,7 @@ export function ShopCatalogClient({
 
                     window.scrollTo({
                       top: Math.max(0, targetY),
-                      behavior: "smooth",
+                      behavior: getScrollBehavior(),
                     });
                   });
                 }}
@@ -2668,11 +2669,9 @@ export function ShopCatalogClient({
       return;
     }
 
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
     rail.scrollBy({
       left: direction * Math.max(240, rail.clientWidth - 24),
-      behavior: prefersReducedMotion ? "auto" : "smooth",
+      behavior: getScrollBehavior(),
     });
   }
 

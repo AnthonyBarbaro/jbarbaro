@@ -141,6 +141,10 @@
     {
       "label": "Privacy",
       "href": "/privacy-policy"
+    },
+    {
+      "label": "Accessibility",
+      "href": "/accessibility"
     }
   ],
   "footerNewsletterTitle": "New Arrivals",

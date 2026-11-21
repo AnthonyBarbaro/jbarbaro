@@ -392,12 +392,15 @@ summary::-webkit-details-marker {
   box-shadow: var(--shadow-luxe);
 }
 
-.text-offers-tab {
+.text-offers-launcher {
   top: clamp(8rem, 29dvh, 17rem);
   left: env(safe-area-inset-left, 0px);
+  translate: 0 -50%;
+}
+
+.text-offers-tab {
   writing-mode: vertical-rl;
   text-orientation: sideways;
-  translate: 0 -50%;
   rotate: 180deg;
 }
 

@@ -27,6 +27,7 @@ export async function getSitemapRoutes() {
     "/blog",
     "/style-guide",
     "/privacy-policy",
+    "/accessibility",
     "/terms-of-use",
     "/mobile-terms-of-service",
     "/shipping-returns",

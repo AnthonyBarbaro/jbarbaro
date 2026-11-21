@@ -81,7 +81,9 @@ export function applyCartQuantityPayload(
     return { cart: null, limits: new Map(), inventory: new Map() };
   }
 
-  const sameSession = state.cart?.checkoutUrl === cart.checkoutUrl;
+  const sessionKey = cart.sessionKey ?? cart.checkoutUrl;
+  const sameSession =
+    sessionKey !== undefined && (state.cart?.sessionKey ?? state.cart?.checkoutUrl) === sessionKey;
   const limits = new Map(sameSession ? state.limits : []);
   const inventory = new Map(sameSession ? state.inventory : []);
   const hasCompleteCart =

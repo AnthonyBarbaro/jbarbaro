@@ -10,6 +10,7 @@ import type {
   ShopifyCartLineInput,
   ShopifyCartResponse,
 } from "@/lib/shopify/types";
+import { STOREFRONT_LAUNCH_TIMESTAMP } from "@/lib/storefront-launch";
 
 const CART_ID = "gid://shopify/Cart/gift-test?key=private-test-only";
 const PARENT_ID = "gid://shopify/CartLine/parent";
@@ -497,6 +498,7 @@ test("gift wrap is attached and verified at the server purchase boundaries", asy
       assert.equal(payload.cart?.lines[1].quantity, 1);
       assert.equal(requests.length, 3);
       mockTransport(subcontext, () => ({ cart: rawCart(original) }));
+      subcontext.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP });
       const handoff = await checkout.POST(request("POST", {}));
       assert.equal(handoff.status, 200);
     },
@@ -742,6 +744,7 @@ test("gift wrap is attached and verified at the server purchase boundaries", asy
       assert.equal(payload.warnings[0].target, CHILD_ID);
       assert.equal(writes, 2);
       mockTransport(subcontext, () => ({ cart: rawCart(limited) }));
+      subcontext.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP });
       assert.equal((await checkout.POST(request("POST", {}))).status, 409);
     },
   );
@@ -895,6 +898,7 @@ test("gift wrap is attached and verified at the server purchase boundaries", asy
   await context.test(
     "standalone wrap is visible for recovery and checkout is blocked",
     async (subcontext) => {
+      subcontext.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP });
       mockCookies(subcontext, CART_ID);
       mockTransport(subcontext, () => ({ cart: rawCart([line(CHILD_ID, WRAP_ID)]) }));
       const response = await checkout.POST(request("POST", {}));
@@ -906,6 +910,7 @@ test("gift wrap is attached and verified at the server purchase boundaries", asy
   );
 
   await context.test("valid wrapped quantities may proceed to checkout", async (subcontext) => {
+    subcontext.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP });
     mockCookies(subcontext, CART_ID);
     mockTransport(subcontext, () => ({
       cart: rawCart([

@@ -11,6 +11,7 @@ import { HeaderCartButton } from "@/components/layout/HeaderCartButton";
 import { HeaderProductSearch } from "@/components/layout/HeaderProductSearch";
 import { HeaderSmartFitButton } from "@/components/layout/HeaderSmartFitButton";
 import { HeaderWishlistButton } from "@/components/layout/HeaderWishlistButton";
+import { StorefrontLaunchBanner } from "@/components/layout/StorefrontLaunchBanner";
 import { AccessibilityNavButton } from "@/components/ui/AccessibilityNavButton";
 import { primaryNavigation } from "@/data/navigation";
 import type { NavItem } from "@/data/navigation";
@@ -378,20 +379,7 @@ export function SiteHeader({ navItems = primaryNavigation }: SiteHeaderProps) {
 
   return (
     <>
-      <aside className="bg-ink text-white" aria-label="Store promotion">
-        <div className="mx-auto flex max-w-[84rem] items-center justify-center gap-2 px-4 py-2 text-center text-xs font-medium tracking-[0.08em]">
-          <span className="hidden sm:inline">
-            Free shipping on $400+ orders. Eligible shipping rates up to $25.
-          </span>
-          <span className="sm:hidden">Free shipping on $400+. Rates up to $25.</span>
-          <Link
-            href="/shop"
-            className="shrink-0 font-semibold text-gold underline-offset-4 transition-colors hover:text-white hover:underline"
-          >
-            Shop Now
-          </Link>
-        </div>
-      </aside>
+      <StorefrontLaunchBanner />
       <header className="sticky top-0 z-[96] border-b border-ink/10 bg-ivory/96 backdrop-blur-xl">
         <div className="mx-auto max-w-[84rem] px-4 sm:px-6 lg:px-8">
           <div className="flex min-h-16 flex-wrap items-center gap-2 py-2 lg:min-h-[4.25rem] lg:gap-6">

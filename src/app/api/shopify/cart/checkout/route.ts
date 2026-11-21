@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getCart } from "@/lib/shopify/cart";
+import { getCart, getPublicCartSnapshot } from "@/lib/shopify/cart";
 import { getShopifyConfigStatus } from "@/lib/shopify/config";
 import { getCartGiftWrapIssue } from "@/lib/shopify/gift-wrap";
 import { clearShopifyCartSessionId, getShopifyCartSessionId } from "@/lib/shopify/session";
 import type { ShopifyCartResponse } from "@/lib/shopify/types";
+import {
+  CHECKOUT_LAUNCH_MESSAGE,
+  isStorefrontCheckoutOpen,
+  STOREFRONT_LAUNCH_AT,
+} from "@/lib/storefront-launch";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +18,12 @@ function checkoutResponse(
   status = 200,
 ): NextResponse {
   return NextResponse.json(
-    { ...payload, warnings: [], userErrors: [] },
+    {
+      ...payload,
+      ...("cart" in payload ? { cart: getPublicCartSnapshot(payload.cart) } : {}),
+      warnings: [],
+      userErrors: [],
+    },
     { status, headers: { "Cache-Control": "private, no-store" } },
   );
 }
@@ -39,6 +49,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           message: "Checkout is temporarily unavailable. Please try again later.",
         },
         503,
+      );
+    }
+
+    if (!isStorefrontCheckoutOpen()) {
+      return checkoutResponse(
+        {
+          configured: true,
+          checkoutOpensAt: STOREFRONT_LAUNCH_AT,
+          message: CHECKOUT_LAUNCH_MESSAGE,
+        },
+        403,
       );
     }
 
@@ -84,6 +105,17 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     if (giftWrapIssue) {
       return checkoutResponse({ configured: true, cart, message: giftWrapIssue }, 409);
+    }
+
+    if (!cart.checkoutUrl) {
+      return checkoutResponse(
+        {
+          configured: true,
+          cart,
+          message: "Checkout is temporarily unavailable. Please try again later.",
+        },
+        502,
+      );
     }
 
     return checkoutResponse({

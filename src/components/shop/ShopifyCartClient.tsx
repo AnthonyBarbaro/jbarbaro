@@ -14,6 +14,7 @@ import {
   Truck,
 } from "lucide-react";
 
+import { useStorefrontCheckoutOpen } from "@/components/layout/useStorefrontLaunch";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
@@ -50,6 +51,7 @@ import type {
   ShopifyCartWarning,
   ShopifyGiftWrapOffer,
 } from "@/lib/shopify/types";
+import { CHECKOUT_LAUNCH_MESSAGE, isStorefrontCheckoutOpen } from "@/lib/storefront-launch";
 import { formatMoney } from "@/lib/utils";
 
 function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]): string | null {
@@ -141,6 +143,7 @@ function getSizeChoices(cartLine: ShopifyCartSnapshot["lines"][number]) {
 }
 
 export function ShopifyCartClient(): ReactElement {
+  const checkoutOpen = useStorefrontCheckoutOpen();
   const { canAddVariant, isReady } = useCartQuantityStatus();
   const [cart, setCart] = useState<ShopifyCartSnapshot | null>(null);
   const [giftWrapOffer, setGiftWrapOffer] = useState<ShopifyGiftWrapOffer | null>(null);
@@ -537,6 +540,8 @@ export function ShopifyCartClient(): ReactElement {
   }
 
   async function goToCheckout(): Promise<void> {
+    if (!isStorefrontCheckoutOpen()) return;
+
     if (!beginAction(null)) {
       return;
     }
@@ -1093,21 +1098,28 @@ export function ShopifyCartClient(): ReactElement {
                 <p className="text-xs font-semibold tracking-[0.14em] text-smoke uppercase">
                   Checkout
                 </p>
-                <p className="mt-2 text-sm leading-6 text-smoke">
-                  Final shipping methods and any required taxes are confirmed at secure checkout.{" "}
-                  <Link
-                    href="/shipping-returns"
-                    className="text-deep-teal underline underline-offset-4"
-                  >
-                    Shipping &amp; returns
-                  </Link>
-                </p>
+                {checkoutOpen ? (
+                  <p className="mt-2 text-sm leading-6 text-smoke">
+                    Final shipping methods and any required taxes are confirmed at secure checkout.{" "}
+                    <Link
+                      href="/shipping-returns"
+                      className="text-deep-teal underline underline-offset-4"
+                    >
+                      Shipping &amp; returns
+                    </Link>
+                  </p>
+                ) : (
+                  <p id="cart-page-launch-note" className="mt-2 text-sm leading-6 text-ink">
+                    {CHECKOUT_LAUNCH_MESSAGE} You can build your bag now.
+                  </p>
+                )}
               </div>
 
               <div className="mt-6 space-y-3">
                 <Button
                   className="w-full"
-                  disabled={controlsDisabled || Boolean(giftWrapIssue)}
+                  disabled={!checkoutOpen || controlsDisabled || Boolean(giftWrapIssue)}
+                  aria-describedby={checkoutOpen ? undefined : "cart-page-launch-note"}
                   onClick={() => void goToCheckout()}
                 >
                   <span>{isMutating ? "Working..." : "Proceed to Checkout"}</span>

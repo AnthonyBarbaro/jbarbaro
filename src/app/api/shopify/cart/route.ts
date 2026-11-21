@@ -6,6 +6,7 @@ import {
   createCart,
   getCart,
   getCartWithLineAttributes,
+  getPublicCartSnapshot,
   removeCartLines,
   updateCartLines,
 } from "@/lib/shopify/cart";
@@ -97,6 +98,7 @@ function cartResponse(payload: CartResponsePayload, status = 200): NextResponse 
   return NextResponse.json(
     {
       ...payload,
+      ...("cart" in payload ? { cart: getPublicCartSnapshot(payload.cart) } : {}),
       warnings: payload.warnings ?? [],
       userErrors: payload.userErrors ?? [],
     },

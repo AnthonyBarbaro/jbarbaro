@@ -90,7 +90,8 @@ export type ShopifyCollection = ShopifyCollectionPreview & {
 
 export type ShopifyCartSnapshot = {
   totalQuantity: number;
-  checkoutUrl: string;
+  checkoutUrl?: string;
+  sessionKey?: string;
   subtotal: ShopifyMoney;
   total: ShopifyMoney;
   tax: ShopifyMoney | null;
@@ -156,6 +157,7 @@ export type ShopifyCartMutationResult = {
 export type ShopifyCartResponse = {
   configured: boolean;
   cart?: ShopifyCartSnapshot | null;
+  checkoutOpensAt?: string;
   warnings: ShopifyCartWarning[];
   userErrors: ShopifyCartUserError[];
   confirmed?: boolean;

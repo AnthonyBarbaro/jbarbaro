@@ -1,5 +1,7 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+
 import { SHOPIFY_IMAGE_FIELDS, storefrontRequest } from "@/lib/shopify/client";
 import { GIFT_WRAP_GROUP_ATTRIBUTE } from "@/lib/shopify/gift-wrap";
 import { getStorefrontProductTitle } from "@/lib/shopify/product-title-presentation";
@@ -16,6 +18,16 @@ import type {
 } from "@/lib/shopify/types";
 
 export type { ShopifyCartLineInput, ShopifyCartLineUpdate } from "@/lib/shopify/types";
+
+export function getPublicCartSnapshot(
+  cart: ShopifyCartSnapshot | null | undefined,
+): ShopifyCartSnapshot | null | undefined {
+  if (!cart?.checkoutUrl) return cart;
+
+  const { checkoutUrl, ...snapshot } = cart;
+  // Keep a stable client-side session identifier without exposing the Shopify checkout link.
+  return { ...snapshot, sessionKey: createHash("sha256").update(checkoutUrl).digest("base64url") };
+}
 
 type MoneyV2 = {
   amount: string;

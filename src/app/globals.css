@@ -89,6 +89,12 @@ html[data-a11y-font-scale]:not([data-a11y-font-scale="100"]) body {
   overflow-wrap: anywhere;
 }
 
+@media (max-width: 30rem) {
+  html[data-a11y-font-scale]:not([data-a11y-font-scale="100"]) .storefront-launch-countdown {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 body:has(.mobile-bottom-nav) {
   padding-bottom: var(--mobile-nav-height, calc(3.5rem + max(env(safe-area-inset-bottom), 0.5rem)));
 }

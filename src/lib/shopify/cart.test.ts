@@ -6,6 +6,11 @@ import { NextRequest } from "next/server";
 
 import { GIFT_WRAP_GROUP_ATTRIBUTE } from "@/lib/shopify/gift-wrap";
 import type { ShopifyCartResponse } from "@/lib/shopify/types";
+import {
+  CHECKOUT_LAUNCH_MESSAGE,
+  STOREFRONT_LAUNCH_AT,
+  STOREFRONT_LAUNCH_TIMESTAMP,
+} from "@/lib/storefront-launch";
 
 const CART_ID = "gid://shopify/Cart/test-cart?key=test-private-cart-key";
 const VARIANT_ID = "gid://shopify/ProductVariant/test-small";
@@ -754,9 +759,50 @@ test("Shopify cart requests preserve actual outcomes without leaking provider me
     () => import("@/app/api/shopify/cart/checkout/route"),
   );
 
+  await context.test("checkout stays locked until the exact Eastern launch time", async (subtest) => {
+    assert.equal(new Date(STOREFRONT_LAUNCH_TIMESTAMP).toISOString(), "2026-11-27T14:00:00.000Z");
+    subtest.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP - 1 });
+    const session = mockCartCookies(subtest, CART_ID);
+    const requests = mockStorefront(subtest, { cart: rawCart(1) });
+    const response = await checkoutRoute.POST(cartRequest("POST"));
+    const payload = (await response.json()) as ShopifyCartResponse & { checkoutUrl?: string };
+
+    assert.equal(response.status, 403);
+    assert.equal(response.headers.get("Cache-Control"), "private, no-store");
+    assert.equal(payload.checkoutOpensAt, STOREFRONT_LAUNCH_AT);
+    assert.equal(payload.message, CHECKOUT_LAUNCH_MESSAGE);
+    assert.equal(payload.checkoutUrl, undefined);
+    assert.equal(payload.cart, undefined);
+    assert.equal(session.cartId, CART_ID);
+    assert.equal(requests.length, 0);
+  });
+
+  await context.test("bag reads keep checkout links private and their session key stable", async (subtest) => {
+    subtest.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP - 1 });
+    const cartRoute = await loadServerModule(() => import("@/app/api/shopify/cart/route"));
+    mockCartCookies(subtest, CART_ID);
+    mockStorefront(subtest, [{ cart: rawCart(1) }, { cart: rawCart(1) }]);
+
+    const response = await cartRoute.GET(cartRequest("GET"));
+    assert.equal(response.status, 200);
+    const payload = (await response.json()) as ShopifyCartResponse;
+    assert.equal(payload.cart?.totalQuantity, 1);
+    assert.equal(payload.cart?.checkoutUrl, undefined);
+    assert.ok(payload.cart?.sessionKey);
+    assert.doesNotMatch(JSON.stringify(payload), /checkout\.example\.test|test-private-cart-key/);
+
+    subtest.mock.timers.setTime(STOREFRONT_LAUNCH_TIMESTAMP);
+    const postLaunchResponse = await cartRoute.GET(cartRequest("GET"));
+    assert.equal(postLaunchResponse.status, 200);
+    const postLaunch = (await postLaunchResponse.json()) as ShopifyCartResponse;
+    assert.equal(postLaunch.cart?.sessionKey, payload.cart?.sessionKey);
+    assert.equal(postLaunch.cart?.checkoutUrl, undefined);
+  });
+
   await context.test(
     "checkout clears an expired session without returning a redirect",
     async (subtest) => {
+      subtest.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP });
       const session = mockCartCookies(subtest, CART_ID);
       const requests = mockStorefront(subtest, { cart: null });
       const response = await checkoutRoute.POST(cartRequest("POST"));
@@ -776,6 +822,7 @@ test("Shopify cart requests preserve actual outcomes without leaking provider me
   await context.test(
     "checkout rejects an empty authoritative cart without a redirect",
     async (subtest) => {
+      subtest.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP });
       const session = mockCartCookies(subtest, CART_ID);
       mockStorefront(subtest, { cart: { ...rawCart(0), lines: { nodes: [] } } });
       const response = await checkoutRoute.POST(cartRequest("POST"));
@@ -792,6 +839,7 @@ test("Shopify cart requests preserve actual outcomes without leaking provider me
   await context.test(
     "checkout handoff includes fresh authoritative contents and stays private",
     async (subtest) => {
+      subtest.mock.timers.enable({ apis: ["Date"], now: STOREFRONT_LAUNCH_TIMESTAMP });
       mockCartCookies(subtest, CART_ID);
       const requests = mockStorefront(subtest, { cart: rawCart(1) });
       const response = await checkoutRoute.POST(cartRequest("POST"));
@@ -800,6 +848,7 @@ test("Shopify cart requests preserve actual outcomes without leaking provider me
       assert.equal(response.status, 200);
       assert.equal(payload.cart?.lines[0].quantity, 1);
       assert.equal(payload.checkoutUrl, "https://checkout.example.test/test-checkout");
+      assert.equal(payload.cart?.checkoutUrl, undefined);
       assert.equal(response.headers.get("Cache-Control"), "private, no-store");
       assert.equal(requests.length, 1);
       assert.doesNotMatch(JSON.stringify(payload), /test-private-cart-key/);

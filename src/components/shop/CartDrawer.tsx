@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactElement } from "react";
 import { ArrowRight, LockKeyhole, Minus, Plus, ShoppingBag, X } from "lucide-react";
 
+import { useStorefrontCheckoutOpen } from "@/components/layout/useStorefrontLaunch";
 import { GiftWrapCartDetails } from "@/components/shop/GiftWrapCartDetails";
 import {
   CartGiftWrapOption,
@@ -39,6 +40,7 @@ import type {
   ShopifyCartWarning,
   ShopifyGiftWrapOffer,
 } from "@/lib/shopify/types";
+import { CHECKOUT_LAUNCH_MESSAGE, isStorefrontCheckoutOpen } from "@/lib/storefront-launch";
 import { cn, formatMoney } from "@/lib/utils";
 
 function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]): string | null {
@@ -58,6 +60,7 @@ function formatLineMeta(cartLine: ShopifyCartSnapshot["lines"][number]): string 
 }
 
 export function CartDrawer(): ReactElement | null {
+  const checkoutOpen = useStorefrontCheckoutOpen();
   const { canAddVariant, isReady } = useCartQuantityStatus();
   const [isOpen, setIsOpen] = useState(false);
   const [cart, setCart] = useState<ShopifyCartSnapshot | null>(null);
@@ -490,6 +493,8 @@ export function CartDrawer(): ReactElement | null {
   }
 
   async function goToCheckout(): Promise<void> {
+    if (!isStorefrontCheckoutOpen()) return;
+
     if (isWorkingRef.current || isRefreshingRef.current || needsRefreshRef.current) {
       return;
     }
@@ -956,9 +961,15 @@ export function CartDrawer(): ReactElement | null {
               </Link>
             </p>
 
+            {!checkoutOpen ? (
+              <p id="cart-drawer-launch-note" className="mt-3 text-sm leading-5 font-medium text-ink">
+                {CHECKOUT_LAUNCH_MESSAGE}
+              </p>
+            ) : null}
             <button
               type="button"
-              disabled={controlsDisabled || Boolean(giftWrapIssue)}
+              disabled={!checkoutOpen || controlsDisabled || Boolean(giftWrapIssue)}
+              aria-describedby={checkoutOpen ? undefined : "cart-drawer-launch-note"}
               onClick={() => void goToCheckout()}
               className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-md border border-ink bg-ink px-5 py-3 text-sm font-semibold tracking-[0.08em] text-white uppercase transition-colors hover:border-deep-teal hover:bg-deep-teal disabled:cursor-not-allowed disabled:opacity-60"
             >

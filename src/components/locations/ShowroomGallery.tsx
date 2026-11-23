@@ -16,12 +16,16 @@ const galleryBlurDataUrl =
 const swipeThreshold = 44;
 
 type ShowroomGalleryProps = {
+  locationName: string;
   photos: ShowroomPhoto[];
+  previewSizes?: string;
+  saveData?: boolean;
   className?: string;
 };
 
-function getStagedPhotoIndexes(activeIndex: number, photoCount: number) {
+function getStagedPhotoIndexes(activeIndex: number, photoCount: number, preloadAdjacent: boolean) {
   if (photoCount === 0) return [];
+  if (!preloadAdjacent) return [activeIndex];
 
   return Array.from(
     new Set([
@@ -46,10 +50,16 @@ function centerThumbnailInRail(rail: HTMLDivElement | null, element: HTMLButtonE
   rail.scrollTo({ left, behavior: getScrollBehavior() });
 }
 
-export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
+export function ShowroomGallery({
+  locationName,
+  photos,
+  previewSizes = "(max-width: 480px) 480px, 100vw",
+  saveData = false,
+  className,
+}: ShowroomGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-  const [isAutoplaying, setIsAutoplaying] = useState(true);
+  const [isAutoplaying, setIsAutoplaying] = useState(!saveData);
   const prefersReducedMotion = useReducedMotion();
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const didSwipe = useRef(false);
@@ -66,9 +76,9 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
   const currentIndex = Math.min(selectedIndex, Math.max(photoCount - 1, 0));
   const currentPhoto = photos[currentIndex] ?? null;
   const activePhoto = lightboxIndex === null ? null : (photos[lightboxIndex] ?? null);
-  const stagedPreviewIndexes = getStagedPhotoIndexes(currentIndex, photoCount);
+  const stagedPreviewIndexes = getStagedPhotoIndexes(currentIndex, photoCount, !saveData);
   const stagedLightboxIndexes =
-    lightboxIndex === null ? [] : getStagedPhotoIndexes(lightboxIndex, photoCount);
+    lightboxIndex === null ? [] : getStagedPhotoIndexes(lightboxIndex, photoCount, !saveData);
   const isLightboxOpen = lightboxIndex !== null;
 
   function selectPhoto(index: number) {
@@ -254,7 +264,7 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
                   aria-hidden={!isActive}
                   fill
                   quality={photo.quality ?? 75}
-                  sizes="(max-width: 480px) 480px, 100vw"
+                  sizes={previewSizes}
                   loading="lazy"
                   placeholder="blur"
                   blurDataURL={galleryBlurDataUrl}
@@ -270,8 +280,11 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
             <span className="absolute top-3 right-3 z-30 inline-flex h-11 w-11 items-center justify-center border border-white/35 bg-ink/70 text-white sm:top-5 sm:right-5">
               <Expand className="h-4 w-4" aria-hidden />
             </span>
-            <span data-a11y-on-photo className="absolute bottom-5 left-4 z-30 max-w-[60%] font-heading text-2xl leading-tight text-white sm:left-6 sm:text-3xl">
-              The Partridge Creek showroom
+            <span
+              data-a11y-on-photo
+              className="absolute bottom-5 left-4 z-30 max-w-[60%] font-heading text-2xl leading-tight text-white sm:left-6 sm:text-3xl"
+            >
+              The {locationName} showroom
             </span>
           </button>
 
@@ -387,12 +400,12 @@ export function ShowroomGallery({ photos, className }: ShowroomGalleryProps) {
           className="fixed inset-0 z-[180] flex h-dvh flex-col bg-[#080c10] text-white"
           role="dialog"
           aria-modal="true"
-          aria-label="Partridge Creek showroom gallery"
+          aria-label={`${locationName} showroom gallery`}
         >
           <div className="flex items-center justify-between gap-4 border-b border-white/10 px-4 py-3 sm:px-6">
             <div className="min-w-0">
               <p className="text-[10px] font-semibold tracking-[0.16em] text-white/55 uppercase">
-                Partridge Creek Showroom
+                {locationName} Showroom
               </p>
               <p className="mt-1 text-xs font-medium text-white/85">
                 Photo {lightboxIndex + 1} of {photoCount}

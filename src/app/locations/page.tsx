@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { LocationOpenBadge } from "@/components/locations/LocationOpenBadge";
@@ -70,27 +71,39 @@ export default function LocationsPage() {
           <div className="grid gap-5 lg:grid-cols-2">
             {locations.map((location, index) => (
               <Card key={location.slug} className="h-full overflow-hidden">
-                <div className="relative aspect-[16/10]">
-                  <Image
-                    src={location.photo}
-                    alt={location.photoAlt}
-                    fill
-                    priority={index === 0}
-                    sizes="(max-width: 1024px) 100vw, 50vw"
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/20 to-transparent" />
-                  <div className="absolute right-3 bottom-3 left-3">
-                    <p className="rounded-xl border border-white/30 bg-white/88 px-3 py-2 text-center text-xs font-semibold tracking-[0.12em] text-ink uppercase backdrop-blur-sm">
-                      {location.photoLabel}
-                    </p>
+                <Link
+                  href={`/location/${location.slug}`}
+                  aria-labelledby={`location-${location.slug}`}
+                  className="group block focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-deep-teal"
+                >
+                  <div className="relative aspect-[16/10]">
+                    <Image
+                      src={location.photo}
+                      alt={location.photoAlt}
+                      fill
+                      priority={index === 0}
+                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      className="object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/20 to-transparent" />
+                    <div className="absolute right-3 bottom-3 left-3">
+                      <p className="rounded-xl border border-white/30 bg-white/88 px-3 py-2 text-center text-xs font-semibold tracking-[0.12em] text-ink uppercase backdrop-blur-sm">
+                        {location.photoLabel}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                  <CardContent className="pb-0 sm:pb-0 lg:pb-0">
+                    <h2
+                      id={`location-${location.slug}`}
+                      className="font-heading text-3xl text-ink underline-offset-4 group-hover:text-deep-teal group-hover:underline group-focus-visible:text-deep-teal group-focus-visible:underline sm:text-4xl"
+                    >
+                      {location.name}
+                    </h2>
+                    <p className="mt-2 text-sm leading-7 text-smoke">{location.address}</p>
+                  </CardContent>
+                </Link>
 
-                <CardContent>
-                  <h2 className="font-heading text-3xl text-ink sm:text-4xl">{location.name}</h2>
-                  <p className="mt-2 text-sm leading-7 text-smoke">{location.address}</p>
-
+                <CardContent className="pt-0 sm:pt-0 lg:pt-0">
                   <div className="mt-4 rounded-2xl border border-ink/10 bg-stone/35 p-3">
                     <a
                       href={formatPhone(location.phone)}

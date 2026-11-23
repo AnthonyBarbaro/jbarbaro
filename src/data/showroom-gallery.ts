@@ -4,6 +4,19 @@ export type ShowroomPhoto = {
   quality?: number;
 };
 
+export type ShowroomVideoAsset = {
+  src: string;
+  poster: string;
+  width: number;
+  height: number;
+};
+
+type Showroom = {
+  name: string;
+  photos: ShowroomPhoto[];
+  video?: ShowroomVideoAsset;
+};
+
 export const partridgeCreekShowroomPhotos: ShowroomPhoto[] = [
   {
     src: "/images/locations/partridge-creek/showroom-02-2400.webp",
@@ -39,3 +52,55 @@ export const partridgeCreekShowroomPhotos: ShowroomPhoto[] = [
     quality: 92,
   },
 ];
+
+const greatLakesShowroomPhotos: ShowroomPhoto[] = [
+  {
+    src: "/images/locations/great-lakes/storefront.webp",
+    alt: "J. Barbaro Clothiers storefront at Great Lakes Crossing Outlet",
+  },
+  {
+    src: "/images/locations/great-lakes/showroom.webp",
+    alt: "Wide view of the Great Lakes Crossing showroom with jackets and folded menswear",
+  },
+  {
+    src: "/images/locations/great-lakes/mannequin-display.webp",
+    alt: "Mannequins in sport coats and layered menswear inside the store",
+  },
+  {
+    src: "/images/locations/great-lakes/suits-and-dress-shirts.webp",
+    alt: "Dress shirts on display in front of a wall of suits",
+  },
+  {
+    src: "/images/locations/great-lakes/menswear-racks.webp",
+    alt: "Rows of shirts, knitwear, and jackets along the showroom wall",
+  },
+  {
+    src: "/images/locations/great-lakes/accessories-counter.webp",
+    alt: "Glass accessories counter and a display of ties",
+  },
+  {
+    src: "/images/locations/great-lakes/jackets-and-formalwear.webp",
+    alt: "Colorful vests and jackets on racks in the Great Lakes Crossing showroom",
+  },
+  {
+    src: "/images/locations/great-lakes/seating-area.webp",
+    alt: "Showroom seating area looking toward the mall entrance",
+  },
+];
+
+export const showroomGalleries: Partial<Record<string, Showroom>> = {
+  "partridge-creek": {
+    name: "Partridge Creek",
+    photos: partridgeCreekShowroomPhotos,
+  },
+  "great-lakes-crossing-outlet": {
+    name: "Great Lakes Crossing",
+    photos: greatLakesShowroomPhotos,
+    video: {
+      src: "/images/locations/great-lakes/store-tour.mp4",
+      poster: "/images/locations/great-lakes/store-tour-poster.webp",
+      width: 1280,
+      height: 720,
+    },
+  },
+};

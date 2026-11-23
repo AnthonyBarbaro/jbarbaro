@@ -23,6 +23,7 @@ export const dynamic = "force-dynamic";
 const shopDepartments = [
   { label: "Suits", href: "/categories/suits" },
   { label: "Sport Coats", href: "/categories/sport-coats" },
+  { label: "Outerwear", href: "/categories/outerwear" },
   { label: "Shirts", href: "/categories/shirts" },
   { label: "Pants", href: "/categories/pants" },
   { label: "Shoes", href: "/categories/shoes" },

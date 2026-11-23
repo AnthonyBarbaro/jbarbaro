@@ -18,11 +18,11 @@ type CollectionCategory = Awaited<ReturnType<typeof resolveMenCategories>>[numbe
 const categoryPriority = [
   "suits",
   "sport coats",
+  "outerwear",
   "shirts",
   "pants",
   "shoes",
   "denim",
-  "outerwear",
   "formalwear",
   "accessories",
 ] as const;

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { SeoJsonLd } from "@/components/SeoJsonLd";
 import { LocationOpenBadge } from "@/components/locations/LocationOpenBadge";
 import { ShowroomGallery } from "@/components/locations/ShowroomGallery";
+import { ShowroomVideo } from "@/components/locations/ShowroomVideo";
 import { Breadcrumbs } from "@/components/ui/Breadcrumbs";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
@@ -10,10 +11,14 @@ import { Container } from "@/components/ui/Container";
 import { PageHero } from "@/components/ui/PageHero";
 import { WaveSection } from "@/components/ui/WaveSection";
 import { appointmentLocationMap, locationMap, locations } from "@/data/locations";
-import { partridgeCreekShowroomPhotos } from "@/data/showroom-gallery";
+import { showroomGalleries } from "@/data/showroom-gallery";
+import { buildGoogleMapsEmbedUrl } from "@/lib/maps";
 import { buildMetadata } from "@/lib/seo";
 import { breadcrumbJsonLd } from "@/lib/structured-data";
 import { formatPhone } from "@/lib/utils";
+
+const showroomPreviewSizes =
+  "(max-width: 512px) 480px, (min-width: 1264px) 1200px, (min-width: 1024px) calc(100vw - 64px), (min-width: 640px) calc(100vw - 48px), calc(100vw - 32px)";
 
 export function generateStaticParams() {
   return locations.map((location) => ({ locationSlug: location.slug }));
@@ -49,6 +54,7 @@ export default async function LocationDetailPage({
   }
 
   const isPartridgeCreek = location.slug === "partridge-creek";
+  const showroom = showroomGalleries[location.slug];
   const acceptsAppointments = Boolean(appointmentLocationMap[location.slug]);
   const breadcrumbData = breadcrumbJsonLd([
     { name: "Home", path: "/" },
@@ -91,7 +97,7 @@ export default async function LocationDetailPage({
         ctaLabel={acceptsAppointments ? "Book This Location" : "Call Store"}
       />
 
-      {isPartridgeCreek ? (
+      {showroom ? (
         <WaveSection topWave="B" background="stone">
           <Container>
             <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
@@ -100,23 +106,36 @@ export default async function LocationDetailPage({
                   Inside the Showroom
                 </p>
                 <h2 className="mt-3 font-heading text-4xl text-ink sm:text-5xl">
-                  Visit us at Partridge Creek.
+                  Visit us at {showroom.name}.
                 </h2>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
-                  Explore tailored clothing, sportswear, shirts, denim, footwear, and accessories in
-                  a relaxed setting with expert help close by.
-                </p>
+                {isPartridgeCreek ? (
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-smoke sm:text-base">
+                    Explore tailored clothing, sportswear, shirts, denim, footwear, and accessories
+                    in a relaxed setting with expert help close by.
+                  </p>
+                ) : null}
               </div>
-              <ButtonLink
-                href="/schedule-appointment"
-                variant="secondary"
-                className="w-full sm:w-auto"
-              >
-                Plan Your Visit
-              </ButtonLink>
+              {acceptsAppointments ? (
+                <ButtonLink
+                  href="/schedule-appointment"
+                  variant="secondary"
+                  className="w-full sm:w-auto"
+                >
+                  Plan Your Visit
+                </ButtonLink>
+              ) : null}
             </div>
 
-            <ShowroomGallery photos={partridgeCreekShowroomPhotos} className="mt-8" />
+            {showroom.video ? <ShowroomVideo {...showroom.video} /> : null}
+
+            <ShowroomGallery
+              key={location.slug}
+              locationName={showroom.name}
+              photos={showroom.photos}
+              previewSizes={showroomPreviewSizes}
+              saveData={!isPartridgeCreek}
+              className="mt-8"
+            />
           </Container>
         </WaveSection>
       ) : null}
@@ -176,10 +195,11 @@ export default async function LocationDetailPage({
 
             <Card className="overflow-hidden">
               <iframe
-                title={`${location.name} map`}
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${location.longitude - 0.01}%2C${location.latitude - 0.01}%2C${location.longitude + 0.01}%2C${location.latitude + 0.01}&layer=mapnik&marker=${location.latitude}%2C${location.longitude}`}
+                title={`${location.name} Google map`}
+                src={buildGoogleMapsEmbedUrl(location)}
                 className="h-[340px] w-full border-0 sm:h-[430px]"
                 loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
               />
             </Card>
           </div>

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MapPin, Phone } from "lucide-react";
 
 import { BrandProductRail } from "@/components/home/BrandProductRail";
@@ -43,12 +44,12 @@ const categoryPriority = [
   ["suits"],
   ["shop all", "all"],
   ["sport coats", "sports jacket", "sport jacket"],
+  ["outerwear"],
   ["shirts", "dress shirts", "casual shirts"],
   ["pants", "dress pants", "trousers"],
   ["shoes", "footwear"],
   ["denim"],
   ["accessories"],
-  ["outerwear"],
   ["tuxedo", "formalwear"],
 ] as const;
 const categoryFallbackImages: Record<string, string> = {
@@ -382,7 +383,11 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <ShowroomGallery photos={partridgeCreekShowroomPhotos} className="mt-8" />
+          <ShowroomGallery
+            locationName="Partridge Creek"
+            photos={partridgeCreekShowroomPhotos}
+            className="mt-8"
+          />
         </Container>
       </WaveSection>
 
@@ -415,6 +420,7 @@ export default async function HomePage() {
           <div className="mt-8 overflow-hidden border-y border-ink/15 bg-white">
             {locations.map((location) => {
               const isPartridgeCreek = location.slug === "partridge-creek";
+              const detailHref = `/location/${location.slug}`;
 
               return (
                 <article
@@ -436,7 +442,12 @@ export default async function HomePage() {
                         isPartridgeCreek ? "text-3xl sm:text-4xl" : "text-2xl sm:text-3xl"
                       }`}
                     >
-                      {location.name}
+                      <Link
+                        href={detailHref}
+                        className="rounded-sm underline-offset-4 hover:text-deep-teal hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-deep-teal"
+                      >
+                        {location.name}
+                      </Link>
                     </h3>
 
                     <div className="mt-4 flex flex-col gap-3 text-sm text-smoke sm:flex-row sm:flex-wrap sm:gap-x-7">
@@ -466,7 +477,7 @@ export default async function HomePage() {
                       Directions
                     </ButtonLink>
                     <ButtonLink
-                      href={`/location/${location.slug}`}
+                      href={detailHref}
                       variant="secondary"
                       size="sm"
                       className="w-full rounded-none sm:w-auto"

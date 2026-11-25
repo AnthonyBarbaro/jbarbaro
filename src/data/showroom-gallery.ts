@@ -92,6 +92,12 @@ export const showroomGalleries: Partial<Record<string, Showroom>> = {
   "partridge-creek": {
     name: "Partridge Creek",
     photos: partridgeCreekShowroomPhotos,
+    video: {
+      src: "/images/locations/partridge-creek/store-tour.mp4",
+      poster: "/images/locations/partridge-creek/store-tour-poster.webp",
+      width: 1280,
+      height: 720,
+    },
   },
   "great-lakes-crossing-outlet": {
     name: "Great Lakes Crossing",

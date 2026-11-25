@@ -150,8 +150,20 @@ Gift wrap is off by default. To restore it, publish the `gift-wrap` product to t
 Storefront channel, set `SHOPIFY_GIFT_WRAP_ENABLED=true` in the deployment environment, and
 redeploy so cached product pages pick up the setting.
 
+To test checkout locally before launch, set `SHOPIFY_STORE_DOMAIN` and
+`SHOPIFY_STOREFRONT_ACCESS_TOKEN` in your local environment and run:
+
+```bash
+NEXT_PUBLIC_ENABLE_LOCAL_CHECKOUT=true pnpm exec next dev --hostname 127.0.0.1
+```
+
+Open `http://127.0.0.1:3000/shop`, add an item, and click Checkout from the bag. The browser
+opens the hosted checkout URL Shopify generates for that cart. Stop at the checkout page to test
+the redirect. To submit a test order, use a Shopify store with a test payment gateway configured.
+The checkout override applies only to the development server.
+
 See the [launch checklist](docs/launch-checklist.md) for current release evidence and remaining
-provider/staff checks. Checkout tests are currently mocked; hosted payments, fulfillment, and the
-external POS inventory bridge have not been signed off. Newsletter signup is hidden until an
-enrollment service is connected. The approved return rule is 14 days from receipt with tags attached;
-additional fees, exceptions, and exchange rules still need business confirmation.
+provider/staff checks. Automated checkout tests use mocked Shopify responses. Hosted payments,
+fulfillment, and the external POS inventory bridge have not been signed off. Newsletter signup is
+hidden until an enrollment service is connected. The approved return rule is 14 days from receipt
+with tags attached; additional fees, exceptions, and exchange rules still need business confirmation.

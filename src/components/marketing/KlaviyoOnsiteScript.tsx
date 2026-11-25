@@ -61,5 +61,34 @@ export function KlaviyoTracking({ siteId }: { siteId: string }) {
     () => null,
   );
 
-  return preference === "accepted" ? <KlaviyoOnsiteScript siteId={siteId} /> : null;
+  useEffect(() => {
+    if (preference !== "accepted") return;
+
+    let cancelScheduledLoad: (() => void) | undefined;
+
+    function scheduleTracking() {
+      const load = () => void loadKlaviyoOnsiteScript(siteId).catch(() => {});
+
+      if (typeof window.requestIdleCallback === "function") {
+        const idle = window.requestIdleCallback(load, { timeout: 2000 });
+        cancelScheduledLoad = () => window.cancelIdleCallback(idle);
+      } else {
+        const timer = window.setTimeout(load, 250);
+        cancelScheduledLoad = () => window.clearTimeout(timer);
+      }
+    }
+
+    if (document.readyState === "complete") {
+      scheduleTracking();
+    } else {
+      window.addEventListener("load", scheduleTracking, { once: true });
+    }
+
+    return () => {
+      window.removeEventListener("load", scheduleTracking);
+      cancelScheduledLoad?.();
+    };
+  }, [preference, siteId]);
+
+  return null;
 }

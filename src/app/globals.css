@@ -436,15 +436,27 @@ summary::-webkit-details-marker {
 }
 
 .text-offers-launcher {
-  top: clamp(8rem, 29dvh, 17rem);
+  top: clamp(14rem, 30svh, 17rem);
   left: env(safe-area-inset-left, 0px);
-  translate: 0 -50%;
 }
 
 .text-offers-tab {
   writing-mode: vertical-rl;
   text-orientation: sideways;
   rotate: 180deg;
+}
+
+@media (width < 64rem) and (height <= 30rem) {
+  .text-offers-launcher {
+    top: auto;
+    bottom: calc(var(--mobile-nav-height, 4rem) + 0.75rem);
+  }
+
+  .text-offers-tab {
+    writing-mode: horizontal-tb;
+    rotate: none;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  }
 }
 
 .text-offers-panel {
@@ -457,6 +469,11 @@ body:has(.text-offers-panel[open]) {
 }
 
 @media (min-width: 64rem) {
+  .text-offers-launcher {
+    top: clamp(8rem, 29dvh, 17rem);
+    translate: 0 -50%;
+  }
+
   .text-offers-panel {
     left: 1.5rem;
   }
